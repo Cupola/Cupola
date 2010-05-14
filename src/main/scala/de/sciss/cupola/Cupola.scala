@@ -3,6 +3,7 @@ package de.sciss.cupola
 import java.net.SocketAddress
 import actors.{ Actor, OutputChannel }
 import java.awt.EventQueue
+import de.sciss.synth.swing.{ NodeTreePanel, ServerStatusPanel, SwingServer }
 //import swing.Swing
 import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter }
 import de.sciss.synth.{ PlainServer, Server }
@@ -21,7 +22,7 @@ object Cupola extends Actor {
    // messages sent out by this object to listeners
    case class LevelChanged( newLevel: Level, newSection: Section )
 
-   val s: Server                 = new PlainServer( "Default" )
+   val s: Server                 = new SwingServer()
    val trackingPort              = 0x6375
    
    private var level: Level      = UnknownLevel
@@ -42,10 +43,23 @@ object Cupola extends Actor {
 
    def main( args: Array[ String ]) {
 //      s.options.programPath.value = "/Users/rutz/Documents/devel/fromSVN/SuperCollider3/common/build/scsynth"
-      s.addDoWhenBooted( this ! Run ) // important: PlainServer executes this in the OSC receiver thread, so fork!
-      s.boot
-      start
-      guiRun { new GUI }
+//      s.addDoWhenBooted( this ! Run ) // important: PlainServer executes this in the OSC receiver thread, so fork!
+//      start
+//      guiRun { new GUI }
+      guiRun {
+         val sspw = new ServerStatusPanel( s ).makeWindow
+         val ntp  = new NodeTreePanel( s )
+         val ntpw = ntp.makeWindow
+         ntpw.setLocation( sspw.getX, sspw.getY + sspw.getHeight + 32 )
+         val sif  = new ScalaInterpreterFrame( s, ntp )
+         sif.setLocation( sspw.getX + sspw.getWidth + 32, sif.getY )
+
+         sspw.setVisible( true )
+         ntpw.setVisible( true )
+         sif.setVisible( true )
+
+         s.boot
+      }
    }
 
    def guiRun( code: => Unit ) {
