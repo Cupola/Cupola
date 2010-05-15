@@ -1,4 +1,4 @@
-package de.sciss.cupola
+package de.sciss.temporal
 
 import math._
 

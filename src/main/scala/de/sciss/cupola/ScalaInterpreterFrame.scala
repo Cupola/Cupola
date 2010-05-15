@@ -21,20 +21,18 @@ extends JFrame( "Scala Interpreter" ) {
 
       ip.initialText = ip.initialText +
 """
-import de.sciss.cupola._
-import DSL._
-
 val g = gen( "process1" ) {
-    val p1 = param( "freq", new ParamSpec, 880 )
+    val p1 = paramNum( "freq", ParamSpec(), Some( 880 ))
 
-    enter( graph( "main" ) {
-        SinOsc.ar( p1 )
-    })
+    graph {
+        SinOsc.ar( p1.kr )
+    }
 }
 
 val p = g.make
 p.play
-p.stop
+//p.stop
+s.freeAll
 """
 
       ip.initialCode = Some(
@@ -45,6 +43,8 @@ import de.sciss.synth.SC._
 import de.sciss.synth.ugen._
 import de.sciss.synth.swing._
 import de.sciss.temporal._
+import de.sciss.synth.proc._
+import de.sciss.synth.proc.DSL._
 """
       )
 
@@ -70,8 +70,8 @@ import de.sciss.temporal._
       setSize( b.width / 2, b.height * 7 / 8 )
       sp.setDividerLocation( b.height * 2 / 3 )
       setLocationRelativeTo( null )
-//      setLocation( x, getY )
+//    setLocation( x, getY )
       setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE )
-//      setVisible( true )
+//    setVisible( true )
    }
 }
