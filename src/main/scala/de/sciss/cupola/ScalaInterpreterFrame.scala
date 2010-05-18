@@ -22,7 +22,7 @@ extends JFrame( "Scala Interpreter" ) {
       ip.initialText = ip.initialText +
 """
 val g = gen( "process1" ) {
-    val p1 = paramNum( "freq", ParamSpec(), Some( 880 ))
+    val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
 
     graph {
         SinOsc.ar( p1.kr )
@@ -30,9 +30,28 @@ val g = gen( "process1" ) {
 }
 
 val p = g.make
+p.setFloat( "freq", 441 )
 p.play
-//p.stop
-s.freeAll
+p.stop
+
+val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
+
+val h = gen( "process2" ) {
+    val p1  = pFloat( "speed", ParamSpec(), Some( 1 ))
+    val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
+    val b   = bufCue( "disk", p2 )
+
+    graph {
+        VDiskIn.ar( b.numChannels, b.id, p1.kr * BufRateScale.ir( b.id ), loop = 1 )
+    }
+}
+
+val p = h.make
+p.setString( "path", audioDir + "ZahnradGong1 den-L.aif" )
+p.setFloat( "speed", 4 )
+p.play
+p.setFloat( "speed", 0.25f )
+p.stop
 """
 
       ip.initialCode = Some(

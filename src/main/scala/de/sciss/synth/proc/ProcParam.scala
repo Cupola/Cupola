@@ -1,6 +1,7 @@
 package de.sciss.synth.proc
 
-import de.sciss.synth.GE
+import de.sciss.synth.{ GE, SC }
+import SC._
 
 trait ProcParam[ T ] {
 //   type t = T
@@ -17,12 +18,12 @@ trait ProcParamFloat extends ProcParam[ Float ] {
 //   def mapKr   : GE = spec.map( name.kr( spec.unmap( default.getOrElse( spec.lo ))))
 
    def ir : GE = {
-      ProcGraphBuilder.local.addParam( this )
+      ProcGraphBuilder.local.includeParam( this )
       name.ir( default.getOrElse( 0f ))
    }
 
    def kr : GE = {
-      ProcGraphBuilder.local.addParam( this )
+      ProcGraphBuilder.local.includeParam( this )
       name.kr( default.getOrElse( 0f ))
    }
 

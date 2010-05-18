@@ -43,8 +43,8 @@ trait Proc {
 //   def getParamValue[ T ]( p: ProcParam[ T ]) : T
 //   def getParamLoc( name: String ) : FileLocation
 
-   def getNum( name: String ) : Float
-   def setNum( name: String, num: Float ) : Proc
-   def getLoc( name: String ) : FileLocation
-   def setLoc( name: String, loc: FileLocation ) : Proc
+   def getFloat( name: String ) : Float
+   def setFloat( name: String, value: Float ) : Proc
+   def getString( name: String ) : String
+   def setString( name: String, value: String ) : Proc
 }

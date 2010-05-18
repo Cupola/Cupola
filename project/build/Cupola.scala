@@ -8,7 +8,7 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    // stupidly, we need to redefine the dependancy here, because
    // for some reason, sbt will otherwise try to look in the maven repo
    val dep1 = "jsyntaxpane" % "jsyntaxpane" % "0.9.5-b29" from "http://jsyntaxpane.googlecode.com/files/jsyntaxpane-0.9.5-b29.jar"
-//   val dep2 = "de.sciss" %% "scalaosc" % "0.13"
+   val dep2 = "de.sciss" %% "scalaaudiofile" % "0.10"
    val dep3 = "de.sciss" %% "scalacollider" % "0.12"
    val dep4 = "de.sciss" %% "scalainterpreterpane" % "0.13"
    val dep5 = "prefuse" % "prefuse" % "beta-20071021" from "http://github.com/downloads/Sciss/ScalaColliderSwing/prefuse-beta-20071021.jar"

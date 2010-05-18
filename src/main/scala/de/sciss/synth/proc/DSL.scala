@@ -46,15 +46,15 @@ object DSL {
 
    // ---- scope : gen (ProcGenBuilder) ----
 
-   def num( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamNum =
-      ProcGenBuilder.local.createNum( name, spec, default )
-   def loc( name: String, default: Option[ FileLocation ]) : ProcParamLoc =
-      ProcGenBuilder.local.createLoc( name, default )
+   def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat =
+      ProcGenBuilder.local.pFloat( name, spec, default )
+   def pString( name: String, default: Option[ String ]) : ProcParamString =
+      ProcGenBuilder.local.pString( name, default )
    def graph( thunk: => GE ) : ProcGraph = ProcGenBuilder.local.graph( thunk )
 //   def enter( entry: ProcEntry ) : Unit = ProcGenBuilder.local.enter( entry )
 
-   def bufCue( name: String, path: String, numChannels: Int = 1 ) : ProcBuffer =
-      ProcGenBuilder.local.bufCue( name, path, numChannels)
+   def bufCue( name: String, path: String ) : ProcBuffer =
+      ProcGenBuilder.local.bufCue( name, path )
    def bufCue( name: String, p: ProcParamString ) : ProcBuffer   = ProcGenBuilder.local.bufCue( name, p )
 
    // ---- scope : graph (ProcGraphBuilder) ----

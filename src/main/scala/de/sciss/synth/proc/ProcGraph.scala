@@ -42,4 +42,5 @@ trait ProcGraphBuilder {
 //   def embed( b: ProcBuffer ) : GE
 //   def embed( p: ProcParamNum ) : GE
    def includeParam( p: ProcParam[ _ ]) : Unit
+   def includeBuffer( b: ProcBuffer ) : Unit
 }

@@ -43,6 +43,7 @@
 		<string>1.6+</string>
 		<key>ClassPath</key>
 		<array>
+			<string>$JAVAROOT/scalaaudiofile.jar</string>
 			<string>$JAVAROOT/cupola.jar</string>
 			<string>$JAVAROOT/scisslib.jar</string>
 			<string>$JAVAROOT/scalacolliderswing.jar</string>

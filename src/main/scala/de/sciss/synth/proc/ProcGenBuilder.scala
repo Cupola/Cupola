@@ -28,18 +28,21 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.temporal.FileLocation
-import de.sciss.synth.{ Constant, ControlSetMap, GE, GraphBuilder, SingleControlSetMap }
+import de.sciss.synth.{ Buffer, ControlSetMap, GE, GraphBuilder, SingleControlSetMap, SC, Server,
+                        Synth, SynthDef }
+import SC._
+import de.sciss.synth.io.AudioFile
+import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
 
 trait ProcGenBuilder {
    def name : String
-   def createNum( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamNum
-   def createLoc( name: String, default: Option[ FileLocation ]) : ProcParamLoc
+   def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat
+   def pString( name: String, default: Option[ String ]) : ProcParamString
    def graph( thunk: => GE ) : ProcGraph
 //   def enter( entry: ProcEntry ) : Unit
 
-   def bufCue( name: String, loc: FileLocation ) : ProcBuffer
-   def bufCue( name: String, p: ProcParamLoc ) : ProcBuffer
+   def bufCue( name: String, path: String ) : ProcBuffer
+   def bufCue( name: String, p: ProcParamString ) : ProcBuffer
 
    def finish : ProcGen
 }
@@ -64,16 +67,16 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
       @inline private def requireOngoing = require( !finished, "ProcGen build has finished" )
 
-      def createNum( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamNum = {
+      def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat = {
          requireOngoing
-         val p = new ParamNumImpl( name, spec, default )
+         val p = new ParamFloatImpl( name, spec, default )
          addParam( p )
          p
       }
 
-      def createLoc( name: String, default: Option[ FileLocation ]) : ProcParamLoc = {
+      def pString( name: String, default: Option[ String ]) : ProcParamString = {
          requireOngoing
-         val p = new ParamLocImpl( name, default )
+         val p = new ParamStringImpl( name, default )
          addParam( p )
          p
       }
@@ -87,14 +90,14 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
          res
       }
 
-      def bufCue( name: String, loc: FileLocation ) : ProcBuffer = {
-         val b = new BufferImpl( name, loc.uri.getPath ) // XXX resolve against file locations manager
+      def bufCue( name: String, path: String ) : ProcBuffer = {
+         val b = new BufferImpl( name, path )
          addBuffer( b )
          b
       }
 
-      def bufCue( name: String, p: ProcParamLoc ) : ProcBuffer = {
-         val b = new BufferImpl( name, Proc.local.getLoc( p.name ).uri.getPath )
+      def bufCue( name: String, p: ProcParamString ) : ProcBuffer = {
+         val b = new BufferImpl( name, Proc.local.getString( p.name ))
          addBuffer( b )
          b
       }
@@ -137,6 +140,8 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
    private class GenImpl( val name: String, val entry: ProcEntry, val params: Map[ String, ProcParam[ _ ]])
    extends ProcGen {
       def make : Proc = new Impl( name, this )
+
+      override def toString = "gen(" + name + ")"
    }
 
    // ---------------------------- Proc implementation ----------------------------
@@ -144,39 +149,39 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
    private class Impl( val name: String, gen: GenImpl ) extends Proc {
       private val sync           = new AnyRef
       private var stoppable : Option[ Stoppable ] = None
-      private var paramNumValues = Map[ ProcParamNum, Float ]()
-      private var paramLocValues = Map[ ProcParamLoc, FileLocation ]()
+      private var pFloatValues   = Map[ ProcParamFloat, Float ]()
+      private var pStringValues  = Map[ ProcParamString, String ]()
 
-      def setNum( name: String, num: Float ) : Proc = {
+      def setFloat( name: String, value: Float ) : Proc = {
          sync.synchronized {
-            val p = gen.params( name ).asInstanceOf[ ProcParamNum ]
-            paramNumValues += p -> num
+            val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
+            pFloatValues += p -> value
 //            stoppable.foreach( _.setNum( name, num ))
             this
          }
       }
 
-      def setLoc( name: String, loc: FileLocation ) : Proc = {
+      def setString( name: String, value: String ) : Proc = {
          sync.synchronized {
-            val p = gen.params( name ).asInstanceOf[ ProcParamLoc ]
-            paramLocValues += p -> loc
+            val p = gen.params( name ).asInstanceOf[ ProcParamString ]
+            pStringValues += p -> value
 //            stoppable.foreach( _.setLoc( name, loc ))
             this
          }
       }
 
-      def getNum( name: String ) : Float = {
+      def getFloat( name: String ) : Float = {
          sync.synchronized {
-            val p = gen.params( name ).asInstanceOf[ ProcParamNum ]
-            paramNumValues.get( p ).getOrElse( p.default.getOrElse(
+            val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
+            pFloatValues.get( p ).getOrElse( p.default.getOrElse(
                error( "Param '" + name + "' has not yet been assigned ")))
          }
       }
 
-      def getLoc( name: String ) : FileLocation = {
+      def getString( name: String ) : String = {
          sync.synchronized {
-            val p = gen.params( name ).asInstanceOf[ ProcParamLoc ]
-            paramLocValues.get( p ).getOrElse( p.default.getOrElse(
+            val p = gen.params( name ).asInstanceOf[ ProcParamString ]
+            pStringValues.get( p ).getOrElse( p.default.getOrElse(
                error( "Param '" + name + "' has not yet been assigned ")))
          }
       }
@@ -214,6 +219,8 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
       def isPlaying = sync.synchronized { stoppable.isDefined }
 
+      override def toString = "proc(" + name + ")"
+
 //      def getParamValue[ T ]( p: ProcParam[ T ]) : T = gen.params( p.name ).asInstanceOf[ ProcParam[ T ]].default.get
    }
 
@@ -229,25 +236,38 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
    private class GraphBuilderImpl( graph: GraphImpl ) extends ProcGraphBuilder {
       var controls   = Set.empty[ ControlSetMap ]
+      var buffers    = Set.empty[ BufferImpl ]
 
       def includeParam( p: ProcParam[ _ ]) {
          p match {
-            case pNum: ProcParamNum => controls += SingleControlSetMap( pNum.name, Proc.local.getNum( pNum.name ))
+            case pFloat: ProcParamFloat => controls += SingleControlSetMap( pFloat.name, Proc.local.getFloat( pFloat.name ))
             case _ =>
+         }
+      }
+
+      def includeBuffer( b: ProcBuffer ) {
+         b match {
+            case bi: BufferImpl => buffers += bi
+            case _ => println( "WARNING: Currently not supporting buffer " + b )
          }
       }
 
       def play : Stoppable = {
          ProcGraphBuilder.use( this ) {
             // XXX try to cache defs if structure does not change
-            val df = GraphBuilder.wrapOut( graph.gen.name, graph.fun, None )
+            val g    = GraphBuilder.wrapOut( graph.fun, None )
+            val df   = SynthDef( graph.gen.name, g )
 
 //            val bndl = OSCBundle(
 //               gb.buffers.map( _.prepareMsg ) :: List( df.recvMsg( synth.newMsg ))
 //            )
-            val synth = df.play
+            val server  = Server.default // XXX
+            val synth   = Synth( server )
+            val bufMsgs = buffers.map( _.creationMessage( synth ))
+            val rcvMsg  = df.recvMsg( synth.newMsg( df.name, args = controls.toSeq ))
+            server ! OSCBundle( (bufMsgs.toSeq :+ rcvMsg): _* )
             new StoppableImpl({
-               println( "aqui" )
+//               println( "aqui" )
                synth.free
             })
          }
@@ -272,24 +292,36 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 //         gb.controls += ControlMap( b.controlName ... )
 //      }
 
+      def creationMessage( synth: Synth ): OSCMessage = {
+         val b = Buffer( synth.server )
+         synth.onEnd { b.close; b.free }
+         b.allocMsg( 32768, numChannels, b.cueMsg( path ))
+      }
+
       def numChannels : Int = {
-         println( "WARNING: BufferImpl : numChannels : not yet implemented" )
-         1 // XXX
+//         ProcGraphBuilder.local.includeBuffer( this )
+         try {
+            val spec = AudioFile.readSpec( path )
+            spec.numChannels
+         } catch {
+            case e => e.printStackTrace()
+            1  // XXX what should we do?
+         }
       }
 
       def id : GE = {
-         println( "WARNING: BufferImpl : id : not yet implemented" )
-         Constant( 0 ) // XXX
+         ProcGraphBuilder.local.includeBuffer( this )
+         controlName.kr
       }
    }
 
    // ---------------------------- ProcParam implementations ----------------------------
 
-   private class ParamNumImpl( val name: String, val spec: ParamSpec, val default: Option[ Float ])
-   extends ProcParamNum {
+   private class ParamFloatImpl( val name: String, val spec: ParamSpec, val default: Option[ Float ])
+   extends ProcParamFloat {
    }
 
-   private class ParamLocImpl( val name: String, val default: Option[ FileLocation ])
-   extends ProcParamLoc {
+   private class ParamStringImpl( val name: String, val default: Option[ String ])
+   extends ProcParamString {
    }
 }
