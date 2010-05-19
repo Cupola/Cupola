@@ -52,6 +52,9 @@ p.setFloat( "speed", 4 )
 p.play
 p.setFloat( "speed", 0.25f )
 p.stop
+
+val fut = p.getFloat( "speed" )
+if( fut.isSet ) println( fut() )
 """
 
       ip.initialCode = Some(

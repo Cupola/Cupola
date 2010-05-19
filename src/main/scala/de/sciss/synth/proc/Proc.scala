@@ -29,7 +29,14 @@
 package de.sciss.synth.proc
 
 import de.sciss.temporal.FileLocation
+import actors.Future
 
+/**
+ *    @todo XXX after switching to using an actor
+ *          to represent a proc, we should get rid
+ *          of the thread-local variable, and replace
+ *          occurences of Proc.local with Actor.self 
+ */
 object Proc extends ThreadLocalObject[ Proc ] {
 }
 
@@ -37,14 +44,14 @@ trait Proc {
    def name : String
    def play : Proc
    def stop : Proc
-   def isPlaying : Boolean
+   def isPlaying : Future[ Boolean ]
 
 //   def getParamValue[ T ]( name: String ) : T
 //   def getParamValue[ T ]( p: ProcParam[ T ]) : T
 //   def getParamLoc( name: String ) : FileLocation
 
-   def getFloat( name: String ) : Float
+   def getFloat( name: String ) : Future[ Float ]
    def setFloat( name: String, value: Float ) : Proc
-   def getString( name: String ) : String
+   def getString( name: String ) : Future[ String ]
    def setString( name: String, value: String ) : Proc
 }

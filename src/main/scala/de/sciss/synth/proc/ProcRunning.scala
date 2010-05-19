@@ -1,5 +1,5 @@
 /*
- *  ProcGraph.scala
+ *  ProcRunning.scala
  *  (ScalaCollider-Proc)
  *
  *  Copyright (c) 2010 Hanns Holger Rutz. All rights reserved.
@@ -28,23 +28,14 @@
 
 package de.sciss.synth.proc
 
-/**
- *    @todo XXX should return a Future[ ProcRunning ]!
- *          this is going to be a smart solution for the
- *          asynchronous server messages. we could
- *          even work with timeouts. 
- */
-trait ProcEntry {
-   def play : ProcRunning
+import de.sciss.synth.Model
+
+object ProcRunning {
+   case object Stopped
 }
 
-trait ProcGraph extends ProcEntry {
-}
-
-object ProcGraphBuilder extends ThreadLocalObject[ ProcGraphBuilder ] {
-}
-
-trait ProcGraphBuilder {
-   def includeParam( p: ProcParam[ _ ]) : Unit
-   def includeBuffer( b: ProcBuffer ) : Unit
+trait ProcRunning extends Model {
+   def stop : Unit
+   def setFloat( name: String, value: Float ) : Unit
+   def setString( name: String, value: String ) : Unit
 }

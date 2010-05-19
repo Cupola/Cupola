@@ -28,11 +28,12 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ Buffer, ControlSetMap, GE, GraphBuilder, SingleControlSetMap, SC, Server,
+import de.sciss.synth.{ Buffer, ControlSetMap, GE, GraphBuilder, Group, SingleControlSetMap, SC, Server,
                         Synth, SynthDef }
 import SC._
 import de.sciss.synth.io.AudioFile
 import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
+import actors.DaemonActor
 
 trait ProcGenBuilder {
    def name : String
@@ -97,7 +98,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       }
 
       def bufCue( name: String, p: ProcParamString ) : ProcBuffer = {
-         val b = new BufferImpl( name, Proc.local.getString( p.name ))
+         val b = new BufferImpl( name, Proc.local.asInstanceOf[ Impl ].getStringHuschHusch( p.name ))
          addBuffer( b )
          b
       }
@@ -146,78 +147,102 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
    // ---------------------------- Proc implementation ----------------------------
 
-   private class Impl( val name: String, gen: GenImpl ) extends Proc {
-      private val sync           = new AnyRef
-      private var stoppable : Option[ Stoppable ] = None
-      private var pFloatValues   = Map[ ProcParamFloat, Float ]()
-      private var pStringValues  = Map[ ProcParamString, String ]()
+   private object Impl {
+      class Exec( thunk: => Unit ) { def exec = thunk }
+//      case class Running( group: Group, synth: Synth ) extends Stoppable {
+//
+//      }
+   }
+
+   private class Impl( val name: String, gen: GenImpl ) extends DaemonActor with Proc {
+      proc =>
+
+      import Impl._
+
+      start  // start myself...
+
+//      private val sync           = new AnyRef
+      private var running : Option[ ProcRunning ] = None
+      private var pFloatValues   = Map.empty[ ProcParamFloat, Float ]
+      private var pStringValues  = Map.empty[ ProcParamString, String ]
+
+      def act = loop { react {
+         case e: Exec => { /* println( "Executing..." );*/ e.exec }
+         case m => println( "Unknown message " + m )
+      }}
 
       def setFloat( name: String, value: Float ) : Proc = {
-         sync.synchronized {
-            val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
+         val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
+         proc ! new Exec {
             pFloatValues += p -> value
-//            stoppable.foreach( _.setNum( name, num ))
-            this
+            running.foreach( _.setFloat( name, value ))
          }
+         this
       }
 
       def setString( name: String, value: String ) : Proc = {
-         sync.synchronized {
-            val p = gen.params( name ).asInstanceOf[ ProcParamString ]
+         val p = gen.params( name ).asInstanceOf[ ProcParamString ]
+         proc ! new Exec {
             pStringValues += p -> value
-//            stoppable.foreach( _.setLoc( name, loc ))
-            this
+            running.foreach( _.setString( name, value ))
          }
+         this
       }
 
-      def getFloat( name: String ) : Float = {
-         sync.synchronized {
-            val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
-            pFloatValues.get( p ).getOrElse( p.default.getOrElse(
-               error( "Param '" + name + "' has not yet been assigned ")))
-         }
+      def getFloat( name: String ) : Future[ Float ] = {
+         proc !!( new Exec( reply( getFloatHuschHusch( name ))), { case f: Float => f })
       }
 
-      def getString( name: String ) : String = {
-         sync.synchronized {
-            val p = gen.params( name ).asInstanceOf[ ProcParamString ]
-            pStringValues.get( p ).getOrElse( p.default.getOrElse(
-               error( "Param '" + name + "' has not yet been assigned ")))
-         }
+      def getFloatHuschHusch( name: String ) : Float = {
+         val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
+         pFloatValues.get( p ).getOrElse( p.default.getOrElse(
+            error( "Param '" + name + "' has not yet been assigned ")))
+      }
+
+      def getString( name: String ) : Future[ String ] = {
+         proc !!( new Exec( reply( getStringHuschHusch( name ))), { case s: String => s })
+      }
+
+      def getStringHuschHusch( name: String ) : String = {
+         val p = gen.params( name ).asInstanceOf[ ProcParamString ]
+         pStringValues.get( p ).getOrElse( p.default.getOrElse(
+            error( "Param '" + name + "' has not yet been assigned ")))
       }
 
       def play : Proc = {
-         sync.synchronized {
-            if( stoppable.isDefined ) {
-               println( "WARNING: Proc.play - '" + this+ "' already playing")
+         proc ! new Exec {
+            if( running.isDefined ) {
+               println( "WARNING: Proc.play - '" + this + "' already playing")
             } else {
-               val res = Proc.use( this ) { gen.entry.play }
+               val res = Proc.use( proc ) { gen.entry.play }
                lazy val l: AnyRef => Unit = _ match {
-                  case Stoppable.Stopped => sync.synchronized {
+                  case ProcRunning.Stopped => {
+//                     println( "---1" )
                      res.removeListener( l )
-                     if( stoppable == Some( res )) stoppable = None // XXX propagate stop?
+                     proc ! new Exec( if( running == Some( res )) running = None ) // XXX propagate stop?
                   }
+                  case m => println( "Ooooops : " + m )
                }
                res.addListener( l )
-               stoppable = Some( res )
+               running = Some( res )
             }
-            this
          }
+         this
       }
 
       def stop : Proc = {
-         sync.synchronized {
-            stoppable.map( s => {
-               s.stop
-               stoppable = None
-            }) getOrElse {
-               println( "WARNING: Proc.stop - '" + this+ "' not playing")
-            }
-            this
+         proc ! new Exec {
+            running.foreach( r => {
+               r.stop
+//               stoppable = None
+            })
          }
+         this
       }
 
-      def isPlaying = sync.synchronized { stoppable.isDefined }
+      def isPlaying : Future[ Boolean ] = {
+         proc !!( new Exec( running.isDefined ), { case b: Boolean => b })
+      }
 
       override def toString = "proc(" + name + ")"
 
@@ -229,7 +254,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
    private class GraphImpl( val gen: BuilderImpl, thunk: => GE ) extends ProcGraph {
       def fun : GE = thunk
 
-      def play : Stoppable = new GraphBuilderImpl( this ).play
+      def play : ProcRunning = new GraphBuilderImpl( this ).play
    }
 
    // ---------------------------- ProcGraphBuilder implementation ----------------------------
@@ -240,7 +265,9 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
       def includeParam( p: ProcParam[ _ ]) {
          p match {
-            case pFloat: ProcParamFloat => controls += SingleControlSetMap( pFloat.name, Proc.local.getFloat( pFloat.name ))
+//            case pFloat: ProcParamFloat => controls += SingleControlSetMap( pFloat.name, Proc.local.getFloat( pFloat.name ))
+            case pFloat: ProcParamFloat => controls += SingleControlSetMap( pFloat.name,
+               Proc.local.asInstanceOf[ Impl ].getFloatHuschHusch( pFloat.name )) // XXX should use self instead of Proc.local
             case _ =>
          }
       }
@@ -252,7 +279,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
          }
       }
 
-      def play : Stoppable = {
+      def play : ProcRunning = {
          ProcGraphBuilder.use( this ) {
             // XXX try to cache defs if structure does not change
             val g    = GraphBuilder.wrapOut( graph.fun, None )
@@ -265,17 +292,23 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
             val synth   = Synth( server )
             val bufMsgs = buffers.map( _.creationMessage( synth ))
             val rcvMsg  = df.recvMsg( synth.newMsg( df.name, args = controls.toSeq ))
+            val res = new RunningImpl( synth )
             server ! OSCBundle( (bufMsgs.toSeq :+ rcvMsg): _* )
-            new StoppableImpl({
-//               println( "aqui" )
-               synth.free
-            })
+            res
          }
       }
    }
 
-   private class StoppableImpl( thunk: => Unit ) extends Stoppable {
-      def stop =  thunk
+   // XXX synth not guaranteed to exist since spawned asynchronously...
+   private class RunningImpl( synth: Synth ) extends ProcRunning {
+      import ProcRunning._
+      
+//      var pendingControls
+      synth.onEnd { /* println( "ENDO" );*/ dispatch( Stopped )}
+
+      def stop = synth.free // XXX
+      def setString( name: String, value: String ) {}
+      def setFloat( name: String, value: Float ) { synth.set( name -> value )} // XXX
    }
 
    // ---------------------------- ProcBuffer implementation ----------------------------
