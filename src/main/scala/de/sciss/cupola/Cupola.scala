@@ -3,10 +3,10 @@ package de.sciss.cupola
 import java.net.SocketAddress
 import actors.{ Actor, OutputChannel }
 import java.awt.EventQueue
-import de.sciss.synth.swing.{ NodeTreePanel, ServerStatusPanel, SwingServer }
+import de.sciss.synth.swing.{ NodeTreePanel, ServerStatusPanel }
 //import swing.Swing
 import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter }
-import de.sciss.synth.{ PlainServer, Server }
+import de.sciss.synth.Server
 import collection.mutable.{ HashSet => MHashSet }
 
 object Cupola extends Actor {
@@ -22,7 +22,7 @@ object Cupola extends Actor {
    // messages sent out by this object to listeners
    case class LevelChanged( newLevel: Level, newSection: Section )
 
-   val s: Server                 = new SwingServer()
+   val s: Server                 = new Server()
    val trackingPort              = 0x6375
    
    private var level: Level      = UnknownLevel

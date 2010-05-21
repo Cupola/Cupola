@@ -52,6 +52,7 @@ p.setFloat( "speed", 4 )
 p.play
 p.setFloat( "speed", 0.25f )
 p.stop
+p.play; p.stop    // this is safe now!
 
 val fut = p.getFloat( "speed" )
 if( fut.isSet ) println( fut() )

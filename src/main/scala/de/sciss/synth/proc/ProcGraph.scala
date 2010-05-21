@@ -28,15 +28,19 @@
 
 package de.sciss.synth.proc
 
+import actors.Future
+import de.sciss.synth.Model
+
 /**
- *    @todo XXX should return a Future[ ProcRunning ]!
- *          this is going to be a smart solution for the
- *          asynchronous server messages. we could
- *          even work with timeouts. 
+ *    @version 0.11, 21-May-10
  */
 trait ProcEntry {
-   def play : ProcRunning
+   def play : Future[ ProcRunning ]
 }
+
+//trait ProcPlayable {
+//   def play : ProcRunning
+//}
 
 trait ProcGraph extends ProcEntry {
 }
