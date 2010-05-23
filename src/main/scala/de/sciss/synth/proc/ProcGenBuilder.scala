@@ -28,13 +28,11 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ Buffer, ControlSetMap, GE, GraphBuilder, Group, SingleControlSetMap, SC, Server,
-                        Synth, SynthDef }
-import SC._
+import de.sciss.synth._
 import de.sciss.synth.io.AudioFile
 import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
-import de.sciss.synth.osc.{OSCSynthNewMessage, OSCSyncedMessage}
-import actors.{TIMEOUT, Future, DaemonActor}
+import de.sciss.synth.osc.{ OSCSyncedMessage, OSCSynthNewMessage }
+import actors.{ DaemonActor, Future, TIMEOUT }
 
 trait ProcGenBuilder {
    def name : String
@@ -296,7 +294,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       def play : Future[ ProcRunning ] = {
          ProcGraphBuilder.use( this ) {
             // XXX try to cache defs if structure does not change
-            val g    = GraphBuilder.wrapOut( graph.fun, None )
+            val g    = SynthGraph.wrapOut( graph.fun, None )
             val df   = SynthDef( graph.gen.name, g )
 
 //            val bndl = OSCBundle(

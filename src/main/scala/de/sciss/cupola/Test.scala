@@ -6,7 +6,6 @@ import collection.mutable.{ HashMap => MHashMap, ListBuffer }
 import de.sciss.synth._
 import de.sciss.synth.ugen._
 import de.sciss.trees.{ Interval => TInterval, LongManager, ManagedLong, Rect, RTree, Shaped }
-import SC._
 import math._
 import de.sciss.scalaosc.OSCBundle
 

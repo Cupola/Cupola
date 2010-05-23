@@ -28,8 +28,7 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ GE, SC }
-import SC._
+import de.sciss.synth._
 
 trait ProcParam[ T ] {
 //   type t = T

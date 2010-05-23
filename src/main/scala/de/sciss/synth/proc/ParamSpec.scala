@@ -28,8 +28,7 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ GE, SC }
-import SC._
+import de.sciss.synth._
 
 case class ParamSpec( lo: Float = 0f, hi: Float = 1f, warp: Warp = LinearWarp, step: Float = 0f ) {
    def range = hi - lo

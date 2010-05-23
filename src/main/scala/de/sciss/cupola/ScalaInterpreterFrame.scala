@@ -62,7 +62,6 @@ if( fut.isSet ) println( fut() )
 """
 import math._
 import de.sciss.synth._
-import de.sciss.synth.SC._
 import de.sciss.synth.ugen._
 import de.sciss.synth.swing._
 import de.sciss.temporal._
@@ -74,7 +73,7 @@ import de.sciss.synth.proc.DSL._
       ip.bindingsCreator = Some( (in: Interpreter ) => {
          in.bind( "s", classOf[ Server ].getName, s )
 //         in.bind( "ntp", classOf[ NodeTreePanel ].getName, ntp )
-         in.bind( "in", classOf[ Interpreter ].getName, in )
+//         in.bind( "in", classOf[ Interpreter ].getName, in )
       })
 
       val lp = new LogPane

@@ -28,8 +28,7 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ Buffer, ControlSetMap, GE, GraphBuilder, SC, Server, SingleControlSetMap, SynthDef }
-import SC._
+import de.sciss.synth._
 import de.sciss.scalaosc.OSCBundle
 
 /**
