@@ -9,11 +9,12 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    // for some reason, sbt will otherwise try to look in the maven repo
    val dep1 = "jsyntaxpane" % "jsyntaxpane" % "0.9.5-b29" from "http://jsyntaxpane.googlecode.com/files/jsyntaxpane-0.9.5-b29.jar"
    val dep2 = "de.sciss" %% "scalaaudiofile" % "0.10"
-   val dep3 = "de.sciss" %% "scalacollider" % "0.12"
-   val dep4 = "de.sciss" %% "scalainterpreterpane" % "0.13"
-   val dep5 = "prefuse" % "prefuse" % "beta-20071021" from "http://github.com/downloads/Sciss/ScalaColliderSwing/prefuse-beta-20071021.jar"
-   val dep6 = "de.sciss" %% "scalacolliderswing" % "0.12"
-   val dep7 = "de.sciss" %% "temporalobjects" % "0.11"
+   val dep3 = "de.sciss" %% "scalaosc" % "0.14"
+   val dep4 = "de.sciss" %% "scalacollider" % "0.13"
+   val dep5 = "de.sciss" %% "scalainterpreterpane" % "0.13"
+   val dep6 = "prefuse" % "prefuse" % "beta-20071021" from "http://github.com/downloads/Sciss/ScalaColliderSwing/prefuse-beta-20071021.jar"
+   val dep7 = "de.sciss" %% "scalacolliderswing" % "0.13"
+   val dep8 = "de.sciss" %% "temporalobjects" % "0.11"
 
    val camelCaseName          = "Cupola"
    def appBundleName          = camelCaseName + ".app"

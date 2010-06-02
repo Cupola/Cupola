@@ -1,12 +1,12 @@
 package de.sciss.cupola
 
 import java.net.SocketAddress
-import actors.{ Actor, OutputChannel }
 import java.awt.EventQueue
 import de.sciss.synth.swing.{ NodeTreePanel, ServerStatusPanel }
+import actors.{ Actor, DaemonActor, OutputChannel }
 //import swing.Swing
-import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter }
-import de.sciss.synth.Server
+import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter, UDP }
+import de.sciss.synth.{ BootingServer, Server }
 import collection.mutable.{ HashSet => MHashSet }
 
 object Cupola extends Actor {
@@ -22,19 +22,19 @@ object Cupola extends Actor {
    // messages sent out by this object to listeners
    case class LevelChanged( newLevel: Level, newSection: Section )
 
-   val s: Server                 = new Server()
-   val trackingPort              = 0x6375
+   @volatile var s: Server       = _
+   val trackingPort              = 0x6375 + 1
    
    private var level: Level      = UnknownLevel
    private var section: Section  = Section1
    private val tracking          = {
-      val rcv = OSCReceiver( 'udp, trackingPort )
+      val rcv = OSCReceiver( UDP, trackingPort )
       rcv.action = messageReceived
       rcv.start
       rcv
    }
    private val simulator         = {
-      val trns = OSCTransmitter( 'udp )
+      val trns = OSCTransmitter( UDP )
       trns.target = tracking.localAddress
       trns.connect
       trns
@@ -45,22 +45,44 @@ object Cupola extends Actor {
 //      s.options.programPath.value = "/Users/rutz/Documents/devel/fromSVN/SuperCollider3/common/build/scsynth"
 //      s.addDoWhenBooted( this ! Run ) // important: PlainServer executes this in the OSC receiver thread, so fork!
 //      start
-//      guiRun { new GUI }
-      guiRun {
-         val sspw = new ServerStatusPanel( s ).makeWindow
-         val ntp  = new NodeTreePanel( s )
-         val ntpw = ntp.makeWindow
-         ntpw.setLocation( sspw.getX, sspw.getY + sspw.getHeight + 32 )
-         val sif  = new ScalaInterpreterFrame( s, ntp )
-         sif.setLocation( sspw.getX + sspw.getWidth + 32, sif.getY )
-
-         sspw.setVisible( true )
-         ntpw.setVisible( true )
-         sif.setVisible( true )
-
-         s.boot
-      }
+      guiRun { init }
    }
+
+   private def init {
+      val sif  = new ScalaInterpreterFrame( /* ntp */ )
+      val ssp  = new ServerStatusPanel()
+      val sspw = ssp.makeWindow
+      val ntp  = new NodeTreePanel()
+      val ntpw = ntp.makeWindow
+      ntpw.setLocation( sspw.getX, sspw.getY + sspw.getHeight + 32 )
+      sspw.setVisible( true )
+      ntpw.setVisible( true )
+      sif.setLocation( sspw.getX + sspw.getWidth + 32, sif.getY )
+      sif.setVisible( true )
+      val booting = Server.boot()
+      booting.addListener {
+         case BootingServer.Running( srv ) => {
+            ssp.server = Some( srv )
+            ntp.server = Some( srv )
+            s = srv
+            sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
+         }
+      }
+      booting.start
+   }
+
+//   private def initGUI {
+//      val sspw = new ServerStatusPanel( s ).makeWindow
+//      val ntp  = new NodeTreePanel( s )
+//      val ntpw = ntp.makeWindow
+//      ntpw.setLocation( sspw.getX, sspw.getY + sspw.getHeight + 32 )
+//      val sif  = new ScalaInterpreterFrame( s, ntp )
+//      sif.setLocation( sspw.getX + sspw.getWidth + 32, sif.getY )
+//
+//      sspw.setVisible( true )
+//      ntpw.setVisible( true )
+//      sif.setVisible( true )
+//   }
 
    def guiRun( code: => Unit ) {
       EventQueue.invokeLater( new Runnable { def run = code })

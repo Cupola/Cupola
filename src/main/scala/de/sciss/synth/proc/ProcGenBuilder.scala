@@ -223,7 +223,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
                await( 5000L, futPlay ) {
                   case Some( run ) => {
 //println( "PREPARED!" )
-                     lazy val l: AnyRef => Unit = _ match {
+                     lazy val l: Model.Listener = run.addListener {
                         case ProcRunning.Stopped => {
       //                     println( "---1" )
                            run.removeListener( l )
@@ -231,7 +231,6 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
                         }
                         case m => println( "Ooooops : " + m )
                      }
-                     run.addListener( l )
                      running = Some( run )
                   }
                   case None => println( "timeout!" )
