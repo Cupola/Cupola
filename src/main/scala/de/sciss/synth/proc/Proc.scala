@@ -30,6 +30,7 @@ package de.sciss.synth.proc
 
 import de.sciss.temporal.FileLocation
 import actors.Future
+import de.sciss.synth.Server
 
 /**
  *    @todo XXX after switching to using an actor
@@ -45,6 +46,7 @@ trait Proc {
    def play : Proc
    def stop : Proc
    def isPlaying : Future[ Boolean ]
+   def server : Server
 
 //   def getParamValue[ T ]( name: String ) : T
 //   def getParamValue[ T ]( p: ProcParam[ T ]) : T
@@ -54,4 +56,7 @@ trait Proc {
    def setFloat( name: String, value: Float ) : Proc
    def getString( name: String ) : Future[ String ]
    def setString( name: String, value: String ) : Proc
+
+   private[proc] def getFloatDirect( name: String ) : Float
+   private[proc] def getStringDirect( name: String ) : String
 }

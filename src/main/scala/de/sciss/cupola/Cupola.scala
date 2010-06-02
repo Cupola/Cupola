@@ -4,6 +4,7 @@ import java.net.SocketAddress
 import java.awt.EventQueue
 import de.sciss.synth.swing.{ NodeTreePanel, ServerStatusPanel }
 import actors.{ Actor, DaemonActor, OutputChannel }
+import de.sciss.synth.proc.ProcWorldActor
 //import swing.Swing
 import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter, UDP }
 import de.sciss.synth.{ BootingServer, Server }
@@ -65,6 +66,8 @@ object Cupola extends Actor {
             ssp.server = Some( srv )
             ntp.server = Some( srv )
             s = srv
+            val wa = new ProcWorldActor( s )
+            wa.start
             sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
          }
       }

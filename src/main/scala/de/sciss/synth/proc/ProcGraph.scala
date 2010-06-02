@@ -32,10 +32,10 @@ import actors.Future
 import de.sciss.synth.Model
 
 /**
- *    @version 0.11, 21-May-10
+ *    @version 0.11, 02-Jun-10
  */
 trait ProcEntry {
-   def play : Future[ ProcRunning ]
+   def play( tx: ProcTransaction ) : ProcRunning
 }
 
 //trait ProcPlayable {

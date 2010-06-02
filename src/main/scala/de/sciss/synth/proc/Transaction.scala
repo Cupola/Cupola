@@ -1,5 +1,5 @@
-package de.sciss.synth.proc
-
-class Transaction {
-   
-}
+//package de.sciss.synth.proc
+//
+//class Transaction {
+//
+//}
