@@ -1,5 +1,5 @@
 /*
- *  ProcGenBuilder.scala
+ *  ProcFactoryBuilder.scala
  *  (ScalaCollider-Proc)
  *
  *  Copyright (c) 2010 Hanns Holger Rutz. All rights reserved.
@@ -38,7 +38,7 @@ import collection.breakOut
 /**
  *    @version 0.11, 03-Jun-10
  */
-trait ProcGenBuilder {
+trait ProcFactoryBuilder {
    def name : String
    def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat
    def pString( name: String, default: Option[ String ]) : ProcParamString
@@ -51,11 +51,11 @@ trait ProcGenBuilder {
    def bufCue( name: String, path: String ) : ProcBuffer
    def bufCue( name: String, p: ProcParamString ) : ProcBuffer
 
-   def finish : ProcGen
+   def finish : ProcFactory
 }
 
-object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
-   def apply( name: String )( thunk: => Unit ) : ProcGen = {
+object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
+   def apply( name: String )( thunk: => Unit ) : ProcFactory = {
       val b = new BuilderImpl( name )
       use( b ) {
          thunk
@@ -63,16 +63,16 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       }
    }
 
-   // ---------------------------- ProcGenBuilder implementation ----------------------------
+   // ---------------------------- ProcFactoryBuilder implementation ----------------------------
 
-   private class BuilderImpl( val name: String ) extends ProcGenBuilder {
+   private class BuilderImpl( val name: String ) extends ProcFactoryBuilder {
       private var finished                   = false
       private var params                     = Map[ String, ProcParam[ _ ]]()
       private var buffers                    = Map[ String, ProcBuffer ]()
       private var graph: Option[ ProcGraph ] = None
       private var entry: Option[ ProcEntry ] = None
 
-      @inline private def requireOngoing = require( !finished, "ProcGen build has finished" )
+      @inline private def requireOngoing = require( !finished, "ProcFactory build has finished" )
 
       def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat = {
          requireOngoing
@@ -105,7 +105,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       def graph( thunk: => GE ) : ProcGraph = {
          requireOngoing
          require( graph.isEmpty, "Graph already defined" )
-         val res = new GraphImpl( this, thunk )
+         val res = new GraphImpl( thunk )
          graph = Some( res )
          enter( res )
          res
@@ -128,11 +128,11 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
          entry = Some( e )
       }
 
-      def finish : ProcGen = {
+      def finish : ProcFactory = {
          requireOngoing
          finished = true
          require( entry.isDefined, "No entry point defined" )
-         new GenImpl( name, entry.get, params )
+         new FactoryImpl( name, entry.get, params )
       }
 
       private def addParam( p: ProcParam[ _ ]) {
@@ -146,20 +146,20 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       }
    }
 
-//   private object BuilderDummy extends ProcGenBuilder {
+//   private object BuilderDummy extends ProcFactoryBuilder {
 //      def param( name: String, spec: ParamSpec, default: Float ) : ProcParam = outOfContext
 //      def graph( name: String, thunk: => GE ) : ProcGraph = outOfContext
 //      def enter( e: ProcEntry ) : Unit = outOfContext
 //      def finish {}
-//      def build( name: String ) : ProcGen = outOfContext
+//      def build( name: String ) : ProcFactory = outOfContext
 //
 //      private def outOfContext = error( "No way josé" )
 //   }
 
-   // ---------------------------- ProcGen implementation ----------------------------
+   // ---------------------------- ProcFactory implementation ----------------------------
 
-   private class GenImpl( val name: String, val entry: ProcEntry, val params: Map[ String, ProcParam[ _ ]])
-   extends ProcGen {
+   private class FactoryImpl( val name: String, val entry: ProcEntry, val params: Map[ String, ProcParam[ _ ]])
+   extends ProcFactory {
       def make : Proc = new Impl( name, ProcWorldActor.default, this )
 
       override def toString = "gen(" + name + ")"
@@ -174,7 +174,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 //      }
    }
 
-   private class Impl( val name: String, wa: ProcWorldActor, gen: GenImpl ) extends DaemonActor with Proc {
+   private class Impl( val name: String, wa: ProcWorldActor, fact: FactoryImpl ) extends DaemonActor with Proc {
       proc =>
 
       import Impl._
@@ -201,20 +201,28 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
          case m => println( "Unknown message " + m )
       }}
 
+      def audioInput( name: String ) : ProcAudioInput = {
+         error( "Not yet implemented" )
+      }
+
+      def audioOutput( name: String ) : ProcAudioOutput = {
+         error( "Not yet implemented" )
+      }
+
       def setFloat( name: String, value: Float ) : Proc = tryExec {
-         val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
+         val p = fact.params( name ).asInstanceOf[ ProcParamFloat ]
          pFloatValues += p -> value
          running.foreach( _.setFloat( name, value ))
       }
 
       def setString( name: String, value: String ) : Proc = tryExec {
-         val p = gen.params( name ).asInstanceOf[ ProcParamString ]
+         val p = fact.params( name ).asInstanceOf[ ProcParamString ]
          pStringValues += p -> value
          running.foreach( _.setString( name, value ))
       }
 
       def setAudioBus( name: String, value: AudioBus ) : Proc = tryExec {
-         val p = gen.params( name ).asInstanceOf[ ProcParamAudioBus ]
+         val p = fact.params( name ).asInstanceOf[ ProcParamAudioBus ]
          pAudioBusValues += p -> value
          running.foreach( _.setAudioBus( name, value ))
       }
@@ -224,7 +232,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       }
 
       def getFloatDirect( name: String ) : Float = {
-         val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
+         val p = fact.params( name ).asInstanceOf[ ProcParamFloat ]
          pFloatValues.get( p ).getOrElse( p.default.getOrElse(
             error( "Param '" + name + "' has not yet been assigned ")))
       }
@@ -234,7 +242,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       }
 
       def getStringDirect( name: String ) : String = {
-         val p = gen.params( name ).asInstanceOf[ ProcParamString ]
+         val p = fact.params( name ).asInstanceOf[ ProcParamString ]
          pStringValues.get( p ).getOrElse( p.default.getOrElse(
             error( "Param '" + name + "' has not yet been assigned ")))
       }
@@ -244,7 +252,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       }
 
       def getAudioBusDirect( name: String ) : AudioBus = {
-         val p = gen.params( name ).asInstanceOf[ ProcParamAudioBus ]
+         val p = fact.params( name ).asInstanceOf[ ProcParamAudioBus ]
          pAudioBusValues.get( p ).getOrElse( p.default.map( tup => AudioBus( server, tup._1, tup._2 )).getOrElse(
             error( "Param '" + name + "' has not yet been assigned ")))
       }
@@ -281,7 +289,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
                   case Some( tx ) => {
                      println( "play : tx opened" )
                      try {
-                        val run = Proc.use( proc ) { gen.entry.play( tx )}
+                        val run = Proc.use( proc ) { fact.entry.play( tx )}
                         lazy val l: Model.Listener = {
                            case ProcRunning.Stopped => {
                               run.removeListener( l )
@@ -332,7 +340,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
    // ---------------------------- ProcGraph implementation ----------------------------
 
-   private class GraphImpl( val gen: BuilderImpl, thunk: => GE ) extends ProcGraph {
+   private class GraphImpl( thunk: => GE ) extends ProcGraph {
       def fun : GE = thunk
 
       def play( tx: ProcTransaction ) : ProcRunning = new GraphBuilderImpl( this ).play( tx )

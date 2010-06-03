@@ -60,15 +60,6 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Cupola.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="35" column="114" selection-start="1092" selection-end="1092" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="ProcRunning.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcRunning.scala">
           <provider selected="true" editor-type-id="text-editor">
@@ -78,19 +69,19 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ProcTransport.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTransport.scala">
+      <file leaf-file-name="ProcFactoryBuilder.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="35" column="30" selection-start="1202" selection-end="1202" vertical-scroll-proportion="0.0">
+            <state line="207" column="52" selection-start="7135" selection-end="7135" vertical-scroll-proportion="1.1559252">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ProcGenBuilder.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGenBuilder.scala">
+      <file leaf-file-name="ProcGraph.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGraph.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="314" column="7" selection-start="11435" selection-end="11435" vertical-scroll-proportion="0.34511435">
+            <state line="44" column="6" selection-start="1232" selection-end="1232" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -117,7 +108,7 @@
       <file leaf-file-name="Proc.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="64" column="51" selection-start="2132" selection-end="2132" vertical-scroll-proportion="0.0">
+            <state line="64" column="52" selection-start="2124" selection-end="2124" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -135,7 +126,16 @@
       <file leaf-file-name="DSL.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="53" column="82" selection-start="1839" selection-end="1839" vertical-scroll-proportion="0.0">
+            <state line="68" column="77" selection-start="2565" selection-end="2575" vertical-scroll-proportion="-5.6538463">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ProcIO.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcIO.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="5" column="21" selection-start="74" selection-end="89" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -160,8 +160,6 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ActorUtil.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/RichSynthDef.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTransaction.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/temporal/Transport.scala" />
@@ -169,13 +167,15 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/RichObject.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcWorld.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTransport.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcRunning.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcParam.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ActorBodyException.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcIO.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGenBuilder.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala" />
       </list>
     </option>
   </component>
@@ -275,78 +275,6 @@
             <PATH_ELEMENT>
               <option name="myItemId" value="sciss" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="temporal" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="Transport.scala" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="Cupola" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="Cupola" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="main" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="scala" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="sciss" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="temporal" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="Cupola" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="Cupola" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="main" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="scala" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="sciss" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="temporal" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="Player.scala" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
             </PATH_ELEMENT>
           </PATH>
           <PATH>
@@ -579,7 +507,7 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="ProcGenBuilder.scala" />
+              <option name="myItemId" value="ProcFactoryBuilder.scala" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -1087,11 +1015,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGraph.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="37" column="33" selection-start="1118" selection-end="1167" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/temporal/Transport.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="13" column="18" selection-start="0" selection-end="3543" vertical-scroll-proportion="0.26603" />
@@ -1122,35 +1045,11 @@
         <state line="35" column="30" selection-start="1202" selection-end="1202" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="64" column="51" selection-start="2132" selection-end="2132" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcRunning.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="41" column="0" selection-start="1264" selection-end="1323" vertical-scroll-proportion="0.0">
           <folding />
         </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="53" column="82" selection-start="1839" selection-end="1839" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcParam.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="63" column="7" selection-start="1764" selection-end="1764" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTransaction.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="57" column="24" selection-start="1969" selection-end="1969" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
@@ -1167,9 +1066,49 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGenBuilder.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcParam.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="314" column="7" selection-start="11435" selection-end="11435" vertical-scroll-proportion="0.34511435">
+        <state line="63" column="7" selection-start="1764" selection-end="1764" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTransaction.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="57" column="24" selection-start="1969" selection-end="1969" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcIO.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="5" column="21" selection-start="74" selection-end="89" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGraph.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="44" column="6" selection-start="1232" selection-end="1232" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="68" column="77" selection-start="2565" selection-end="2575" vertical-scroll-proportion="-5.6538463">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="64" column="52" selection-start="2124" selection-end="2124" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="207" column="52" selection-start="7135" selection-end="7135" vertical-scroll-proportion="1.1559252">
           <folding />
         </state>
       </provider>

@@ -61,6 +61,9 @@ trait Proc {
    def getAudioBus( name: String ) : Future[ AudioBus ]
    def setAudioBus( name: String, value: AudioBus ) : Proc
 
+   def audioInput( name: String ) : ProcAudioInput
+   def audioOutput( name: String ) : ProcAudioOutput
+
    private[proc] def getFloatDirect( name: String ) : Float
    private[proc] def getStringDirect( name: String ) : String
    private[proc] def getAudioBusDirect( name: String ) : AudioBus

@@ -37,34 +37,37 @@ import de.sciss.scalaosc.OSCBundle
 object DSL {
    // ---- scope : outside ----
 
-   def gen( name: String )( thunk: => Unit ) : ProcGen = {
-      val res = ProcGenBuilder( name )( thunk )
+   def gen( name: String )( thunk: => Unit ) : ProcFactory = {
+      val res = ProcFactoryBuilder( name )( thunk )
       // res.announce
       res
    }
 
-   // ---- scope : gen (ProcGenBuilder) ----
+   // ---- scope : gen (ProcFactoryBuilder) ----
 
    def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat =
-      ProcGenBuilder.local.pFloat( name, spec, default )
+      ProcFactoryBuilder.local.pFloat( name, spec, default )
    def pString( name: String, default: Option[ String ]) : ProcParamString =
-      ProcGenBuilder.local.pString( name, default )
+      ProcFactoryBuilder.local.pString( name, default )
    def pAudioIn( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioInBus =
-      ProcGenBuilder.local.pAudioIn( name, default )
+      ProcFactoryBuilder.local.pAudioIn( name, default )
    def pAudioOut( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioOutBus =
-      ProcGenBuilder.local.pAudioOut( name, default )
+      ProcFactoryBuilder.local.pAudioOut( name, default )
 
-   def graph( thunk: => GE ) : ProcGraph = ProcGenBuilder.local.graph( thunk )
-//   def enter( entry: ProcEntry ) : Unit = ProcGenBuilder.local.enter( entry )
+   def graph( thunk: => GE ) : ProcGraph = ProcFactoryBuilder.local.graph( thunk )
+//   def enter( entry: ProcEntry ) : Unit = ProcFactoryBuilder.local.enter( entry )
 
    def bufCue( name: String, path: String ) : ProcBuffer =
-      ProcGenBuilder.local.bufCue( name, path )
-   def bufCue( name: String, p: ProcParamString ) : ProcBuffer   = ProcGenBuilder.local.bufCue( name, p )
+      ProcFactoryBuilder.local.bufCue( name, path )
+   def bufCue( name: String, p: ProcParamString ) : ProcBuffer   = ProcFactoryBuilder.local.bufCue( name, p )
 
    // ---- scope : graph (ProcGraphBuilder) ----
    
 //   implicit def paramNumToGE( p: ProcParamNum ) : GE = p.embed
 //   implicit def bufferToGE( b: ProcBuffer ) : GE = b.embed
+
+   implicit def procToAudioInput( p: Proc ) : ProcAudioInput   = p.audioInput( "in" )
+   implicit def procToAudioOutput( p: Proc ) : ProcAudioOutput = p.audioOutput( "out" )
 }
 
 trait ProcBuffer {
@@ -77,7 +80,7 @@ trait ProcBuffer {
    def numChannels : Int
 }
 
-trait ProcGen {
+trait ProcFactory {
    def name : String
    def make : Proc 
 }
