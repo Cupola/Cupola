@@ -216,11 +216,23 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
          }
       }
 
-      def play = exec {
+      def play : Proc = {
+         wa.transport.sched( new ProcSched {
+            def play( preparePos: Long, latency: Int ) = txPlay( preparePos, latency )
+            def discarded {}
+         }, ProcTransport.NOW, ProcTransport.UNKNOWN_LATENCY )
+         wa.transport.play
+         this
+      }
+
+      private def txPlay( preparePos: Long, latency: Int ) {
+         println( "txPlay " + preparePos + ", " + latency )
+        exec {
+         println( "execPlay " + preparePos + ", " + latency )
          if( running.isDefined ) {
             println( "WARNING: Proc.play - '" + this + "' already playing")
          } else {
-            val futTx = wa.openTx
+            val futTx = wa.openTx( preparePos, latency )
             await( 5000L, futTx ) {
                case None => println( "timeout!" )
                case Some( tx ) => {
@@ -245,7 +257,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
                }
             }
          }
-      }
+      }}
 
       private def exec( thunk: => Unit ) : Proc = {
          proc ! new Exec( thunk )

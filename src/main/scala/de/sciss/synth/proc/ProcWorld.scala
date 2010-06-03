@@ -1,3 +1,31 @@
+/*
+ *  ProcWorld.scala
+ *  (ScalaCollider-Proc)
+ *
+ *  Copyright (c) 2010 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either
+ *  version 2, june 1991 of the License, or (at your option) any later version.
+ *
+ *  This software is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *  General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public
+ *  License (gpl.txt) along with this software; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ *
+ *
+ *  Changelog:
+ */
+
 package de.sciss.synth.proc
 
 import de.sciss.synth.{ Server, SynthGraph }
@@ -19,7 +47,7 @@ object ProcWorld {
 
 object ProcWorldActor {
 //   private case class Tx( fun: (ProcTransaction) => Unit )
-   private case object OpenTx
+   private case class OpenTx( preparePos: Long, latency: Int )
    private case class CloseTx( tx: ProcTransaction, world: ProcWorld )
    private case object Stop
    private case class Synced( id: Int )
@@ -40,6 +68,7 @@ class ProcWorldActor( val server: Server ) extends Actor {
    add( this )
    
    private var worldVar: ProcWorld = ProcWorld.empty
+   val transport = ProcTransport( server.sampleRate, (server.sampleRate * 0.5).toInt )
 
    private val syncActor = new DaemonActor {
       def act = {
@@ -59,11 +88,11 @@ class ProcWorldActor( val server: Server ) extends Actor {
       }, server )
       loopWhile( running ) {
          react {
-            case OpenTx => {
-               println( "OpenTx" )
+            case OpenTx( preparePos, latency ) => {
+               println( "OpenTx " + preparePos + ", " + latency )
                val tx = ProcTransaction( wa, worldVar )
                reply( tx )
-               println( "OpenTx : replied" )
+//               println( "OpenTx : replied" )
                react {
                   case CloseTx( tx2, newWorld ) => {
                      println( "CloseTx" )
@@ -100,8 +129,8 @@ class ProcWorldActor( val server: Server ) extends Actor {
 //      wa ! Tx( fun )
 //   }
 
-   def openTx : Future[ ProcTransaction ] = {
-      wa !! (OpenTx, { case tx: ProcTransaction => tx })
+   def openTx( preparePos: Long, latency: Int ) : Future[ ProcTransaction ] = {
+      wa !! (OpenTx( preparePos: Long, latency: Int ), { case tx: ProcTransaction => tx })
    }
 
    private[proc] def closeTx( tx: ProcTransaction, world: ProcWorld ) {
