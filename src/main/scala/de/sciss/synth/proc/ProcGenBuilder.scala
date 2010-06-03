@@ -33,6 +33,7 @@ import de.sciss.synth.io.AudioFile
 import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
 import de.sciss.synth.osc.{ OSCSyncedMessage, OSCSynthNewMessage }
 import actors.{ DaemonActor, Future, TIMEOUT }
+import collection.breakOut
 
 trait ProcGenBuilder {
    def name : String
@@ -304,7 +305,12 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
             val target     = server.defaultGroup // XXX
             val addAction  = addToHead
             val args       = controls.toSeq
-            val synth      = tx.addSynth( g, args, target, addAction )
+            val synth      = Synth( server )
+            val bufs: Seq[ RichBuffer ] = buffers.map( bi => {
+               val b = Buffer( server )
+               tx.addBuffer( b, bi.creationMessage( b, synth ))
+            })( breakOut )
+            tx.addSynth( g, synth.newMsg( _, target, args, addAction ), bufs )
 //            val df   = SynthDef( graph.gen.name, g )
 //            val server  = Proc.local.server
 //            val synth   = Synth( server )
@@ -349,8 +355,8 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 //         gb.controls += ControlMap( b.controlName ... )
 //      }
 
-      def creationMessage( synth: Synth ): OSCMessage = {
-         val b = Buffer( synth.server )
+      def creationMessage( b: Buffer, synth: Synth ): OSCMessage = {
+//         val b = Buffer( synth.server )
          synth.onEnd { b.close; b.free }
          b.allocMsg( 32768, numChannels, b.cueMsg( path ))
       }

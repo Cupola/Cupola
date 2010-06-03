@@ -24,7 +24,7 @@ object Cupola extends Actor {
    case class LevelChanged( newLevel: Level, newSection: Section )
 
    @volatile var s: Server       = _
-   val trackingPort              = 0x6375 + 1
+   val trackingPort              = 0x6375
    
    private var level: Level      = UnknownLevel
    private var section: Section  = Section1
