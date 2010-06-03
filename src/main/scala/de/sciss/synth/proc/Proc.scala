@@ -30,9 +30,11 @@ package de.sciss.synth.proc
 
 import de.sciss.temporal.FileLocation
 import actors.Future
-import de.sciss.synth.Server
+import de.sciss.synth.{AudioBus, Server}
 
 /**
+ *    @version 0.11, 03-Jun-10
+ *
  *    @todo XXX after switching to using an actor
  *          to represent a proc, we should get rid
  *          of the thread-local variable, and replace
@@ -56,7 +58,10 @@ trait Proc {
    def setFloat( name: String, value: Float ) : Proc
    def getString( name: String ) : Future[ String ]
    def setString( name: String, value: String ) : Proc
+   def getAudioBus( name: String ) : Future[ AudioBus ]
+   def setAudioBus( name: String, value: AudioBus ) : Proc
 
    private[proc] def getFloatDirect( name: String ) : Float
    private[proc] def getStringDirect( name: String ) : String
+   private[proc] def getAudioBusDirect( name: String ) : AudioBus
 }

@@ -35,10 +35,16 @@ import de.sciss.synth.osc.{ OSCSyncedMessage, OSCSynthNewMessage }
 import actors.{ DaemonActor, Future, TIMEOUT }
 import collection.breakOut
 
+/**
+ *    @version 0.11, 03-Jun-10
+ */
 trait ProcGenBuilder {
    def name : String
    def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat
    def pString( name: String, default: Option[ String ]) : ProcParamString
+   def pAudioIn( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioInBus
+   def pAudioOut( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioOutBus
+
    def graph( thunk: => GE ) : ProcGraph
 //   def enter( entry: ProcEntry ) : Unit
 
@@ -78,6 +84,20 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
       def pString( name: String, default: Option[ String ]) : ProcParamString = {
          requireOngoing
          val p = new ParamStringImpl( name, default )
+         addParam( p )
+         p
+      }
+
+      def pAudioIn( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioInBus = {
+         requireOngoing
+         val p = new ParamAudioBusImpl( name, default, Proc.local.getAudioBusDirect( name ).numChannels )
+         addParam( p )
+         p
+      }
+
+      def pAudioOut( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioOutBus = {
+         requireOngoing
+         val p = new ParamAudioBusImpl( name, default, Proc.local.getAudioBusDirect( name ).numChannels )
          addParam( p )
          p
       }
@@ -163,30 +183,40 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
 //      private val sync           = new AnyRef
       private var running : Option[ ProcRunning ] = None
-      private var pFloatValues   = Map.empty[ ProcParamFloat, Float ]
-      private var pStringValues  = Map.empty[ ProcParamString, String ]
+      private var pFloatValues      = Map.empty[ ProcParamFloat, Float ]
+      private var pStringValues     = Map.empty[ ProcParamString, String ]
+      private var pAudioBusValues   = Map.empty[ ProcParamAudioBus, AudioBus ]
 
       def server = wa.server
 
       def act = loop { react {
          case e: Exec => {
 //            println( "Executing........." )
-            e.exec
+            try {
+               e.exec
+            }
+            catch { case ex: ActorBodyException => ex.printStackTrace() }
 //            println( ".........gnitucexE" )
          }
          case m => println( "Unknown message " + m )
       }}
 
-      def setFloat( name: String, value: Float ) : Proc = exec {
+      def setFloat( name: String, value: Float ) : Proc = tryExec {
          val p = gen.params( name ).asInstanceOf[ ProcParamFloat ]
          pFloatValues += p -> value
          running.foreach( _.setFloat( name, value ))
       }
 
-      def setString( name: String, value: String ) : Proc = exec {
+      def setString( name: String, value: String ) : Proc = tryExec {
          val p = gen.params( name ).asInstanceOf[ ProcParamString ]
          pStringValues += p -> value
          running.foreach( _.setString( name, value ))
+      }
+
+      def setAudioBus( name: String, value: AudioBus ) : Proc = tryExec {
+         val p = gen.params( name ).asInstanceOf[ ProcParamAudioBus ]
+         pAudioBusValues += p -> value
+         running.foreach( _.setAudioBus( name, value ))
       }
 
       def getFloat( name: String ) : Future[ Float ] = {
@@ -209,6 +239,16 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
             error( "Param '" + name + "' has not yet been assigned ")))
       }
 
+      def getAudioBus( name: String ) : Future[ AudioBus ] = {
+         proc !!( new Exec( reply( getAudioBusDirect( name ))), { case ab: AudioBus => ab })
+      }
+
+      def getAudioBusDirect( name: String ) : AudioBus = {
+         val p = gen.params( name ).asInstanceOf[ ProcParamAudioBus ]
+         pAudioBusValues.get( p ).getOrElse( p.default.map( tup => AudioBus( server, tup._1, tup._2 )).getOrElse(
+            error( "Param '" + name + "' has not yet been assigned ")))
+      }
+
       private def await[ A ]( timeOut: Long, fut: Future[ A ])( handler: Function1[ Option[ A ], Unit ]) {
          fut.inputChannel.reactWithin( timeOut ) {
             case TIMEOUT => handler( None )
@@ -227,46 +267,56 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
       private def txPlay( preparePos: Long, latency: Int ) {
          println( "txPlay " + preparePos + ", " + latency )
-        exec {
-         println( "execPlay " + preparePos + ", " + latency )
-         if( running.isDefined ) {
-            println( "WARNING: Proc.play - '" + this + "' already playing")
-         } else {
-            val futTx = wa.openTx( preparePos, latency )
-            await( 5000L, futTx ) {
-               case None => println( "timeout!" )
-               case Some( tx ) => {
-                  println( "play : tx opened" )
-                  try {
-                     val run = Proc.use( proc ) { gen.entry.play( tx )}
-                     lazy val l: Model.Listener = {
-                        case ProcRunning.Stopped => {
-                           run.removeListener( l )
-                           exec( if( running == Some( run )) running = None ) // XXX propagate stop?
+         exec {
+            println( "execPlay " + preparePos + ", " + latency )
+            if( running.isDefined ) {
+               println( "WARNING: Proc.play - '" + this + "' already playing")
+            } else {
+               val futTx = try {
+                  wa.openTx( preparePos, latency )
+               }
+               catch { case ex => throw new ActorBodyException( ex )}
+               await( 5000L, futTx ) {
+                  case None => println( "timeout!" )
+                  case Some( tx ) => {
+                     println( "play : tx opened" )
+                     try {
+                        val run = Proc.use( proc ) { gen.entry.play( tx )}
+                        lazy val l: Model.Listener = {
+                           case ProcRunning.Stopped => {
+                              run.removeListener( l )
+                              exec( if( running == Some( run )) running = None ) // XXX propagate stop?
+                           }
+                           case m => println( "Ooooops : " + m )
                         }
-                        case m => println( "Ooooops : " + m )
+                        run.addListener( l )
+                        running = Some( run )
+                        tx.commit
                      }
-                     run.addListener( l )
-                     running = Some( run )
-                     tx.commit
+                     catch { case ex => {
+//                        e.printStackTrace()
+                        tx.abort
+                        throw new ActorBodyException( ex )
+                     }}
                   }
-                  catch { case e => {
-                     e.printStackTrace()
-                     tx.abort
-                  }}
                }
             }
          }
-      }}
+      }
 
       private def exec( thunk: => Unit ) : Proc = {
          proc ! new Exec( thunk )
          this
       }
 
+      private def tryExec( thunk: => Unit ) : Proc = {
+         proc ! new Exec( try { thunk } catch { case ex => throw new ActorBodyException( ex )})
+         this
+      }
+
       def stop : Proc = exec {
          running.foreach( r => {
-            r.stop
+            try { r.stop } catch { case ex => ex.printStackTrace() }
 //               stoppable = None
          })
       }
@@ -299,7 +349,10 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 //            case pFloat: ProcParamFloat => controls += SingleControlSetMap( pFloat.name, Proc.local.getFloat( pFloat.name ))
             case pFloat: ProcParamFloat => controls += SingleControlSetMap( pFloat.name,
                Proc.local.getFloatDirect( pFloat.name ))
-            case _ =>
+            case pString: ProcParamString =>
+            case pAudioBus: ProcParamAudioBus => controls += SingleControlSetMap( pAudioBus.name,
+               Proc.local.getAudioBusDirect( pAudioBus.name ).index )
+            case x => println( "Ooops. what parameter is this? " + x ) // scalac doesn't check exhaustion...
          }
       }
 
@@ -349,8 +402,9 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 //      synth.server ! synthNewMsg
 
       def stop = synth.free // XXX
-      def setString( name: String, value: String ) {}
+      def setString( name: String, value: String ) { error( "not yet supported" )}
       def setFloat( name: String, value: Float ) { synth.set( name -> value )} // XXX
+      def setAudioBus( name: String, value: AudioBus ) { error( "not yet supported" )}
    }
 
    // ---------------------------- ProcBuffer implementation ----------------------------
@@ -380,7 +434,7 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
             spec.numChannels
          } catch {
             case e => e.printStackTrace()
-            1  // XXX what should we do?
+            1  // XXX what should we do? --> FAIL
          }
       }
 
@@ -398,5 +452,11 @@ object ProcGenBuilder extends ThreadLocalObject[ ProcGenBuilder ] {
 
    private class ParamStringImpl( val name: String, val default: Option[ String ])
    extends ProcParamString {
+   }
+
+   private class ParamAudioBusImpl( val name: String, val default: Option[ (Int, Int) ],
+                                    numChannelsThunk: => Int )
+   extends ProcParamAudioInBus with ProcParamAudioOutBus {
+      def numChannels : Int = numChannelsThunk
    }
 }

@@ -32,7 +32,7 @@ import de.sciss.synth._
 import de.sciss.scalaosc.OSCBundle
 
 /**
- *    @version 0.11, 14-May-10
+ *    @version 0.12, 03-Jun-10
  */
 object DSL {
    // ---- scope : outside ----
@@ -49,6 +49,11 @@ object DSL {
       ProcGenBuilder.local.pFloat( name, spec, default )
    def pString( name: String, default: Option[ String ]) : ProcParamString =
       ProcGenBuilder.local.pString( name, default )
+   def pAudioIn( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioInBus =
+      ProcGenBuilder.local.pAudioIn( name, default )
+   def pAudioOut( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioOutBus =
+      ProcGenBuilder.local.pAudioOut( name, default )
+
    def graph( thunk: => GE ) : ProcGraph = ProcGenBuilder.local.graph( thunk )
 //   def enter( entry: ProcEntry ) : Unit = ProcGenBuilder.local.enter( entry )
 

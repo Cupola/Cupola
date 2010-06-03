@@ -28,7 +28,7 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.Model
+import de.sciss.synth.{ AudioBus, Model }
 
 object ProcRunning {
    case object Stopped
@@ -38,4 +38,5 @@ trait ProcRunning extends Model {
    def stop : Unit
    def setFloat( name: String, value: Float ) : Unit
    def setString( name: String, value: String ) : Unit
+   def setAudioBus( name: String, value: AudioBus ) : Unit
 }
