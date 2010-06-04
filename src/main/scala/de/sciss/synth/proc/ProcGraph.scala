@@ -29,13 +29,13 @@
 package de.sciss.synth.proc
 
 import actors.Future
-import de.sciss.synth.Model
+import de.sciss.synth.{Group, Model}
 
 /**
  *    @version 0.11, 02-Jun-10
  */
 trait ProcEntry {
-   def play( tx: ProcTransaction ) : ProcRunning
+   def play( tx: ProcTransaction, target: Group ) : ProcRunning
 }
 
 //trait ProcPlayable {

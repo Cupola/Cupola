@@ -1,15 +1,17 @@
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ AddAction, Buffer, ControlSetMap, Node, Synth, SynthDef, SynthGraph }
-import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
-import actors.{ DaemonActor, Future, TIMEOUT }
 import collection.immutable.{ Queue => IQueue }
 import de.sciss.synth.osc.OSCSyncMessage
+import de.sciss.synth._
+import de.sciss.scalaosc.{OSCPacket, OSCBundle, OSCMessage}
+import actors.{Futures, DaemonActor, Future, TIMEOUT}
 
 trait ProcTransaction {
 //   def addSynthGraph( graph: SynthGraph ) : String
    def addSynth( graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ] = Nil ) : Unit
    def addBuffer( buf: Buffer, allocMsg: OSCMessage ) : RichBuffer
+   def addProc( proc: Proc ) : Unit
+   def addEdge( e: ProcTopology.Edge ) : Unit // Future[ Boolean ]
    def abort : Unit
    def commit : Future[ ProcWorld ]
 }
@@ -109,6 +111,15 @@ object ProcTransaction {
          rb
       }
 
+      def addProc( proc: Proc ) {
+         exec( txAddProc( proc ))
+      }
+
+      def addEdge( e: ProcTopology.Edge ) {
+         exec( txAddEdge( e ))
+//         tx !!( new Exec( txAddEdge( e )), { case b: Boolean => b })
+      }
+
       private def txAddBuffer( rb: RichBuffer, allocMsg: OSCMessage ) {
          addFirst( allocMsg )
          abortFuns = abortFuns.enqueue( () => rb.buf.release )
@@ -130,6 +141,76 @@ object ProcTransaction {
          } else {
             waitID = math.max( waitID, ids.max )
             addSecond( msg )
+         }
+      }
+
+      private def txAddProc( proc: Proc ) {
+         builder.topology = builder.topology.addVertex( proc )
+      }
+
+      private def txAddEdge( e: ProcTopology.Edge ) {
+println( "txAddEdge" )
+         val res = builder.topology.addEdge( e )
+         if( res.isEmpty ) {
+            tx.abort
+//            who ! false
+            return
+         }
+
+         val Some( (newTopo, source, affected) ) = res
+         builder.topology        = newTopo
+         if( affected.isEmpty ) {
+            tx.commit
+//            who ! true
+            return
+         }
+
+println( "txAddEdge -----1" )
+         val futSrcGroup      = source.group
+         val futTgtGroups     = affected.map( p => (p, p.group) )
+         var futSets          = List.empty[ Future[ Any ]]
+
+         def startMoving( g: Group ) {
+println( "txAddEdge -----4" )
+            var succ          = g
+            var pred : Group  = null
+            val iter          = futTgtGroups.iterator
+            loopWhile( iter.hasNext ) {
+println( "txAddEdge -----5" )
+               pred = succ
+               val (target, fut) = iter.next
+               fut.inputChannel.react {
+                  case Some( g ) => {
+println( "txAddEdge -----6" )
+                     addFirst( g.moveAfterMsg( pred ))
+                     succ = g
+                  }
+                  case None => {
+println( "txAddEdge -----7" )
+                     val g = Group( wa.server )
+                     addFirst( g.newMsg( pred, addAfter ))
+                     futSets ::= target.setGroup( tx, g )
+                     succ = g
+                  }
+               }
+            } andThen {
+println( "txAddEdge -----8" )
+               val success = !Futures.awaitAll( 5000L, futSets: _* ).contains( None )
+//               who ! success
+               if( success ) tx.commit else tx.abort
+            }
+         }
+
+println( "txAddEdge -----2" )
+         futSrcGroup.inputChannel.react {
+            case None => {
+println( "txAddEdge -----3" )
+               val g = Group( wa.server )
+               addFirst( g.newMsg( wa.server.defaultGroup, addToHead ))
+               futSets ::= source.setGroup( tx, g )
+               startMoving( g )
+            }
+            case Some( g ) => startMoving( g )
          }
       }
 

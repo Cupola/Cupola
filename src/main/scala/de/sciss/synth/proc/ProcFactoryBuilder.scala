@@ -34,7 +34,8 @@ import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
 import de.sciss.synth.osc.{ OSCSyncedMessage, OSCSynthNewMessage }
 import actors.{ DaemonActor, Future, TIMEOUT }
 import collection.breakOut
-import collection.immutable.{ Seq => ISeq }
+import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq }
+import ProcTransport._
 
 /**
  *    @version 0.11, 03-Jun-10
@@ -72,6 +73,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       private var buffers                    = Map[ String, ProcBuffer ]()
       private var graph: Option[ ProcGraph ] = None
       private var entry: Option[ ProcEntry ] = None
+      private var pAudioIns                  = Vector.empty[ ProcParamAudioInBus ]
+      private var pAudioOuts                 = Vector.empty[ ProcParamAudioOutBus ]
 
       @inline private def requireOngoing = require( !finished, "ProcFactory build has finished" )
 
@@ -93,6 +96,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          requireOngoing
          val p = new ParamAudioBusImpl( name, default, Proc.local.getAudioBusDirect( name ).numChannels )
          addParam( p )
+         pAudioIns :+= p
          p
       }
 
@@ -100,6 +104,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          requireOngoing
          val p = new ParamAudioBusImpl( name, default, Proc.local.getAudioBusDirect( name ).numChannels )
          addParam( p )
+         pAudioOuts :+= p
          p
       }
 
@@ -133,7 +138,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          requireOngoing
          finished = true
          require( entry.isDefined, "No entry point defined" )
-         new FactoryImpl( name, entry.get, params )
+         new FactoryImpl( name, entry.get, params, pAudioIns, pAudioOuts )
       }
 
       private def addParam( p: ProcParam[ _ ]) {
@@ -159,7 +164,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
    // ---------------------------- ProcFactory implementation ----------------------------
 
-   private class FactoryImpl( val name: String, val entry: ProcEntry, val params: Map[ String, ProcParam[ _ ]])
+   private class FactoryImpl( val name: String, val entry: ProcEntry, val params: Map[ String, ProcParam[ _ ]],
+                              val pAudioIns: IIdxSeq[ ProcParamAudioInBus ],
+                              val pAudioOuts: IIdxSeq[ ProcParamAudioOutBus ])
    extends ProcFactory {
       def make : Proc = new Impl( name, ProcWorldActor.default, this )
 
@@ -180,39 +187,41 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       import Impl._
 
-      start  // start myself...
+      // ---- constructor ----
+      {
+         start       // start myself...
+         exec( withTx( NOW, 0, _.addProc( proc ))) // and announce...
+      }
 
 //      private val sync           = new AnyRef
       private var running : Option[ ProcRunning ] = None
+      private var groupVar : Option[ Group ] = None
       private var pFloatValues      = Map.empty[ ProcParamFloat, Float ]
       private var pStringValues     = Map.empty[ ProcParamString, String ]
       private var pAudioBusValues   = Map.empty[ ProcParamAudioBus, AudioBus ]
+      private var edges             = Set.empty[ ProcTopology.Edge ]
+
+      lazy val audioInputs          = fact.pAudioIns.map( new AudioInputImpl( this, _ ))
+      lazy val audioOutputs         = fact.pAudioOuts.map( new AudioOutputImpl( this, _ ))
 
       def server = wa.server
 
-      def act = loop { react {
-         case e: Exec => {
-//            println( "Executing........." )
-            try {
-               e.exec
+      def act {
+         loop { react {
+            case e: Exec => {
+   //            println( "Executing........." )
+               try {
+                  e.exec
+               }
+               catch { case ex: ActorBodyException => ex.printStackTrace() }
+   //            println( ".........gnitucexE" )
             }
-            catch { case ex: ActorBodyException => ex.printStackTrace() }
-//            println( ".........gnitucexE" )
-         }
-         case m => println( "Unknown message " + m )
-      }}
-
-      def audioInput( name: String ) : ProcAudioInput = {
-         val p = fact.params( name ).asInstanceOf[ ProcParamAudioInBus ]
-         new AudioInputImpl( this, p )
+            case m => println( "Unknown message " + m )
+         }}
       }
 
-      def audioOutput( name: String ) : ProcAudioOutput = {
-         val p = fact.params( name ).asInstanceOf[ ProcParamAudioOutBus ]
-         new AudioOutputImpl( this, p )
-      }
-
-      def audioOutputs : ISeq[ ProcAudioOutput ] = error( "NOT YET IMPLEMENTED" )
+      def audioInput( name: String ) : ProcAudioInput    = audioInputs.find(  _.param.name == name ).get
+      def audioOutput( name: String ) : ProcAudioOutput  = audioOutputs.find( _.param.name == name ).get
 
       def setFloat( name: String, value: Float ) : Proc = tryExec {
          val p = fact.params( name ).asInstanceOf[ ProcParamFloat ]
@@ -246,6 +255,27 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          proc !!( new Exec( reply( getStringDirect( name ))), { case s: String => s })
       }
 
+      def group : Future[ Option[ Group ]] = {
+         proc !!( new Exec( reply( groupVar )), {
+            case Some( g: Group ) => {
+println( "duppiii " + g )
+               Some( g )
+            }
+            case None => {
+println( "duppiii NONE" )
+               None
+            }
+         })
+      }
+
+      private[proc] def setGroup( tx: ProcTransaction, g: Group ) : Future[ Any ] = {
+         proc !! new Exec({
+            groupVar = Some( g )
+            running.foreach( _.setGroup( g ))
+            reply( "ok" )
+         })
+      }
+
       def getStringDirect( name: String ) : String = {
          val p = fact.params( name ).asInstanceOf[ ProcParamString ]
          pStringValues.get( p ).getOrElse( p.default.getOrElse(
@@ -271,27 +301,44 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       def play : Proc = {
          wa.transport.sched( new ProcSched {
-            def play( preparePos: Long, latency: Int ) { txPlay( preparePos, latency )}
+            def play( preparePos: Long, latency: Int ) {
+               txPlay( preparePos, latency )
+            }
             def discarded {}
-         }, ProcTransport.NOW, ProcTransport.UNKNOWN_LATENCY )
+         }, NOW, UNKNOWN_LATENCY )
          wa.transport.play
          this
       }
 
-      def connect( out: ProcAudioOutput, in: ProcAudioInput ) = exec {
-         val tgtProc = in.proc
-         withTx( ProcTransport.NOW, ProcTransport.UNKNOWN_LATENCY, tx => {
-            
-         })
-      }
+      private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput ) { exec {
+         val e = out -> in
+         try {
+            require( (out.proc == proc) && !edges.contains( e ))
+         }
+         catch { case ex => throw new ActorBodyException( ex )}
 
-      def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) = exec {
+         await( 5000L, wa.openTx( NOW, 0 )) {
+            case None => println( "timeout!" )
+//            case Some( tx ) => {
+//               await( 5000L, tx.addEdge( e )) {
+//                  case None => println( "timeout!" )
+//                  case Some( success ) => {
+//                     if( success ) tx.commit else tx.abort
+//                  }
+//               }
+//            }
+            case Some( tx ) => tx.addEdge( e )
+         }
+      }}
 
-      }
+      private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) { tryExec {
+         error( "NOT YET IMPLEMENTED" )
+      }}
 
-      def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) = exec {
-
-      }
+      private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput,
+                                insert: (ProcAudioInput, ProcAudioOutput) ) { tryExec {
+         error( "NOT YET IMPLEMENTED" )
+      }}
 
       private def txPlay( preparePos: Long, latency: Int ) = exec {
 //         println( "execPlay " + preparePos + ", " + latency )
@@ -299,7 +346,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             println( "WARNING: Proc.play - '" + this + "' already playing")
          } else {
             withTx( preparePos, latency, tx => {
-               val run = Proc.use( proc ) { fact.entry.play( tx )}
+               val run = Proc.use( proc ) {
+                  fact.entry.play( tx, groupVar.getOrElse( wa.server.defaultGroup ))
+               }
                lazy val l: Model.Listener = {
                   case ProcRunning.Stopped => {
                      run.removeListener( l )
@@ -364,7 +413,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
    private class GraphImpl( thunk: => GE ) extends ProcGraph {
       def fun : GE = thunk
 
-      def play( tx: ProcTransaction ) : ProcRunning = new GraphBuilderImpl( this ).play( tx )
+      def play( tx: ProcTransaction, target: Group ) : ProcRunning = new GraphBuilderImpl( this ).play( tx, target )
    }
 
    // ---------------------------- ProcGraphBuilder implementation ----------------------------
@@ -392,11 +441,11 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          }
       }
 
-      def play( tx: ProcTransaction ) : ProcRunning = {
+      def play( tx: ProcTransaction, target: Group ) : ProcRunning = {
          ProcGraphBuilder.use( this ) {
             val g          = SynthGraph.wrapOut( graph.fun, None )
             val server     = Proc.local.server
-            val target     = server.defaultGroup // XXX
+//            val target     = server.defaultGroup // XXX
             val addAction  = addToHead
             val args       = controls.toSeq
             val synth      = Synth( server )
@@ -425,7 +474,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       
 //      var pendingControls
       synth.onEnd {
-         println( "n_end : " + synth )
+//         println( "n_end : " + synth )
          dispatch( Stopped )
       }
 //      synth.server ! synthNewMsg
@@ -434,15 +483,16 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def setString( name: String, value: String ) { error( "not yet supported" )}
       def setFloat( name: String, value: Float ) { synth.set( name -> value )} // XXX
       def setAudioBus( name: String, value: AudioBus ) { error( "not yet supported" )}
+      def setGroup( g: Group ) { synth.moveToHead( g )}
    }
 
    // ---------------------------- ProcBuffer implementation ----------------------------
 
-   private class AudioInputImpl( val proc: Impl, bus: ProcParamAudioInBus )
+   private class AudioInputImpl( val proc: Impl, val param: ProcParamAudioInBus )
    extends ProcAudioInput {
    }
 
-   private class AudioOutputImpl( val proc: Impl, bus: ProcParamAudioOutBus )
+   private class AudioOutputImpl( val proc: Impl, val param: ProcParamAudioOutBus )
    extends ProcAudioOutput {
       def ~>( in: ProcAudioInput ) : ProcAudioInput = {
          proc.connect( this, in )

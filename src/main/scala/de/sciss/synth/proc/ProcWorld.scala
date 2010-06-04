@@ -32,17 +32,21 @@ import de.sciss.synth.{ Server, SynthGraph }
 import actors.{ Actor, DaemonActor, TIMEOUT }
 import de.sciss.synth.osc.{ OSCSyncedMessage, OSCResponder }
 
+/**
+ *    @version 0.11, 04-Jun-10
+ */
 trait ProcWorldLike {
 //   def server: Server
    def synthGraphs: Map[ SynthGraph, RichSynthDef ]
+   def topology: ProcTopology
 //   def addSynthGraph( graph: SynthGraph ) : String
 }
 
-class ProcWorld( val synthGraphs: Map[ SynthGraph, RichSynthDef ])
+case class ProcWorld( synthGraphs: Map[ SynthGraph, RichSynthDef ], topology: ProcTopology )
 extends ProcWorldLike
 
 object ProcWorld {
-   val empty = new ProcWorld( Map.empty )
+   def empty = ProcWorld( Map.empty, ProcTopology.empty )
 }
 
 object ProcWorldActor {
@@ -66,8 +70,9 @@ class ProcWorldActor( val server: Server ) extends Actor {
    import ProcWorldActor._
 
    add( this )
-   
-   private var worldVar: ProcWorld = ProcWorld.empty
+
+   // commented out for debugging inspection
+   /* private */ var worldVar: ProcWorld = ProcWorld.empty
    val transport = ProcTransport( server.sampleRate, (server.sampleRate * 0.5).toInt )
 
    private val syncActor = new DaemonActor {
@@ -140,9 +145,10 @@ class ProcWorldActor( val server: Server ) extends Actor {
 
 class ProcWorldBuilder( previous: ProcWorld ) extends ProcWorldLike {
 //   def server: Server = previous.server
-   var synthGraphs: Map[ SynthGraph, RichSynthDef ] = previous.synthGraphs
+   var synthGraphs: Map[ SynthGraph, RichSynthDef ]   = previous.synthGraphs
+   var topology: ProcTopology                         = previous.topology
 
-   def build: ProcWorld = new ProcWorld( synthGraphs )
+   def build: ProcWorld = new ProcWorld( synthGraphs, topology )
 }
 
 //object ProcWorld {

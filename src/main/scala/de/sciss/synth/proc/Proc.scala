@@ -28,13 +28,13 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.temporal.FileLocation
 import actors.Future
 import collection.immutable.{ Seq => ISeq }
-import de.sciss.synth.{AudioBus, Server}
+import de.sciss.synth.{ AudioBus, Group, Server }
+import de.sciss.scalaosc.OSCMessage
 
 /**
- *    @version 0.11, 03-Jun-10
+ *    @version 0.11, 04-Jun-10
  *
  *    @todo XXX after switching to using an actor
  *          to represent a proc, we should get rid
@@ -64,13 +64,17 @@ trait Proc {
 
    def audioInput( name: String ) : ProcAudioInput
    def audioOutput( name: String ) : ProcAudioOutput
+   def audioInputs : ISeq[ ProcAudioInput ]
    def audioOutputs : ISeq[ ProcAudioOutput ]
+
+   def group : Future[ Option[ Group ]]
+   private[proc] def setGroup( tx: ProcTransaction, g: Group ) : Future[ Any ]
 
    private[proc] def getFloatDirect( name: String ) : Float
    private[proc] def getStringDirect( name: String ) : String
    private[proc] def getAudioBusDirect( name: String ) : AudioBus
 
-   def connect( out: ProcAudioOutput, in: ProcAudioInput ) : Proc
-   def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Proc
-   def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) : Proc
+   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit
+   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit
+   private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) : Unit
 }

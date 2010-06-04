@@ -9,7 +9,7 @@ import javax.swing.{ JFrame, JSplitPane, SwingConstants, WindowConstants }
 import de.sciss.synth.swing.NodeTreePanel
 
 /**
- *    @version 0.11, 11-Apr-10
+ *    @version 0.11, 04-Jun-10
  */
 class ScalaInterpreterFrame( /* s: Server, ntp: NodeTreePanel*/ )
 extends JFrame( "Scala Interpreter" ) {
@@ -84,11 +84,16 @@ val i = gen( "process3" ) {
 
 val p1 = h.make
 val p2 = i.make
-val b = Bus.audio( s, 2 )
+p1 ~> p2
+
+// XXX this should be done automatically by ~>
+val b = Bus.audio( Server.default, 2 )
 p1.setAudioBus( "out", b )
 p2.setAudioBus( "in", b )
-p2.play
+
 p1.play
+p2.play
+
 p2.setFloat( "freq", -200 )
 """
 
