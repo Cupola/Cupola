@@ -6,11 +6,12 @@ package de.sciss.synth.proc
 trait ProcAudioOutput {
    def ~>  ( in: ProcAudioInput ) : ProcAudioInput
    def ~/> ( in: ProcAudioInput ) : ProcAudioOutput
-   def ~|  ( in: ProcAudioInput ) : ProcAudioInsertion
+   def ~|  ( insert: (ProcAudioInput, ProcAudioOutput) ) : ProcAudioInsertion
+   def proc : Proc
 }
 
 trait ProcAudioInput {
-
+   def proc : Proc
 }
 
 trait ProcAudioInsertion {

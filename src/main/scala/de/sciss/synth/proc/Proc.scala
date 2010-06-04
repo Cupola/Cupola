@@ -30,6 +30,7 @@ package de.sciss.synth.proc
 
 import de.sciss.temporal.FileLocation
 import actors.Future
+import collection.immutable.{ Seq => ISeq }
 import de.sciss.synth.{AudioBus, Server}
 
 /**
@@ -63,8 +64,13 @@ trait Proc {
 
    def audioInput( name: String ) : ProcAudioInput
    def audioOutput( name: String ) : ProcAudioOutput
+   def audioOutputs : ISeq[ ProcAudioOutput ]
 
    private[proc] def getFloatDirect( name: String ) : Float
    private[proc] def getStringDirect( name: String ) : String
    private[proc] def getAudioBusDirect( name: String ) : AudioBus
+
+   def connect( out: ProcAudioOutput, in: ProcAudioInput ) : Proc
+   def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Proc
+   def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) : Proc
 }

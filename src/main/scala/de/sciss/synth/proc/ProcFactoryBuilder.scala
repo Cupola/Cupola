@@ -34,6 +34,7 @@ import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
 import de.sciss.synth.osc.{ OSCSyncedMessage, OSCSynthNewMessage }
 import actors.{ DaemonActor, Future, TIMEOUT }
 import collection.breakOut
+import collection.immutable.{ Seq => ISeq }
 
 /**
  *    @version 0.11, 03-Jun-10
@@ -202,12 +203,16 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       }}
 
       def audioInput( name: String ) : ProcAudioInput = {
-         error( "Not yet implemented" )
+         val p = fact.params( name ).asInstanceOf[ ProcParamAudioInBus ]
+         new AudioInputImpl( this, p )
       }
 
       def audioOutput( name: String ) : ProcAudioOutput = {
-         error( "Not yet implemented" )
+         val p = fact.params( name ).asInstanceOf[ ProcParamAudioOutBus ]
+         new AudioOutputImpl( this, p )
       }
+
+      def audioOutputs : ISeq[ ProcAudioOutput ] = error( "NOT YET IMPLEMENTED" )
 
       def setFloat( name: String, value: Float ) : Proc = tryExec {
          val p = fact.params( name ).asInstanceOf[ ProcParamFloat ]
@@ -257,7 +262,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             error( "Param '" + name + "' has not yet been assigned ")))
       }
 
-      private def await[ A ]( timeOut: Long, fut: Future[ A ])( handler: Function1[ Option[ A ], Unit ]) {
+      private def await[ A ]( timeOut: Long, fut: Future[ A ])( handler: Function1[ Option[ A ], Unit ]) : Nothing = {
          fut.inputChannel.reactWithin( timeOut ) {
             case TIMEOUT => handler( None )
             case a       => handler( Some( a.asInstanceOf[ A ]))
@@ -266,48 +271,64 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       def play : Proc = {
          wa.transport.sched( new ProcSched {
-            def play( preparePos: Long, latency: Int ) = txPlay( preparePos, latency )
+            def play( preparePos: Long, latency: Int ) { txPlay( preparePos, latency )}
             def discarded {}
          }, ProcTransport.NOW, ProcTransport.UNKNOWN_LATENCY )
          wa.transport.play
          this
       }
 
-      private def txPlay( preparePos: Long, latency: Int ) {
-         println( "txPlay " + preparePos + ", " + latency )
-         exec {
-            println( "execPlay " + preparePos + ", " + latency )
-            if( running.isDefined ) {
-               println( "WARNING: Proc.play - '" + this + "' already playing")
-            } else {
-               val futTx = try {
-                  wa.openTx( preparePos, latency )
-               }
-               catch { case ex => throw new ActorBodyException( ex )}
-               await( 5000L, futTx ) {
-                  case None => println( "timeout!" )
-                  case Some( tx ) => {
-                     println( "play : tx opened" )
-                     try {
-                        val run = Proc.use( proc ) { fact.entry.play( tx )}
-                        lazy val l: Model.Listener = {
-                           case ProcRunning.Stopped => {
-                              run.removeListener( l )
-                              exec( if( running == Some( run )) running = None ) // XXX propagate stop?
-                           }
-                           case m => println( "Ooooops : " + m )
-                        }
-                        run.addListener( l )
-                        running = Some( run )
-                        tx.commit
-                     }
-                     catch { case ex => {
-//                        e.printStackTrace()
-                        tx.abort
-                        throw new ActorBodyException( ex )
-                     }}
+      def connect( out: ProcAudioOutput, in: ProcAudioInput ) = exec {
+         val tgtProc = in.proc
+         withTx( ProcTransport.NOW, ProcTransport.UNKNOWN_LATENCY, tx => {
+            
+         })
+      }
+
+      def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) = exec {
+
+      }
+
+      def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) = exec {
+
+      }
+
+      private def txPlay( preparePos: Long, latency: Int ) = exec {
+//         println( "execPlay " + preparePos + ", " + latency )
+         if( running.isDefined ) {
+            println( "WARNING: Proc.play - '" + this + "' already playing")
+         } else {
+            withTx( preparePos, latency, tx => {
+               val run = Proc.use( proc ) { fact.entry.play( tx )}
+               lazy val l: Model.Listener = {
+                  case ProcRunning.Stopped => {
+                     run.removeListener( l )
+                     exec( if( running == Some( run )) running = None ) // XXX propagate stop?
                   }
+                  case m => println( "Ooooops : " + m )
                }
+               run.addListener( l )
+               running = Some( run )
+            })
+         }
+      }
+
+      private def withTx( preparePos: Long, latency: Int, fun: ProcTransaction => Unit ) : Nothing = {
+         val futTx = try {
+            wa.openTx( preparePos, latency )
+         }
+         catch { case ex => throw new ActorBodyException( ex )}
+         await( 5000L, futTx ) {
+            case None => println( "timeout!" )
+            case Some( tx ) => {
+               try {
+                  fun( tx )
+                  tx.commit
+               }
+               catch { case ex => {
+                  tx.abort
+                  throw new ActorBodyException( ex )
+               }}
             }
          }
       }
@@ -416,6 +437,34 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
    }
 
    // ---------------------------- ProcBuffer implementation ----------------------------
+
+   private class AudioInputImpl( val proc: Impl, bus: ProcParamAudioInBus )
+   extends ProcAudioInput {
+   }
+
+   private class AudioOutputImpl( val proc: Impl, bus: ProcParamAudioOutBus )
+   extends ProcAudioOutput {
+      def ~>( in: ProcAudioInput ) : ProcAudioInput = {
+         proc.connect( this, in )
+         in
+      }
+
+      def ~/>( in: ProcAudioInput ) : ProcAudioOutput = {
+         proc.disconnect( this, in )
+         this
+      }
+
+      def ~|( insert: (ProcAudioInput, ProcAudioOutput) ) : ProcAudioInsertion =
+         new AudioInsertionImpl( proc, this, insert )
+   }
+
+   private class AudioInsertionImpl( proc: Impl, out: ProcAudioOutput, insert: (ProcAudioInput, ProcAudioOutput) )
+   extends ProcAudioInsertion {
+      def |>( in: ProcAudioInput ) : ProcAudioInput = {
+         proc.insert( out, in, insert )
+         in
+      }
+   }
 
    // XXX either BufferCueImpl or put cueing information in Graph instead
    private class BufferImpl( val name: String, path: => String ) extends ProcBuffer {
