@@ -60,19 +60,19 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="188" column="81" selection-start="5599" selection-end="5599" vertical-scroll-proportion="0.6802326">
+            <state line="181" column="113" selection-start="5606" selection-end="5606" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ActorSTM.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="ActorSTM.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="60" column="69" selection-start="1931" selection-end="1931" vertical-scroll-proportion="0.0">
+            <state line="134" column="32" selection-start="4398" selection-end="4398" vertical-scroll-proportion="0.5102041">
               <folding />
             </state>
           </provider>
@@ -102,8 +102,8 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTransaction.scala" />
         <option value="$PROJECT_DIR$/project/build/Cupola.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala" />
       </list>
     </option>
   </component>
@@ -877,7 +877,7 @@
     <supportedVersion>125</supportedVersion>
   </component>
   <component name="ToolWindowManager">
-    <frame x="6" y="22" width="1377" height="876" extended-state="0" />
+    <frame x="6" y="23" width="1377" height="876" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -1005,16 +1005,16 @@
         <state line="199" column="52" selection-start="6944" selection-end="6944" vertical-scroll-proportion="0.374031" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="60" column="69" selection-start="1931" selection-end="1931" vertical-scroll-proportion="0.0">
+        <state line="181" column="113" selection-start="5606" selection-end="5606" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="188" column="81" selection-start="5599" selection-end="5599" vertical-scroll-proportion="0.6802326">
+        <state line="134" column="32" selection-start="4398" selection-end="4398" vertical-scroll-proportion="0.5102041">
           <folding />
         </state>
       </provider>

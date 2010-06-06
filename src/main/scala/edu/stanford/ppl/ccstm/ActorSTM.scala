@@ -35,7 +35,7 @@ object ActorSTM {
 
       // new transaction
       val txn = new Txn(hist, ctx)
-      val z = attemptImpl( txn, block, new Paused( txn, hist ))
+      val z = attemptImpl( txn, block, new Paused( block, txn, hist ))
       if (txn.status eq Txn.Committed) {
          z
       } else {
@@ -95,7 +95,8 @@ object ActorSTM {
 
    private class SuspendActorControl( cause: Throwable ) extends RuntimeException( cause )
 
-   final class Paused private[ActorSTM]( val txn: Txn, hist: List[ Txn.RollbackCause ]) {
+   final class Paused private[ActorSTM]( topLevelClosure: Txn => _,
+                                              private[ActorSTM] val txn: Txn, hist: List[ Txn.RollbackCause ]) {
       private var consumed = false
       private val sync = new AnyRef
 
@@ -109,19 +110,26 @@ object ActorSTM {
          }
       }
 
-      def resume[ Z ]( block: Txn => Z ) : Z = {
-         val ctx = reattach
-         val z = attemptImpl( txn, block, this )
-         if (txn.status eq Txn.Committed) {
-            z
-         } else {
-            val cause = txn.status.rollbackCause
-            cause match {
-               case x: Txn.ExplicitRetryCause => Txn.awaitRetryAndDestroy(x)
-               case _ => {}
+      def resume[ Z ]( block: Txn => Z ) : Unit = {
+         if( txn.status eq Txn.Active ) { // only if it wasn't rolled back before
+            val ctx = reattach
+            attemptImpl( txn, block, this )
+            if( !(txn.status eq Txn.Committed) ) {
+               val cause = txn.status.rollbackCause
+               cause match {
+                  case x: Txn.ExplicitRetryCause => Txn.awaitRetryAndDestroy(x)
+                  case _ => {}
+               }
+               // retry
+               topLevelAtomic(block, ctx, cause :: hist)
             }
-            // retry
-            topLevelAtomic(block, ctx, cause :: hist)
+         } else {
+println( "....rollback during react" )
+//            val cause = txn.status.rollbackCause
+//            val ctx = ThreadContext.get
+////            txn.attach( ctx )
+////            topLevelAtomic(topLevelClosure, ctx, cause :: hist)
+//            topLevelAtomic(topLevelClosure, ctx, Nil )
          }
       }
 

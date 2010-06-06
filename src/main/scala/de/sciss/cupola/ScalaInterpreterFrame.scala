@@ -174,10 +174,11 @@ object Fork {
                     case TIMEOUT => try {
                         p.resume( _ => throw new IOException( name + " TIMEOUT" ))
                     } catch { case e => println( e.getMessage() )}
-                    case x => p.resume { implicit t =>
+                    case x => println( name + " Dang!" ); p.resume { implicit t =>
+                        if( t.status != Txn.Active ) println( name + " Ooooh, not active any more!" )
                         val o = ref.get
                         println( name + " enter set ref=" + o )
-                        if( o != (name + " begin " + cnt) ) println( name + " ... inconsistent! " + o )
+                        if( o != (name + " begin " + cnt) ) println( name + " ... INCONSISTENT! " + o )
                         ref.set( name + " end " + cnt )
                         cnt += 1
                     }
