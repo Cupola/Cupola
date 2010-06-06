@@ -1,11 +1,11 @@
 package edu.stanford.ppl.ccstm
 
-import impl.ThreadContext
 import edu.stanford.ppl.ccstm.STM.AlternativeResult
 import annotation.tailrec
+import impl.{Handle, ThreadContext}
 import util.control.ControlThrowable
 import actors.{Actor, InputChannel}
-import edu.stanford.ppl.ccstm.Txn.{Status, RollbackCause}
+import edu.stanford.ppl.ccstm.Txn.{WriteResource, Status, RollbackCause}
 
 object ActorSTM {
    private val saved = new ThreadLocal[ Paused ]
@@ -70,12 +70,51 @@ object ActorSTM {
       result
    }
 
-   def pause : Paused = {
+//   def pause[ A ]( needsAccess: Ref[ A ])( implicit txn: Txn ) : Paused = {
+//      val res = saved.get()
+//      if( res == null ) error( "Out of context" )
+//      require( res.txn == txn )
+//
+//      val dummy: Function1[A,A] = x => x
+//
+//      // these two seem to ensure that we can safely call retry:
+//      // XXX NO: WE STILL GET "....rollback during react"
+//      needsAccess()
+//      if( !tryTransform( needsAccess, dummy )) txn.retry()
+//
+//      txn.detach
+//      res
+//   }
+
+   def pause[ A ]( needsAccess: Ref[ A ], v: A )( implicit txn: Txn ) : Paused = {
       val res = saved.get()
       if( res == null ) error( "Out of context" )
-      res.txn.detach
+      require( res.txn == txn )
+
+      // these two seem to ensure that we can safely call retry:
+//      // XXX NO: WE STILL GET "....rollback during react"
+      needsAccess()
+      if( !trySet( needsAccess, v )) txn.retry()
+
+      txn.detach
       res
    }
+
+//   def prepareToRule( implicit txn: Txn ) {
+//      txn.addWriteResource( DummyWrite, Int.MaxValue )
+//   }
+
+   def trySet[ A ]( ref: Ref[ A ], v: A )( implicit txn: Txn ) : Boolean = {
+      txn.trySet( ref.asInstanceOf[ Handle[ A ]], v )
+   }
+
+   def tryTransform[ A ]( ref: Ref[ A ], f: A => A )( implicit txn: Txn ) : Boolean = {
+      txn.tryTransform( ref.asInstanceOf[ Handle[ A ]], f )
+   }
+
+//   def prepareToRule( implicit txn: Txn ) {
+//      txn.addWriteResource( DummyWrite, Int.MaxValue )
+//   }
 
    def react( handler: PartialFunction[Any, Unit]): Nothing = {
       try {
@@ -143,4 +182,10 @@ println( "....rollback during react" )
          txn.commit()
       }
    }
+
+//   private object DummyWrite extends WriteResource {
+//      def performCommit(txn: Txn) {}
+//      def performRollback(txn: Txn) {}
+//      def prepare(txn: Txn) = true
+//   }
 }

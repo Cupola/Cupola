@@ -167,15 +167,14 @@ object Fork {
             actAtom { implicit t =>
                 t.afterCommit { t =>  println( name + " committed " + cnt )}
                 t.afterRollback { t =>  println( name + " rolled back " + cnt )}
-                ref.set( name + " begin " + cnt )
+                ref.set( "egal" )
                 println( name + " enter pause... ref=" + ref.get )
-                val p = pause
+                val p = pause( ref, name + " begin " + cnt ) // must have write access to ref to continue
                 reactWithin( delay ) {
                     case TIMEOUT => try {
                         p.resume( _ => throw new IOException( name + " TIMEOUT" ))
                     } catch { case e => println( e.getMessage() )}
                     case x => println( name + " Dang!" ); p.resume { implicit t =>
-                        if( t.status != Txn.Active ) println( name + " Ooooh, not active any more!" )
                         val o = ref.get
                         println( name + " enter set ref=" + o )
                         if( o != (name + " begin " + cnt) ) println( name + " ... INCONSISTENT! " + o )
@@ -192,6 +191,7 @@ val b = Fork( "b", 3333 )
 
 a ! ()
 b ! ()
+ref.single()
 """
 
       pane.initialCode = Some(
