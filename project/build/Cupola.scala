@@ -15,6 +15,9 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    val dep6 = "prefuse" % "prefuse" % "beta-20071021" from "http://github.com/downloads/Sciss/ScalaColliderSwing/prefuse-beta-20071021.jar"
    val dep7 = "de.sciss" %% "scalacolliderswing" % "0.14"
    val dep8 = "de.sciss" %% "temporalobjects" % "0.11"
+   val dep9 = "Stanford CS - Pervasive Parallelism Laboratory" %% "ccstm" % "0.1"
+   val dep10= "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC2-SNAPSHOT" // for ccstm
+   val scalaToolsSnapshots = "Scala-Tools Maven2 Snapshots Repository" at "http://scala-tools.org/repo-snapshots"
 
    val camelCaseName          = "Cupola"
    def appBundleName          = camelCaseName + ".app"

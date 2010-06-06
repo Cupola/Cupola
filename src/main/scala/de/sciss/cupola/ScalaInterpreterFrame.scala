@@ -95,6 +95,47 @@ p1.play
 p2.play
 
 p2.setFloat( "freq", -200 )
+
+
+import edu.stanford.ppl.ccstm._
+val x = Ref( "Initial" )
+class Test extends actors.Actor {
+    def act {
+        loop {
+            ActorSTM.atomic { implicit t =>
+                x.set( "Trying" )
+                val p = ActorSTM.pause
+                ActorSTM.react {
+                    case "Fail" => {
+                        try {
+                            p.resume { implicit t =>
+                                println( "x is " + x() )
+                                error( "aborting txn" )
+                            }
+                        } catch { case x => x.printStackTrace() }
+                    }
+                    case ("Succeed", v: String) => {
+                        println( "x is " + x() )
+                        x.set( v )
+                        println( "commiting txn" )
+                        p.resume( _ => () )
+                    }
+                }
+            }
+        }
+    }
+}
+
+val test = new Test
+test.start
+
+x.single()  // --> Initial
+test ! "Fail"
+x.single()  // --> Initial
+test ! ("Succeed", "Final")
+x.single()  // --> Trying
+// why doesn't this block?
+actors.Actor.actor { STM.atomic { implicit t => println( "Concurrent try..." ); x.set( "CC" ); println( "CC done" )}}
 """
 
       pane.initialCode = Some(
