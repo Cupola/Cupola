@@ -160,6 +160,7 @@ import edu.stanford.ppl.ccstm.ActorSTM.{ atomic => actAtom, pause, reactWithin }
 import java.io.IOException
 
 val ref = Ref( "Initial" )
+val lock = new ActorSTM.Lock
 object Fork {
     def apply( name: String, delay: Int ) : Actor = fork {
         var cnt = 0
@@ -167,9 +168,9 @@ object Fork {
             actAtom { implicit t =>
                 t.afterCommit { t =>  println( name + " committed " + cnt )}
                 t.afterRollback { t =>  println( name + " rolled back " + cnt )}
-                ref.set( "egal" )
+                ref.set( name + " begin " + cnt )
                 println( name + " enter pause... ref=" + ref.get )
-                val p = pause( ref, name + " begin " + cnt ) // must have write access to ref to continue
+                val p = pause( lock )
                 reactWithin( delay ) {
                     case TIMEOUT => try {
                         p.resume( _ => throw new IOException( name + " TIMEOUT" ))

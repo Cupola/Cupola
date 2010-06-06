@@ -63,7 +63,7 @@
       <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="179" column="107" selection-start="5508" selection-end="5508" vertical-scroll-proportion="0.0">
+            <state line="177" column="26" selection-start="5221" selection-end="5304" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -72,7 +72,7 @@
       <file leaf-file-name="ActorSTM.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="91" column="107" selection-start="3011" selection-end="3011" vertical-scroll-proportion="0.6753247">
+            <state line="149" column="0" selection-start="4588" selection-end="4588" vertical-scroll-proportion="0.43939394">
               <folding />
             </state>
           </provider>
@@ -1007,14 +1007,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="179" column="107" selection-start="5508" selection-end="5508" vertical-scroll-proportion="0.0">
+        <state line="177" column="26" selection-start="5221" selection-end="5304" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="91" column="107" selection-start="3011" selection-end="3011" vertical-scroll-proportion="0.6753247">
+        <state line="149" column="0" selection-start="4588" selection-end="4588" vertical-scroll-proportion="0.43939394">
           <folding />
         </state>
       </provider>

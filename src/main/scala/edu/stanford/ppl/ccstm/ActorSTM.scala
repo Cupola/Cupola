@@ -5,7 +5,7 @@ import annotation.tailrec
 import impl.{Handle, ThreadContext}
 import util.control.ControlThrowable
 import actors.{Actor, InputChannel}
-import edu.stanford.ppl.ccstm.Txn.{WriteResource, Status, RollbackCause}
+import edu.stanford.ppl.ccstm.Txn.{ReadResource, WriteResource, Status, RollbackCause}
 
 object ActorSTM {
    private val saved = new ThreadLocal[ Paused ]
@@ -86,18 +86,67 @@ object ActorSTM {
 //      res
 //   }
 
-   def pause[ A ]( needsAccess: Ref[ A ], v: A )( implicit txn: Txn ) : Paused = {
+//   def pause[ A ]( needsAccess: Ref[ A ], v: A )( implicit txn: Txn ) : Paused = {
+//      val res = saved.get()
+//      if( res == null ) error( "Out of context" )
+//      require( res.txn == txn )
+//
+//      // these two seem to ensure that we can safely call retry:
+////      // XXX NO: WE STILL GET "....rollback during react"
+//      needsAccess()
+//      if( !trySet( needsAccess, v )) txn.retry()
+//
+//      txn.detach
+//      res
+//   }
+
+   def pause( lock: Lock ) : Paused = {
       val res = saved.get()
       if( res == null ) error( "Out of context" )
-      require( res.txn == txn )
 
-      // these two seem to ensure that we can safely call retry:
-//      // XXX NO: WE STILL GET "....rollback during react"
-      needsAccess()
-      if( !trySet( needsAccess, v )) txn.retry()
+      res.txn.addReadResource( new LockReader( lock ), Int.MaxValue )
+      // if we are here, the lock has succeeded!
+      println( "RETURNED FROM addReadResource")
+      res.txn.afterCompletion( txn => {
+         println( "UNLOCKING" )
+         lock.unlock( txn )
+      }, Int.MaxValue )
 
-      txn.detach
+      res.txn.detach
       res
+   }
+
+   class Lock {
+      private val sync = new AnyRef
+      private var locked: MaybeTxn = TxnUnknown
+      private[ActorSTM] def tryLock( txn: Txn ) : Boolean = {
+         sync.synchronized {
+println( "UNLOCK" + (locked eq TxnUnknown) )
+            if( locked eq TxnUnknown ) {
+               locked = txn
+               true
+            } else {
+               false
+            }
+         }
+      }
+
+      private[ActorSTM] def unlock( txn: Txn ) {
+         sync.synchronized {
+println( "UNLOCK" + (locked eq txn) )
+            if( locked eq txn ) {
+               locked = TxnUnknown
+            } else error( "Was not locked by current txn" )
+         }
+      }
+   }
+
+   private class LockReader( l: Lock ) extends ReadResource {
+       def valid( txn: Txn ) = {
+          val res = l.tryLock( txn )
+println( "LockReader : " + res )
+          res
+       }
    }
 
 //   def prepareToRule( implicit txn: Txn ) {
