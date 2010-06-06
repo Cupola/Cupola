@@ -5,6 +5,7 @@ import edu.stanford.ppl.ccstm.STM.AlternativeResult
 import annotation.tailrec
 import util.control.ControlThrowable
 import actors.{Actor, InputChannel}
+import edu.stanford.ppl.ccstm.Txn.{Status, RollbackCause}
 
 object ActorSTM {
    private val saved = new ThreadLocal[ Paused ]
@@ -57,7 +58,7 @@ object ActorSTM {
       }
       catch {
          case RollbackError => {}
-         case x: SuspendActorControl => throw x.getCause()  // this is the addition
+         case x: SuspendActorControl /* if( !saved.get().consumed )*/ => throw x.getCause()  // this is the addition
          case x: ControlThrowable => nonLocalReturn = x
          case x => txn.forceRollback(Txn.UserExceptionCause(x))
       }
@@ -84,12 +85,32 @@ object ActorSTM {
       }
    }
 
+   def reactWithin( msec: Long )( handler: PartialFunction[ Any, Unit ]): Nothing = {
+      try {
+         Actor.self.reactWithin( msec )( handler )
+      } catch {
+         case e: ControlThrowable => throw new SuspendActorControl( e )
+      }
+   }
+
    private class SuspendActorControl( cause: Throwable ) extends RuntimeException( cause )
 
    final class Paused private[ActorSTM]( val txn: Txn, hist: List[ Txn.RollbackCause ]) {
+      private var consumed = false
+      private val sync = new AnyRef
+
+      private def reattach = {
+         sync.synchronized {
+            if( consumed ) error( "Already consumed" )
+            val ctx = ThreadContext.get  // correct?
+            txn.attach
+            consumed = true
+            ctx
+         }
+      }
+
       def resume[ Z ]( block: Txn => Z ) : Z = {
-         val ctx = ThreadContext.get  // correct?
-         txn.attach
+         val ctx = reattach
          val z = attemptImpl( txn, block, this )
          if (txn.status eq Txn.Committed) {
             z
@@ -102,6 +123,16 @@ object ActorSTM {
             // retry
             topLevelAtomic(block, ctx, cause :: hist)
          }
+      }
+
+      def forceRollback( cause: RollbackCause ) {
+         reattach
+         txn.forceRollback( cause )
+      }
+
+      def commit() = {
+         reattach
+         txn.commit()
       }
    }
 }

@@ -104,6 +104,9 @@ class Test extends actors.Actor {
         loop {
             ActorSTM.atomic { implicit t =>
                 x.set( "Trying" )
+                println( "enter sleep" )
+                Thread.sleep( 10000 )
+                println( "exit sleep" )
                 val p = ActorSTM.pause
                 ActorSTM.react {
                     case "Fail" => {
@@ -133,9 +136,61 @@ x.single()  // --> Initial
 test ! "Fail"
 x.single()  // --> Initial
 test ! ("Succeed", "Final")
-x.single()  // --> Trying
+x.single()  // --> Final
 // why doesn't this block?
 actors.Actor.actor { STM.atomic { implicit t => println( "Concurrent try..." ); x.set( "CC" ); println( "CC done" )}}
+
+
+trait MaybeBound[T] { def apply() : T; def set( v: T ) : Unit }
+class MaybeRef[T]( r: Ref[T] )( implicit txn: Txn ) extends MaybeBound[T] {
+   def apply() = r.apply()
+   def set( v: T ) = r.set( v )
+}
+class MaybeView[T]( r: Ref.View[T] )( implicit txn: Txn ) extends MaybeBound[T] {
+   def apply() = r.apply()
+   def set( v: T ) = r.set( v )
+}
+implicit def maybeRef[T](r: Ref[T])( implicit txn: Txn ) = new MaybeRef( r )
+implicit def maybeView[T](r: Ref.View[T])( implicit txn: Txn ) = new MaybeView( r )
+
+import edu.stanford.ppl.ccstm._
+import actors.{ Actor, TIMEOUT }
+import actors.Actor.{ actor => fork, loop }
+import edu.stanford.ppl.ccstm.ActorSTM.{ atomic => actAtom, pause, reactWithin }
+import java.io.IOException
+
+val ref = Ref( "Initial" )
+object Fork {
+    def apply( name: String, delay: Int ) : Actor = fork {
+        var cnt = 0
+        loop {
+            actAtom { implicit t =>
+                t.afterCommit { t =>  println( name + " committed " + cnt )}
+                t.afterRollback { t =>  println( name + " rolled back " + cnt )}
+                ref.set( name + " begin " + cnt )
+                println( name + " enter pause... ref=" + ref.get )
+                val p = pause
+                reactWithin( delay ) {
+                    case TIMEOUT => try {
+                        p.resume( _ => throw new IOException( name + " TIMEOUT" ))
+                    } catch { case e => println( e.getMessage() )}
+                    case x => p.resume { implicit t =>
+                        val o = ref.get
+                        println( name + " enter set ref=" + o )
+                        if( o != (name + " begin " + cnt) ) println( name + " ... inconsistent! " + o )
+                        ref.set( name + " end " + cnt )
+                        cnt += 1
+                    }
+                }
+            }
+
+    }}
+}
+val a = Fork( "a", 3000 )
+val b = Fork( "b", 3333 )
+
+a ! ()
+b ! ()
 """
 
       pane.initialCode = Some(
