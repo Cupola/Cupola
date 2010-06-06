@@ -72,7 +72,7 @@
       <file leaf-file-name="ActorSTM.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="149" column="0" selection-start="4588" selection-end="4588" vertical-scroll-proportion="0.43939394">
+            <state line="125" column="14" selection-start="4007" selection-end="4007" vertical-scroll-proportion="0.96753246">
               <folding />
             </state>
           </provider>
@@ -1014,7 +1014,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/edu/stanford/ppl/ccstm/ActorSTM.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="149" column="0" selection-start="4588" selection-end="4588" vertical-scroll-proportion="0.43939394">
+        <state line="125" column="14" selection-start="4007" selection-end="4007" vertical-scroll-proportion="0.96753246">
           <folding />
         </state>
       </provider>

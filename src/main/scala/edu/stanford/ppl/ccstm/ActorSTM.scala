@@ -104,7 +104,9 @@ object ActorSTM {
       val res = saved.get()
       if( res == null ) error( "Out of context" )
 
-      res.txn.addReadResource( new LockReader( lock ), Int.MaxValue )
+      val lr = new LockReader( lock )
+      res.txn.addReadResource( lr, Int.MinValue, false )
+      if( !lr.valid( res.txn )) res.txn.retry()
       // if we are here, the lock has succeeded!
       println( "RETURNED FROM addReadResource")
       res.txn.afterCompletion( txn => {
@@ -121,7 +123,7 @@ object ActorSTM {
       private var locked: MaybeTxn = TxnUnknown
       private[ActorSTM] def tryLock( txn: Txn ) : Boolean = {
          sync.synchronized {
-println( "UNLOCK" + (locked eq TxnUnknown) )
+println( "LOCK " + (locked eq TxnUnknown) )
             if( locked eq TxnUnknown ) {
                locked = txn
                true
@@ -133,7 +135,7 @@ println( "UNLOCK" + (locked eq TxnUnknown) )
 
       private[ActorSTM] def unlock( txn: Txn ) {
          sync.synchronized {
-println( "UNLOCK" + (locked eq txn) )
+println( "UNLOCK " + (locked eq txn) )
             if( locked eq txn ) {
                locked = TxnUnknown
             } else error( "Was not locked by current txn" )
