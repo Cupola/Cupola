@@ -36,6 +36,13 @@ p.setFloat( "freq", 441 )
 p.play
 p.stop
 
+s.dumpOSC(1)
+ProcTxn.atomic( implicit t => p.setFloat( "freq", 441 ))
+ProcTxn.atomic( implicit t => p.getFloat( "freq" ))
+ProcTxn.atomic( implicit t => p.play )
+ProcTxn.atomic( implicit t => p.stop )
+
+
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
 val h = gen( "process2" ) {

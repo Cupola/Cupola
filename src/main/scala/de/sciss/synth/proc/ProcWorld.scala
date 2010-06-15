@@ -28,54 +28,64 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ Server, SynthGraph }
-import actors.{ Actor, DaemonActor, TIMEOUT }
 import de.sciss.synth.osc.{ OSCSyncedMessage, OSCResponder }
+import de.sciss.synth._
+import de.sciss.scalaosc.OSCMessage
+import actors.{Future, Actor, DaemonActor, TIMEOUT}
 
 /**
- *    @version 0.11, 04-Jun-10
+ *    @version 0.12, 15-Jun-10
  */
-trait ProcWorldLike {
-//   def server: Server
-   def synthGraphs: Map[ SynthGraph, RichSynthDef ]
-   def topology: ProcTopology
-//   def addSynthGraph( graph: SynthGraph ) : String
+//trait ProcWorldLike {
+////   def server: Server
+//   def synthGraphs: Map[ SynthGraph, RichSynthDef ]
+//   def topology: ProcTopology
+////   def addSynthGraph( graph: SynthGraph ) : String
+//}
+
+class ProcWorld {
+   val synthGraphs = Ref( Map.empty[ SynthGraph, RichSynthDef ])  // XXX per server?
+   val topology    = Ref( ProcTopology.empty )
 }
 
-case class ProcWorld( synthGraphs: Map[ SynthGraph, RichSynthDef ], topology: ProcTopology )
-extends ProcWorldLike
-
-object ProcWorld {
-   def empty = ProcWorld( Map.empty, ProcTopology.empty )
-}
+//object ProcWorld {
+//   def empty = ProcWorld( Map.empty, ProcTopology.empty )
+//}
 
 object ProcWorldActor {
 //   private case class Tx( fun: (ProcTransaction) => Unit )
-   private case class OpenTx( preparePos: Long, latency: Int )
-   private case class CloseTx( tx: ProcTransaction, world: ProcWorld )
+//   private case class OpenTx( preparePos: Long, latency: Int )
+//   private case class CloseTx( tx: ProcTransaction, world: ProcWorld )
    private case object Stop
    private case class Synced( id: Int )
    private case class Sync( id: Int )
 
    var default: ProcWorldActor = null 
 
+   private val syn = new AnyRef
+   private var syncActors = Map.empty[ Server, SyncActor ]
+
+   def sync( server: Server, id: Int ) : Future[ Any ] = syn.synchronized {
+      val sa = syncActors.getOrElse( server, {
+         val syncActor = new SyncActor
+         syncActors += server -> syncActor
+         syncActor.start
+         OSCResponder.add({
+            case OSCSyncedMessage( i ) => syncActor ! Synced( i )
+         }, server )
+         syncActor
+      })
+      sa !! Sync( id )
+   }
+
    private def add( wa: ProcWorldActor ) {
       if( default == null ) default = wa
    }
-}
 
-class ProcWorldActor( val server: Server ) extends Actor {
-   wa =>
+   private var uniqueDefID    = 0
+   private def nextDefID      = { val res = uniqueDefID; uniqueDefID += 1; res }
 
-   import ProcWorldActor._
-
-   add( this )
-
-   // commented out for debugging inspection
-   /* private */ var worldVar: ProcWorld = ProcWorld.empty
-   val transport = ProcTransport( server.sampleRate, (server.sampleRate * 0.5).toInt )
-
-   private val syncActor = new DaemonActor {
+   private class SyncActor extends DaemonActor {
       def act = {
          var seen = -1
          loop { react {
@@ -84,77 +94,162 @@ class ProcWorldActor( val server: Server ) extends Actor {
          }}
       }
    }
+}
 
-   def act = {
-      var running = true
-      syncActor.start
-      val resp = OSCResponder.add({
-         case OSCSyncedMessage( id ) => syncActor ! Synced( id )
-      }, server )
-      loopWhile( running ) {
-         react {
-            case OpenTx( preparePos, latency ) => {
-               println( "OpenTx " + preparePos + ", " + latency )
-               val tx = ProcTransaction( wa, worldVar )
-               reply( tx )
-//               println( "OpenTx : replied" )
-               react {
-                  case CloseTx( tx2, newWorld ) => {
-                     println( "CloseTx" )
-                     if( tx2 != tx ) {
-                        println( "ERROR: trying to close an old transaction??" )
-                     } else {
-                        worldVar = newWorld
-                     }
-                  }
-               }
-            }
-            case Stop => {
-               resp.remove
-               running = false
-            }
-         }
-      }
-   }
+class ProcWorldActor( val server: Server ) {
+   wa =>
 
-   def sync( id: Int ) : Future[ Any ] = syncActor !! Sync( id )
+   import ProcWorldActor._
 
-   def stop {
-      wa ! Stop
-   }
+   add( this )
 
-   private def await[ A ]( timeOut: Long, fut: Future[ A ])( handler: Function1[ Option[ A ], Unit ]) {
-      fut.inputChannel.reactWithin( timeOut ) {
-         case TIMEOUT => handler( None )
-         case a       => handler( Some( a.asInstanceOf[ A ]))
-      }
-   }
+   // commented out for debugging inspection
+   /* private */ val world = new ProcWorld
+   val transport = ProcTransport( server.sampleRate, (server.sampleRate * 0.5).toInt )
+
+//   def act = {
+//      var running = true
+////      syncActor.start
+//      val resp = OSCResponder.add({
+//         case OSCSyncedMessage( id ) => syncActor ! Synced( id )
+//      }, server )
+//      loopWhile( running ) {
+//         react {
+////            case OpenTx( preparePos, latency ) => {
+////               println( "OpenTx " + preparePos + ", " + latency )
+////               val tx = ProcTransaction( wa, world )
+////               reply( tx )
+//////               println( "OpenTx : replied" )
+////               react {
+////                  case CloseTx( tx2, newWorld ) => {
+////                     println( "CloseTx" )
+////                     if( tx2 != tx ) {
+////                        println( "ERROR: trying to close an old transaction??" )
+////                     } else {
+////                        worldVar = newWorld
+////                     }
+////                  }
+////               }
+////            }
+//            case Stop => {
+//               resp.remove
+//               running = false
+//            }
+//         }
+//      }
+//   }
+//
+//   def sync( id: Int ) : Future[ Any ] = syncActor !! Sync( id )
+
+//   def stop {
+//      wa ! Stop
+//   }
+
+//   private def await[ A ]( timeOut: Long, fut: Future[ A ])( handler: Function1[ Option[ A ], Unit ]) {
+//      fut.inputChannel.reactWithin( timeOut ) {
+//         case TIMEOUT => handler( None )
+//         case a       => handler( Some( a.asInstanceOf[ A ]))
+//      }
+//   }
    
 //   def tx( fun: (ProcTransaction) => Unit ) {
 //      wa ! Tx( fun )
 //   }
 
-   def openTx( preparePos: Long, latency: Int ) : Future[ ProcTransaction ] = {
-      wa !! (OpenTx( preparePos: Long, latency: Int ), { case tx: ProcTransaction => tx })
-   }
-
-   private[proc] def closeTx( tx: ProcTransaction, world: ProcWorld ) {
-      wa ! CloseTx( tx, world ) 
-   }
-}
-
-class ProcWorldBuilder( previous: ProcWorld ) extends ProcWorldLike {
-//   def server: Server = previous.server
-   var synthGraphs: Map[ SynthGraph, RichSynthDef ]   = previous.synthGraphs
-   var topology: ProcTopology                         = previous.topology
-
-   def build: ProcWorld = new ProcWorld( synthGraphs, topology )
-}
-
-//object ProcWorld {
-//   def apply( server: Server ) : ProcWorld = new Impl( server )
-//
-//   private class Impl( val server: Server ) {
-////      def addSynthGraph( graph: SynthGraph ) : String
+//   def openTx( preparePos: Long, latency: Int ) : Future[ ProcTransaction ] = {
+//      wa !! (OpenTx( preparePos: Long, latency: Int ), { case tx: ProcTransaction => tx })
 //   }
+//
+//   private[proc] def closeTx( tx: ProcTransaction, world: ProcWorld ) {
+//      wa ! CloseTx( tx, world )
+//   }
+
+   def addEdge( e: ProcTopology.Edge )( implicit tx: ProcTxn ) {
+      val res = world.topology().addEdge( e )
+      if( res.isEmpty ) error( "Could not add edge" )
+
+      val Some( (newTopo, source, affected) ) = res
+      world.topology.set( newTopo )
+      if( affected.isEmpty ) {
+         return
+      }
+
+      val srcGroup     = source.group
+      val tgtGroups    = affected.map( p => (p, p.group) )
+
+      def startMoving( g: Group ) {
+         var succ          = g
+         var pred : Group  = null
+         val iter          = tgtGroups.iterator
+         while( iter.hasNext ) {
+            pred = succ
+            val (target, tgtGroup) = iter.next
+            tgtGroup match {
+               case Some( g ) => {
+                  tx.addFirst( g.server, g.moveAfterMsg( pred ))
+                  succ = g
+               }
+               case None => {
+                  val g = Group( wa.server )
+                  tx.addFirst( g.server, g.newMsg( pred, addAfter ))
+                  target.setGroup( g )
+                  succ = g
+               }
+            }
+         }
+      }
+
+      srcGroup match {
+         case None => {
+            val g = Group( wa.server )
+            tx.addFirst( g.server, g.newMsg( wa.server.defaultGroup, addToHead ))
+            source.setGroup( g )
+            startMoving( g )
+         }
+         case Some( g ) => startMoving( g )
+      }
+   }
+
+//   def addBuffer( buf: Buffer, allocMsg: OSCMessage, freeMsg: OSCMessage )( implicit tx: ProcTxn ) : RichBuffer = {
+//      val rb = RichBuffer( buf, RichObject.Pending( syncID ))
+//      tx.addFirst( allocMsg )
+//      tx.addFirstAbort( rb.buf.release )
+//      tx.addSecondAbort( freeMsg )
+//      rb
+//   }
+
+   def addSynth( server: Server, graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ])
+               ( implicit tx: ProcTxn ) {
+      val rd = world.synthGraphs().get( graph ).getOrElse({
+         val name = "proc" + nextDefID
+         val rd   = RichSynthDef( SynthDef( name, graph ), RichObject.Pending( tx.syncID ))
+         world.synthGraphs.transform( _ + (graph -> rd) )
+         tx.addFirst( server, rd.synthDef.recvMsg )
+         rd
+      })
+      val msg = newMsg( rd.synthDef.name )
+      val ids = (rd +: bufs).map( _.state ).collect({ case RichObject.Pending( syncID ) => syncID })
+      if( ids.isEmpty ) {
+         tx.addFirst( server, msg )
+      } else {
+         tx.waitFor( server, ids: _* )
+         tx.addSecond( server, msg )
+      }
+   }
+}
+
+//class ProcWorldBuilder( previous: ProcWorld ) extends ProcWorldLike {
+////   def server: Server = previous.server
+//   var synthGraphs: Map[ SynthGraph, RichSynthDef ]   = previous.synthGraphs
+//   var topology: ProcTopology                         = previous.topology
+//
+//   def build: ProcWorld = new ProcWorld( synthGraphs, topology )
 //}
+//
+////object ProcWorld {
+////   def apply( server: Server ) : ProcWorld = new Impl( server )
+////
+////   private class Impl( val server: Server ) {
+//////      def addSynthGraph( graph: SynthGraph ) : String
+////   }
+////}

@@ -45,6 +45,9 @@ trait ProcParamFloat extends ProcParam[ Float ] {
 //   def kr      : GE = name.kr( default.getOrElse( spec.lo ))
 //   def mapKr   : GE = spec.map( name.kr( spec.unmap( default.getOrElse( spec.lo ))))
 
+//   def ir : GE
+//   def kr : GE
+   
    def ir : GE = {
       ProcGraphBuilder.local.includeParam( this )
       name.ir( default.getOrElse( 0f ))
@@ -62,16 +65,16 @@ trait ProcParamString extends ProcParam[ String ] {
 }
 
 sealed trait ProcParamAudioBus extends ProcParam[ (Int, Int) ] {
-   def index : GE = {
+   def index( implicit tx: ProcTxn ) : GE = {
       ProcGraphBuilder.local.includeParam( this )
       name.kr( default.map( _._1 ).getOrElse( 0 ))
    }
 
-   def numChannels : Int
+   def numChannels( implicit tx: ProcTxn ) : Int
 }
 
 trait ProcParamAudioInBus extends ProcParamAudioBus {
-   def ar : GE = {
+   def ar( implicit tx: ProcTxn ) : GE = {
 // note: index already includes the parameter
 //      ProcGraphBuilder.local.includeParam( this )
       In.ar( index, numChannels )
@@ -79,7 +82,7 @@ trait ProcParamAudioInBus extends ProcParamAudioBus {
 }
 
 trait ProcParamAudioOutBus extends ProcParamAudioBus {
-   def ar( sig: GE ) : GE = {
+   def ar( sig: GE )( implicit tx: ProcTxn ) : GE = {
 // note: index already includes the parameter
 //      ProcGraphBuilder.local.includeParam( this )
       Out.ar( index, sig )

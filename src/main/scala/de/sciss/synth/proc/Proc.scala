@@ -28,13 +28,12 @@
 
 package de.sciss.synth.proc
 
-import actors.Future
 import collection.immutable.{ Seq => ISeq }
 import de.sciss.synth.{ AudioBus, Group, Server }
 import de.sciss.scalaosc.OSCMessage
 
 /**
- *    @version 0.11, 04-Jun-10
+ *    @version 0.12, 15-Jun-10
  *
  *    @todo XXX after switching to using an actor
  *          to represent a proc, we should get rid
@@ -46,35 +45,27 @@ object Proc extends ThreadLocalObject[ Proc ] {
 
 trait Proc {
    def name : String
-   def play : Proc
-   def stop : Proc
-   def isPlaying : Future[ Boolean ]
+   def play( implicit tx: ProcTxn ) : Proc
+   def stop( implicit tx: ProcTxn ) : Proc
+   def isPlaying( implicit tx: ProcTxn ) : Boolean
    def server : Server
 
-//   def getParamValue[ T ]( name: String ) : T
-//   def getParamValue[ T ]( p: ProcParam[ T ]) : T
-//   def getParamLoc( name: String ) : FileLocation
-
-   def getFloat( name: String ) : Future[ Float ]
-   def setFloat( name: String, value: Float ) : Proc
-   def getString( name: String ) : Future[ String ]
-   def setString( name: String, value: String ) : Proc
-   def getAudioBus( name: String ) : Future[ AudioBus ]
-   def setAudioBus( name: String, value: AudioBus ) : Proc
+   def getFloat( name: String )( implicit tx: ProcTxn ) : Float
+   def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc
+   def getString( name: String )( implicit tx: ProcTxn ) : String
+   def setString( name: String, value: String )( implicit tx: ProcTxn ) : Proc
+   def getAudioBus( name: String )( implicit tx: ProcTxn ) : AudioBus
+   def setAudioBus( name: String, value: AudioBus )( implicit tx: ProcTxn ) : Proc
 
    def audioInput( name: String ) : ProcAudioInput
    def audioOutput( name: String ) : ProcAudioOutput
    def audioInputs : ISeq[ ProcAudioInput ]
    def audioOutputs : ISeq[ ProcAudioOutput ]
 
-   def group : Future[ Option[ Group ]]
-   private[proc] def setGroup( tx: ProcTransaction, g: Group ) : Future[ Any ]
+   def group( implicit tx: ProcTxn ) : Option[ Group ]
+   private[proc] def setGroup( g: Group )( implicit tx: ProcTxn ) : Unit
 
-   private[proc] def getFloatDirect( name: String ) : Float
-   private[proc] def getStringDirect( name: String ) : String
-   private[proc] def getAudioBusDirect( name: String ) : AudioBus
-
-   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit
+   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
    private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit
    private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) : Unit
 }

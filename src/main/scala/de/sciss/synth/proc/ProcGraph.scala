@@ -28,14 +28,13 @@
 
 package de.sciss.synth.proc
 
-import actors.Future
 import de.sciss.synth.{Group, Model}
 
 /**
- *    @version 0.11, 02-Jun-10
+ *    @version 0.12, 15-Jun-10
  */
 trait ProcEntry {
-   def play( tx: ProcTransaction, target: Group ) : ProcRunning
+   def play( target: Group )( implicit tx: ProcTxn ) : ProcRunning
 }
 
 //trait ProcPlayable {
@@ -49,6 +48,7 @@ object ProcGraphBuilder extends ThreadLocalObject[ ProcGraphBuilder ] {
 }
 
 trait ProcGraphBuilder {
+   def tx: ProcTxn
    def includeParam( p: ProcParam[ _ ]) : Unit
    def includeBuffer( b: ProcBuffer ) : Unit
 }
