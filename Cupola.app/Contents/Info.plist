@@ -43,6 +43,7 @@
 		<string>1.6+</string>
 		<key>ClassPath</key>
 		<array>
+			<string>$JAVAROOT/ccstm.jar</string>
 			<string>$JAVAROOT/cupola.jar</string>
 			<string>$JAVAROOT/jsyntaxpane.jar</string>
 			<string>$JAVAROOT/prefuse.jar</string>

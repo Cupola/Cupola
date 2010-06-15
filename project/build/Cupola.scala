@@ -8,14 +8,14 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    // stupidly, we need to redefine the dependancy here, because
    // for some reason, sbt will otherwise try to look in the maven repo
    val dep1 = "jsyntaxpane" % "jsyntaxpane" % "0.9.5-b29" from "http://jsyntaxpane.googlecode.com/files/jsyntaxpane-0.9.5-b29.jar"
-   val dep2 = "de.sciss" %% "scalaaudiofile" % "0.11"
-   val dep3 = "de.sciss" %% "scalaosc" % "0.15"
-   val dep4 = "de.sciss" %% "scalacollider" % "0.14"
-   val dep5 = "de.sciss" %% "scalainterpreterpane" % "0.13"
+   val dep2 = "de.sciss" %% "scalaaudiofile" % "0.12"
+   val dep3 = "de.sciss" %% "scalaosc" % "0.16"
+   val dep4 = "de.sciss" %% "scalacollider" % "0.15"
+   val dep5 = "de.sciss" %% "scalainterpreterpane" % "0.15"
    val dep6 = "prefuse" % "prefuse" % "beta-20071021" from "http://github.com/downloads/Sciss/ScalaColliderSwing/prefuse-beta-20071021.jar"
-   val dep7 = "de.sciss" %% "scalacolliderswing" % "0.14"
-   val dep8 = "de.sciss" %% "temporalobjects" % "0.11"
-   val dep9 = "Stanford CS - Pervasive Parallelism Laboratory" %% "ccstm" % "0.1"
+   val dep7 = "de.sciss" %% "scalacolliderswing" % "0.16"
+   val dep8 = "de.sciss" %% "temporalobjects" % "0.12"
+   val dep9 = "Stanford CS - Pervasive Parallelism Laboratory" %% "ccstm" % "0.2"
    val dep10= "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC2-SNAPSHOT" // for ccstm
    val scalaToolsSnapshots = "Scala-Tools Maven2 Snapshots Repository" at "http://scala-tools.org/repo-snapshots"
 
