@@ -28,7 +28,7 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ Buffer, SynthDef }
+import de.sciss.synth.{ Buffer, Server, Synth, SynthDef }
 
 object RichObject {
    sealed abstract class State
@@ -36,8 +36,14 @@ object RichObject {
    case object Online  extends State
 }
 
-trait RichObject { def state: RichObject.State }
+trait RichObject { def state: RichObject.State; def server: Server }
 
-case class RichBuffer( buf: Buffer, state: RichObject.State ) extends RichObject
+case class RichBuffer( buf: Buffer, state: RichObject.State ) extends RichObject {
+   def server = buf.server
+}
 
-case class RichSynthDef( synthDef: SynthDef, state: RichObject.State ) extends RichObject
+case class RichSynth( synth: Synth, state: RichObject.State ) extends RichObject {
+   def server = synth.server
+}
+
+case class RichSynthDef( server: Server, synthDef: SynthDef, state: RichObject.State ) extends RichObject

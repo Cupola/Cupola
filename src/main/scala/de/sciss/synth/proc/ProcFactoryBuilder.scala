@@ -51,7 +51,7 @@ trait ProcFactoryBuilder {
 //   def enter( entry: ProcEntry ) : Unit
 
    def bufCue( name: String, path: String ) : ProcBuffer
-   def bufCue( name: String, p: ProcParamString )( implicit tx: ProcTxn ) : ProcBuffer
+   def bufCue( name: String, p: ProcParamString ) : ProcBuffer
 
    def finish : ProcFactory
 }
@@ -119,13 +119,13 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       }
 
       def bufCue( name: String, path: String ) : ProcBuffer = {
-         val b = new BufferImpl( name, path )
+         val b = new BufferImpl( name, implicit t => path )
          addBuffer( b )
          b
       }
 
-      def bufCue( name: String, p: ProcParamString )( implicit tx: ProcTxn ) : ProcBuffer = {
-         val b = new BufferImpl( name, Proc.local.getString( p.name ))
+      def bufCue( name: String, p: ProcParamString ) : ProcBuffer = {
+         val b = new BufferImpl( name, implicit t => Proc.local.getString( p.name ))
          addBuffer( b )
          b
       }
@@ -170,7 +170,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
                               val pAudioIns: IIdxSeq[ ProcParamAudioInBus ],
                               val pAudioOuts: IIdxSeq[ ProcParamAudioOutBus ])
    extends ProcFactory {
-      def make : Proc = new Impl( this, name )
+      def make : Proc = new Impl( this, Server.default, name )
 
       override def toString = "gen(" + name + ")"
    }
@@ -184,7 +184,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      }
    }
 
-   private class Impl( fact: FactoryImpl, val name: String )
+   private class Impl( fact: FactoryImpl, val server: Server, val name: String )
    extends Proc {
       proc =>
 
@@ -207,8 +207,6 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       lazy val audioInputs          = fact.pAudioIns.map( new AudioInputImpl( this, _ ))
       lazy val audioOutputs         = fact.pAudioOuts.map( new AudioOutputImpl( this, _ ))
-
-      def server = fact.wa.server
 
 //      def act {
 //         loop { react {
@@ -337,7 +335,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             println( "WARNING: Proc.play - '" + this + "' already playing")
          } else {
             val run = Proc.use( proc ) {
-               fact.entry.play( groupVar().getOrElse( fact.wa.server.defaultGroup ))
+               fact.entry.play( groupVar().getOrElse( server.defaultGroup ))
             }
             lazy val l: Model.Listener = {
                case ProcRunning.Stopped => {
@@ -440,27 +438,37 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             val args       = controls.toSeq
             val synth      = Synth( server )
             val bufs: Seq[ RichBuffer ] = buffers.map( _.create( synth )( tx ))( breakOut )
-            graph.wa.addSynth( server, g, synth.newMsg( _, target, args, addAction ), bufs )( tx )
-            new RunningImpl( synth )
+            val rs         = graph.wa.addSynth( synth, g, synth.newMsg( _, target, args, addAction ), bufs )( tx )
+            new RunningImpl( graph.wa, rs )
          }
       }
    }
 
-   private class RunningImpl( synth: Synth ) extends ProcRunning {
+   private class RunningImpl( wa: ProcWorldActor, rs: RichSynth ) extends ProcRunning {
       import ProcRunning._
       
 //      var pendingControls
-      synth.onEnd {
+      rs.synth.onEnd {
 //         println( "n_end : " + synth )
          dispatch( Stopped )
       }
 //      synth.server ! synthNewMsg
 
-      def stop = synth.free // XXX
-      def setString( name: String, value: String ) { error( "not yet supported" )}
-      def setFloat( name: String, value: Float ) { synth.set( name -> value )} // XXX
-      def setAudioBus( name: String, value: AudioBus ) { error( "not yet supported" )}
-      def setGroup( g: Group ) { synth.moveToHead( g )}
+      def stop( implicit tx: ProcTxn ) = {
+         wa.add( rs, rs.synth.freeMsg )
+      }
+
+      def setString( name: String, value: String )( implicit tx: ProcTxn ) { error( "not yet supported" )}
+
+      def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) {
+         wa.add( rs, rs.synth.setMsg( name -> value ))
+      }
+
+      def setAudioBus( name: String, value: AudioBus )( implicit tx: ProcTxn ) { error( "not yet supported" )}
+
+      def setGroup( g: Group )( implicit tx: ProcTxn ) {
+         wa.add( rs, rs.synth.moveToHeadMsg( g ))
+      }
    }
 
    // ---------------------------- ProcBuffer implementation ----------------------------
@@ -495,7 +503,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
    }
 
    // XXX either BufferCueImpl or put cueing information in Graph instead
-   private class BufferImpl( val name: String, path: => String ) extends ProcBuffer {
+   private class BufferImpl( val name: String, path: ProcTxn => String ) extends ProcBuffer {
       def controlName   = "buf$" + name
 //      val scBuf         = Buffer( Server.default ) // XXX Server.default no good
 //
@@ -516,7 +524,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          val server = synth.server
          val b = Buffer( server )
          synth.onEnd { server ! b.closeMsg( b.freeMsg )}
-         val allocMsg = b.allocMsg( 32768, numChannels, b.cueMsg( path ))
+         val allocMsg = b.allocMsg( 32768, numChannels, b.cueMsg( path( tx )))
          val rb = RichBuffer( b, RichObject.Pending( tx.syncID ))
          tx.addFirst( server, allocMsg )
          tx.addFirstAbort( server ) { b.release }
@@ -527,7 +535,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def numChannels : Int = {
 //         ProcGraphBuilder.local.includeBuffer( this )
          try {
-            val spec = AudioFile.readSpec( path )
+            val spec = AudioFile.readSpec( path( ProcGraphBuilder.local.tx ))
             spec.numChannels
          } catch {
             case e => e.printStackTrace()
@@ -535,7 +543,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          }
       }
 
-      def id( implicit tx: ProcTxn ) : GE = {
+      def id : GE = {
          ProcGraphBuilder.local.includeBuffer( this )
          controlName.kr
       }

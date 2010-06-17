@@ -38,9 +38,9 @@ object ProcRunning {
 }
 
 trait ProcRunning extends Model {
-   def stop : Unit
-   def setFloat( name: String, value: Float ) : Unit
-   def setString( name: String, value: String ) : Unit
-   def setAudioBus( name: String, value: AudioBus ) : Unit
-   def setGroup( group: Group ) : Unit
+   def stop( implicit tx: ProcTxn ) : Unit
+   def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Unit
+   def setString( name: String, value: String )( implicit tx: ProcTxn ) : Unit
+   def setAudioBus( name: String, value: AudioBus )( implicit tx: ProcTxn ) : Unit
+   def setGroup( group: Group )( implicit tx: ProcTxn ) : Unit
 }

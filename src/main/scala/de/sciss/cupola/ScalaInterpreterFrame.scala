@@ -32,6 +32,12 @@ val g = gen( "process1" ) {
 }
 
 val p = g.make
+ProcTxn.atomic { implicit t =>
+    p.setFloat( "freq", 441 )
+    p.play
+    p.stop  // this one doesn't work yet regarding sync
+}
+
 p.setFloat( "freq", 441 )
 p.play
 p.stop
@@ -56,9 +62,13 @@ val h = gen( "process2" ) {
 }
 
 val p = h.make
-p.setString( "path", audioDir + "ZahnradGong1 den-L.aif" )
-p.setFloat( "speed", 4 )
-p.play
+
+ProcTxn.atomic { implicit t =>
+    p.setString( "path", audioDir + "ZahnradGong1 den-L.aif" )
+    p.setFloat( "speed", 4 )
+    p.play
+}
+
 p.setFloat( "speed", 0.25f )
 p.stop
 p.play; p.stop    // this is safe now!

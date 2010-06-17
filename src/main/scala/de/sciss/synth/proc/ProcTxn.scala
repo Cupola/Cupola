@@ -66,6 +66,8 @@ object ProcTxn {
    def atomic[ Z ]( block: ProcTxn => Z ) : Z = STM.atomic { implicit t =>
       val tx = new Impl
       t.addWriteResource( tx, Int.MaxValue )
+      t.afterCommit( tx.afterCommit )
+      t.afterRollback( tx.afterRollback )
       block( tx )
    }
 
@@ -133,11 +135,15 @@ println( "PREPARE 2" )
          // warning: must be receive, not react because of ccstm
          val res = !Futures.awaitAll( 10000L, futs: _* ).contains( None )
 println( "PREPARE 3 " + res )
-         res
+         if( !res ) error( "Timeout" ) // returning false will block indefinitely
+         else res
       }
 
       def performRollback( t: Txn ) {
-println( "ROLLBACK" )
+println( "ROLLBACK. Ooops. Suddendly supported???" )
+      }
+
+      def afterRollback( t: Txn ) {
          val datas = serverData.values
          datas.foreach( data => {
             import data._
@@ -151,7 +157,10 @@ println( "ROLLBACK" )
       }
 
       def performCommit( t: Txn ) {
-println( "COMMIT" )
+println( "COMMIT. Ooops. Suddendly supported???" )
+      }
+
+      def afterCommit( t: Txn ) {
          val datas = serverData.values
          datas.foreach( data => {
             import data._

@@ -59,7 +59,7 @@ object DSL {
 
    def bufCue( name: String, path: String ) : ProcBuffer =
       ProcFactoryBuilder.local.bufCue( name, path )
-   def bufCue( name: String, p: ProcParamString )( implicit tx: ProcTxn ) : ProcBuffer =
+   def bufCue( name: String, p: ProcParamString ) : ProcBuffer =
       ProcFactoryBuilder.local.bufCue( name, p )
 
    // ---- scope : graph (ProcGraphBuilder) ----
@@ -77,7 +77,7 @@ trait ProcBuffer {
 
    // ---- scope : graph (ProcGraphBuilder) ----
    
-   def id( implicit tx: ProcTxn ) : GE
+   def id : GE
    def numChannels : Int
 }
 

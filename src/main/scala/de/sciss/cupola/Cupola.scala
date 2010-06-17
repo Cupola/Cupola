@@ -94,7 +94,7 @@ object Cupola extends Actor {
             ssp.server = Some( srv )
             ntp.server = Some( srv )
             s = srv
-            val wa = new ProcWorldActor( s )
+            val wa = new ProcWorldActor // ( s )
 //            wa.start
             sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
          }

@@ -96,16 +96,16 @@ object ProcWorldActor {
    }
 }
 
-class ProcWorldActor( val server: Server ) {
+class ProcWorldActor { // ( val server: Server )
    wa =>
 
    import ProcWorldActor._
 
-   add( this )
+   ProcWorldActor.add( this )
 
    // commented out for debugging inspection
    /* private */ val world = new ProcWorld
-   val transport = ProcTransport( server.sampleRate, (server.sampleRate * 0.5).toInt )
+//   val transport = ProcTransport( server.sampleRate, (server.sampleRate * 0.5).toInt )
 
 //   def act = {
 //      var running = true
@@ -190,7 +190,7 @@ class ProcWorldActor( val server: Server ) {
                   succ = g
                }
                case None => {
-                  val g = Group( wa.server )
+                  val g = Group( target.server )
                   tx.addFirst( g.server, g.newMsg( pred, addAfter ))
                   target.setGroup( g )
                   succ = g
@@ -201,8 +201,8 @@ class ProcWorldActor( val server: Server ) {
 
       srcGroup match {
          case None => {
-            val g = Group( wa.server )
-            tx.addFirst( g.server, g.newMsg( wa.server.defaultGroup, addToHead ))
+            val g = Group( source.server )
+            tx.addFirst( g.server, g.newMsg( g.server.defaultGroup, addToHead ))
             source.setGroup( g )
             startMoving( g )
          }
@@ -218,11 +218,13 @@ class ProcWorldActor( val server: Server ) {
 //      rb
 //   }
 
-   def addSynth( server: Server, graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ])
-               ( implicit tx: ProcTxn ) {
+   def addSynth( synth: Synth, graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ])
+               ( implicit tx: ProcTxn ) : RichSynth = {
+      val rs = RichSynth( synth, RichObject.Pending( tx.syncID ))
+      val server = rs.server
       val rd = world.synthGraphs().get( graph ).getOrElse({
          val name = "proc" + nextDefID
-         val rd   = RichSynthDef( SynthDef( name, graph ), RichObject.Pending( tx.syncID ))
+         val rd   = RichSynthDef( server, SynthDef( name, graph ), RichObject.Pending( tx.syncID ))
          world.synthGraphs.transform( _ + (graph -> rd) )
          tx.addFirst( server, rd.synthDef.recvMsg )
          rd
@@ -234,6 +236,18 @@ class ProcWorldActor( val server: Server ) {
       } else {
          tx.waitFor( server, ids: _* )
          tx.addSecond( server, msg )
+      }
+      rs
+   }
+
+   def add( ro: RichObject, msg: OSCMessage )( implicit tx: ProcTxn ) {
+      ro.state match {
+         case RichObject.Pending( syncID ) => {
+            tx.waitFor( ro.server, syncID )
+            tx.addSecond( ro.server, msg )
+         }
+
+         case _ => tx.addFirst( ro.server, msg )
       }
    }
 }
