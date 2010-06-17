@@ -561,6 +561,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
    private class ParamAudioBusImpl( val name: String, val default: Option[ (Int, Int) ])
    extends ProcParamAudioInBus with ProcParamAudioOutBus {
-      def numChannels( implicit tx: ProcTxn ) : Int = Proc.local.getAudioBus( name ).numChannels
+      def numChannels : Int = {
+         val b = Proc.local.getAudioBus( name )( ProcGraphBuilder.local.tx )
+         b.numChannels
+      }
    }
 }

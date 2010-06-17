@@ -31,6 +31,9 @@ package de.sciss.synth.proc
 import de.sciss.synth._
 import ugen.{Out, In}
 
+/**
+ *    @version 0.11, 17-Jun-10
+ */
 sealed trait ProcParam[ T ] {
 //   type t = T
    def name : String
@@ -65,16 +68,16 @@ trait ProcParamString extends ProcParam[ String ] {
 }
 
 sealed trait ProcParamAudioBus extends ProcParam[ (Int, Int) ] {
-   def index( implicit tx: ProcTxn ) : GE = {
+   def index : GE = {
       ProcGraphBuilder.local.includeParam( this )
       name.kr( default.map( _._1 ).getOrElse( 0 ))
    }
 
-   def numChannels( implicit tx: ProcTxn ) : Int
+   def numChannels : Int
 }
 
 trait ProcParamAudioInBus extends ProcParamAudioBus {
-   def ar( implicit tx: ProcTxn ) : GE = {
+   def ar : GE = {
 // note: index already includes the parameter
 //      ProcGraphBuilder.local.includeParam( this )
       In.ar( index, numChannels )
@@ -82,7 +85,7 @@ trait ProcParamAudioInBus extends ProcParamAudioBus {
 }
 
 trait ProcParamAudioOutBus extends ProcParamAudioBus {
-   def ar( sig: GE )( implicit tx: ProcTxn ) : GE = {
+   def ar( sig: GE ) : GE = {
 // note: index already includes the parameter
 //      ProcGraphBuilder.local.includeParam( this )
       Out.ar( index, sig )

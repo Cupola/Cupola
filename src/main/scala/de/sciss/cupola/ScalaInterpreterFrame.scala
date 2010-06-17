@@ -1,12 +1,13 @@
 package de.sciss.cupola
 
-import java.awt.GraphicsEnvironment
 import de.sciss.scalainterpreter.{ LogPane, ScalaInterpreterPane }
 import de.sciss.synth.Server
 import tools.nsc.Interpreter
 import java.io.PrintStream
-import javax.swing.{ JFrame, JSplitPane, SwingConstants, WindowConstants }
 import de.sciss.synth.swing.NodeTreePanel
+import java.awt.event.KeyEvent
+import java.awt.{Toolkit, GraphicsEnvironment}
+import javax.swing._
 
 /**
  *    @version 0.11, 04-Jun-10
@@ -17,12 +18,19 @@ extends JFrame( "Scala Interpreter" ) {
    private val sync = new AnyRef
    private var inCode: Option[ Interpreter => Unit ] = None
 
+   private val txnKeyStroke = {
+      val ms = Toolkit.getDefaultToolkit.getMenuShortcutKeyMask
+      KeyStroke.getKeyStroke( KeyEvent.VK_T, ms )
+   }
+
    // ---- constructor ----
    {
       val cp = getContentPane
 
       pane.initialText = pane.initialText +
-"""
+"""// Press '""" + KeyEvent.getKeyModifiersText( txnKeyStroke.getModifiers() ) + " + " +
+      KeyEvent.getKeyText( txnKeyStroke.getKeyCode() ) + """' to execute transactionally.
+
 val g = gen( "process1" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
 
@@ -32,14 +40,17 @@ val g = gen( "process1" ) {
 }
 
 val p = g.make
+
+p.setFloat( "freq", 441 )
+p.play
+
+
 ProcTxn.atomic { implicit t =>
     p.setFloat( "freq", 441 )
     p.play
     p.stop  // this one doesn't work yet regarding sync
 }
 
-p.setFloat( "freq", 441 )
-p.play
 p.stop
 
 s.dumpOSC(1)
@@ -112,104 +123,6 @@ p1.play
 p2.play
 
 p2.setFloat( "freq", -200 )
-
-
-import edu.stanford.ppl.ccstm._
-val x = Ref( "Initial" )
-class Test extends actors.Actor {
-    def act {
-        loop {
-            ActorSTM.atomic { implicit t =>
-                x.set( "Trying" )
-                println( "enter sleep" )
-                Thread.sleep( 10000 )
-                println( "exit sleep" )
-                val p = ActorSTM.pause
-                ActorSTM.react {
-                    case "Fail" => {
-                        try {
-                            p.resume { implicit t =>
-                                println( "x is " + x() )
-                                error( "aborting txn" )
-                            }
-                        } catch { case x => x.printStackTrace() }
-                    }
-                    case ("Succeed", v: String) => {
-                        println( "x is " + x() )
-                        x.set( v )
-                        println( "commiting txn" )
-                        p.resume( _ => () )
-                    }
-                }
-            }
-        }
-    }
-}
-
-val test = new Test
-test.start
-
-x.single()  // --> Initial
-test ! "Fail"
-x.single()  // --> Initial
-test ! ("Succeed", "Final")
-x.single()  // --> Final
-// why doesn't this block?
-actors.Actor.actor { STM.atomic { implicit t => println( "Concurrent try..." ); x.set( "CC" ); println( "CC done" )}}
-
-
-trait MaybeBound[T] { def apply() : T; def set( v: T ) : Unit }
-class MaybeRef[T]( r: Ref[T] )( implicit txn: Txn ) extends MaybeBound[T] {
-   def apply() = r.apply()
-   def set( v: T ) = r.set( v )
-}
-class MaybeView[T]( r: Ref.View[T] )( implicit txn: Txn ) extends MaybeBound[T] {
-   def apply() = r.apply()
-   def set( v: T ) = r.set( v )
-}
-implicit def maybeRef[T](r: Ref[T])( implicit txn: Txn ) = new MaybeRef( r )
-implicit def maybeView[T](r: Ref.View[T])( implicit txn: Txn ) = new MaybeView( r )
-
-import edu.stanford.ppl.ccstm._
-import actors.{ Actor, TIMEOUT }
-import actors.Actor.{ actor => fork, loop }
-import edu.stanford.ppl.ccstm.ActorSTM.{ atomic => actAtom, pause, reactWithin }
-import java.io.IOException
-
-val ref = Ref( "Initial" )
-val lock = new ActorSTM.Lock
-object Fork {
-    def apply( name: String, delay: Int ) : Actor = fork {
-        var cnt = 0
-        loop {
-            actAtom { implicit t =>
-                t.afterCommit { t =>  println( name + " committed " + cnt )}
-                t.afterRollback { t =>  println( name + " rolled back " + cnt )}
-                ref.set( name + " begin " + cnt )
-                println( name + " enter pause... ref=" + ref.get )
-                val p = pause( lock )
-                reactWithin( delay ) {
-                    case TIMEOUT => try {
-                        p.resume( _ => throw new IOException( name + " TIMEOUT" ))
-                    } catch { case e => println( e.getMessage() )}
-                    case x => println( name + " Dang!" ); p.resume { implicit t =>
-                        val o = ref.get
-                        println( name + " enter set ref=" + o )
-                        if( o != (name + " begin " + cnt) ) println( name + " ... INCONSISTENT! " + o )
-                        ref.set( name + " end " + cnt )
-                        cnt += 1
-                    }
-                }
-            }
-
-    }}
-}
-val a = Fork( "a", 3000 )
-val b = Fork( "b", 3333 )
-
-a ! ()
-b ! ()
-ref.single()
 """
 
       pane.initialCode = Some(
@@ -240,6 +153,8 @@ import de.sciss.synth.proc.DSL._
       Console.setErr( lp.outputStream )
       System.setErr( new PrintStream( lp.outputStream ))
 
+      pane.customKeyMapActions += txnKeyStroke -> (() => txnExecute)
+
       pane.init
       val sp = new JSplitPane( SwingConstants.HORIZONTAL )
       sp.setTopComponent( pane )
@@ -252,6 +167,24 @@ import de.sciss.synth.proc.DSL._
 //    setLocation( x, getY )
       setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE )
 //    setVisible( true )
+   }
+
+   private var txnCount = 0
+
+   def txnExecute {
+      pane.getSelectedTextOrCurrentLine.foreach( txt => {
+         val txnId  = txnCount
+         txnCount += 1
+         val txnTxt = """class _txnBody""" + txnId + """( implicit t: ProcTxn ) {
+""" + txt + """
+}
+val _txnRes""" + txnId + """ = ProcTxn.atomic( implicit t => new _txnBody""" + txnId + """ )
+import _txnRes""" + txnId + """._
+"""
+
+//         println( txnTxt )
+         pane.interpret( txnTxt )
+      })
    }
 
    def withInterpreter( fun: Interpreter => Unit ) {
