@@ -61,17 +61,10 @@ object ProcDemiurg { // ( val server: Server )
 
    private val syn = new AnyRef
    private var syncActors = Map.empty[ Server, SyncActor ]
+   private var servers = Set.empty[ Server ]
 
    def sync( server: Server, id: Int ) : Future[ Any ] = syn.synchronized {
-      val sa = syncActors.getOrElse( server, {
-         val syncActor = new SyncActor
-         syncActors += server -> syncActor
-         syncActor.start
-         OSCResponder.add({
-            case OSCSyncedMessage( i ) => syncActor ! Synced( i )
-         }, server )
-         syncActor
-      })
+      val sa = syncActors( server )
       sa !! Sync( id )
    }
 
@@ -86,6 +79,18 @@ object ProcDemiurg { // ( val server: Server )
             case Synced( id ) => seen = math.max( seen, id )
          }}
       }
+   }
+
+   def addServer( server: Server ) : Unit = syn.synchronized {
+      if( servers.contains( server )) return
+      servers += server
+      val syncActor = new SyncActor
+      syncActors += server -> syncActor
+      syncActor.start
+      OSCResponder.add({
+         case OSCSyncedMessage( i ) => syncActor ! Synced( i )
+      }, server )
+      worlds += server -> new ProcWorld
    }
    
 //   ProcDemiurg.add( this )
@@ -151,7 +156,7 @@ object ProcDemiurg { // ( val server: Server )
 //      demi ! CloseTx( tx, world )
 //   }
 
-   def addEdge( e: ProcTopology.Edge )( implicit tx: ProcTxn ) {
+   def addEdge( e: ProcTopology.Edge )( implicit tx: ProcTxn ) : Unit = syn.synchronized {
       val world = worlds( e._1.proc.server )
       val res = world.topology().addEdge( e )
       if( res.isEmpty ) error( "Could not add edge" )
@@ -209,7 +214,7 @@ object ProcDemiurg { // ( val server: Server )
 //      rb
 //   }
 
-   def getSynthDef( server: Server, graph: SynthGraph )( implicit tx: ProcTxn ) : RichSynthDef = {
+   def getSynthDef( server: Server, graph: SynthGraph )( implicit tx: ProcTxn ) : RichSynthDef = syn.synchronized {
       val w    = worlds( server )
       w.synthGraphs().get( graph ).getOrElse({
          val name = "proc" + nextDefID

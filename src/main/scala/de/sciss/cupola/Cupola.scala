@@ -35,6 +35,7 @@ import actors.{ Actor, DaemonActor, OutputChannel }
 import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter, UDP }
 import de.sciss.synth.{ BootingServer, Server }
 import collection.mutable.{ HashSet => MHashSet }
+import de.sciss.synth.proc.ProcDemiurg
 
 /**
  *    @version 0.11, 21-Jun-10
@@ -53,6 +54,7 @@ object Cupola extends Actor {
    case class LevelChanged( newLevel: Level, newSection: Section )
 
    @volatile var s: Server       = _
+   @volatile var booting: BootingServer = _
    val trackingPort              = 0x6375
    
    private var level: Level      = UnknownLevel
@@ -89,18 +91,31 @@ object Cupola extends Actor {
       ntpw.setVisible( true )
       sif.setLocation( sspw.getX + sspw.getWidth + 32, sif.getY )
       sif.setVisible( true )
-      val booting = Server.boot()
+      booting = Server.boot()
       booting.addListener {
          case BootingServer.Running( srv ) => {
             ssp.server = Some( srv )
             ntp.server = Some( srv )
+            ProcDemiurg.addServer( srv )
             s = srv
             sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
          }
       }
+      Runtime.getRuntime().addShutdownHook( new Thread { override def run = shutDown })
       booting.start
    }
 
+   private def shutDown { // sync.synchronized { }
+      if( (s != null) && (s.condition != Server.Offline) ) {
+         s.quit
+         s = null
+      }
+      if( booting != null ) {
+         booting.abort
+         booting = null
+      }
+   }
+   
 //   private def initGUI {
 //      val sspw = new ServerStatusPanel( s ).makeWindow
 //      val ntp  = new NodeTreePanel( s )

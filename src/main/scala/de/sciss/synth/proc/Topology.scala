@@ -43,7 +43,7 @@ object Topology {
    }
 }
 case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unpositioned: Int,
-                                                 edgeMap: IMap[ V, ISet[ E ]]) {
+                                                  edgeMap: IMap[ V, ISet[ E ]]) {
    import Topology._
 
    type T = Topology[ V, E ]

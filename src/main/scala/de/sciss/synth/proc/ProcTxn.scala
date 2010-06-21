@@ -32,15 +32,16 @@ import de.sciss.synth._
 import de.sciss.scalaosc.{ OSCBundle, OSCMessage, OSCPacket }
 import actors.{ DaemonActor, Future, Futures, TIMEOUT }
 import edu.stanford.ppl.ccstm.{ STM, Txn }
-import osc.{ OSCAsyncSend, OSCSend, OSCSyncMessage, OSCSyncSend }
 import collection.immutable.{ IntMap, Queue => IQueue, SortedMap => ISortedMap }
-import collection.mutable.{ Queue => MQueue }
+import collection.mutable.{ HashMap, Queue => MQueue, Set => MSet }
 import collection.{ breakOut, SortedMap }
+import osc._
 
 /**
  *    @version 0.11, 21-Jun-10
  */
 trait ProcTxn {
+   import ProcTxn._
 //   def addSynthGraph( graph: SynthGraph ) : String
 //   def addSynth( graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ] = Nil ) : Unit
 //   def addBuffer( buf: Buffer, allocMsg: OSCMessage ) : RichBuffer
@@ -60,28 +61,34 @@ trait ProcTxn {
 //   def addFirstAbort( server: Server )( thunk: => Unit ) : Unit
 //   def addSecondAbort( server: Server, msg: OSCMessage ) : Unit
 
-   def waitFor( server: Server, ids: Int* ) : Unit
-
-   def syncID: Int
+//   def waitFor( server: Server, ids: Int* ) : Unit
+//
+//   def syncID: Int
 
 //   def swapLate[ @specialized T ]( r: Ref[ T ], newValue: T ) : T
-   def add( msg: OSCMessage with OSCSend, change: Option[ (RichState, Boolean) ], audible: Boolean,
-                     dependancies: Map[ RichState, Boolean ] = Map.empty ) : Unit
+   def add( msg: OSCMessage with OSCSend, change: Option[ (FilterMode, RichState, Boolean) ], audible: Boolean,
+            dependancies: Map[ RichState, Boolean ] = Map.empty ) : Unit
 
    private[ proc ] def ccstm : Txn
 }
 
 object ProcTxn {
+   sealed abstract class FilterMode
+   case object Always extends FilterMode
+   case object IfChanges extends FilterMode
+   case object RequiresChange extends FilterMode
+
    def atomic[ Z ]( block: ProcTxn => Z ) : Z = STM.atomic { implicit t =>
       val tx = new Impl
       t.addWriteResource( tx, Int.MaxValue )
-      t.afterCommit( tx.afterCommit )
-      t.afterRollback( tx.afterRollback )
+//      t.afterCommit( tx.afterCommit )
+//      t.afterRollback( tx.afterRollback )
       block( tx )
    }
 
-   private var uniqueSyncID   = 0
-   private def nextSyncID     = { val res = uniqueSyncID; uniqueSyncID += 1; res }
+//   private var uniqueSyncID   = 0
+//   private val syn            = new AnyRef
+//   private def nextSyncID     = syn.synchronized { val res = uniqueSyncID; uniqueSyncID += 1; res }
 
    private object Impl {
 //      class Exec( thunk: => Unit ) { def exec = thunk }
@@ -99,7 +106,7 @@ object ProcTxn {
 //      val builder          = new ProcWorldBuilder( world )
       private var serverData  = Map.empty[ Server, ServerData ]
 
-      lazy val syncID      = nextSyncID
+//      lazy val syncID      = nextSyncID
       private var waitIDs  = Map.empty[ Server, Int ]
 
 //      def apply[ Z ]( block: Txn => Z ) : Z = STM.atomic( block )
@@ -121,9 +128,27 @@ object ProcTxn {
 
       // ---- WriteResource implementation ----
 
-      def prepare( t: Txn ) : Boolean = t.status.mightCommit && {
+      def prepare( t: Txn ) : Boolean = syn.synchronized { t.status.mightCommit && {
 println( "PREPARE" )
-         establishDependancies
+         val (clumps, maxSync) = establishDependancies
+val server = Server.default // XXX vergación
+         clumps.foreach( tup => {
+            val (idx, msgs) = tup
+            if( idx <= maxSync ) {
+               val syncMsg    = server.syncMsg
+               val syncID     = syncMsg.id
+               val bndl       = OSCBundle( msgs.enqueue( syncMsg ): _* )  
+               val fut        = server !! (bndl, { case OSCSyncedMessage( syncID ) => true })
+               // XXX should use heuristic for timeouts
+               Futures.awaitAll( 10000L, fut ) match {
+                  case List( Some( true )) =>
+                  case _ => error( "Timeout" )
+               }
+            } else {
+               server ! OSCBundle( msgs: _* ) // XXX eventually audible could have a bundle time
+//               true
+            }
+         })
 //         var futs          = IQueue.empty[ Future[ Any ]]
 //         val datas         = serverData.values
 //         datas.foreach( data => {
@@ -141,20 +166,16 @@ println( "PREPARE" )
 //               secondSent  = true
 //            }
 //         })
-////println( "PREPARE 2" )
 //         // warning: must be receive, not react because of ccstm
 //         val res = !Futures.awaitAll( 10000L, futs: _* ).contains( None )
 ////println( "PREPARE 3 " + res )
 //         if( !res ) error( "Timeout" ) // returning false will block indefinitely
 //         else res
          true
-      }
+      }}
 
       def performRollback( t: Txn ) {
-println( "ROLLBACK. Ooops. Suddendly supported???" )
-      }
-
-      def afterRollback( t: Txn ) {
+println( "ROLLBACK" )
          val datas = serverData.values
          datas.foreach( data => {
             import data._
@@ -168,10 +189,7 @@ println( "ROLLBACK. Ooops. Suddendly supported???" )
       }
 
       def performCommit( t: Txn ) {
-println( "COMMIT. Ooops. Suddendly supported???" )
-      }
-
-      def afterCommit( t: Txn ) {
+println( "COMMIT" )
          val datas = serverData.values
          datas.foreach( data => {
             import data._
@@ -193,38 +211,113 @@ println( "COMMIT. Ooops. Suddendly supported???" )
             data
          })
 
-      private var entries = IQueue.empty[ Entry ]
+      private val syn      = new AnyRef
+      private var entries  = IQueue.empty[ Entry ]
+      private var entryMap = Map.empty[ (RichState, Boolean), Entry ]
+      private var stateMap = Map.empty[ RichState, Boolean ]
 
-      def add( msg: OSCMessage with OSCSend, change: Option[ (RichState, Boolean) ], audible: Boolean,
-               dependancies: Map[ RichState, Boolean ]) {
-         entries = entries enqueue Entry( msg, change, audible, dependancies )
+      def add( msg: OSCMessage with OSCSend, change: Option[ (FilterMode, RichState, Boolean) ], audible: Boolean,
+               dependancies: Map[ RichState, Boolean ]) : Unit = syn.synchronized {
+
+println( "ADD : " + (msg, change, audible, dependancies) )
+
+         val filter = change.map( tup => {
+            val (mode, state, value) = tup
+            val changed = state.get( tx ) != value
+            require( changed || (mode != RequiresChange) )
+            val res = changed || (mode == Always)
+            if( res ) {
+//               stateMap += state -> value // XXX we could omit this i guess (and it could help prevent errors)
+               state.set( value )( tx )
+//               entryMap += (state, value) ->
+            }
+            res
+         }).getOrElse( true )
+
+         if( filter ) {
+println( "ADD FILTER" )
+            dependancies.foreach( tup => {
+               val (state, value) = tup
+               if( !stateMap.contains( state )) {
+                  stateMap += state -> state.get( tx )
+               }
+            })
+            val entry = Entry( msg, change, audible, dependancies )
+            entries = entries.enqueue( entry )
+            change.foreach( tup => {
+               val (_, state, value) = tup
+               entryMap += (state, value) -> entry 
+            })
+         }
       }
 
-      private def establishDependancies {
+      private def establishDependancies : (IntMap[ IQueue[ OSCMessage ]], Int) = {
 //         var vertices = Map.empty[ (RichState, AnyRef), Change ]
-         val entryMap: Map[ (RichState, Boolean), Entry ] = entries.collect({
-            case e @ Entry( _, Some( change ), _, _ ) => change -> e
-         })( breakOut )
+//         val entryMap: Map[ (RichState, Boolean), Entry ] = entries.collect({
+//            case e @ Entry( _, Some( change ), _, _ ) => change -> e
+//         })( breakOut )
 
          var topo = Topology.empty[ Entry, EntryEdge ]
 
-         entries.foreach( sourceEntry => {
-            topo = topo.addVertex( sourceEntry )
-            sourceEntry.dependancies.foreach( dep => {
-               entryMap.get( dep ).map( targetEntry => {
+println( "ENTRY MAP : " + entryMap )
+         var clumpEdges = Map.empty[ Entry, Set[ Entry ]]
+
+         entries.foreach( targetEntry => {
+            topo = topo.addVertex( targetEntry )
+            targetEntry.dependancies.foreach( dep => {
+               entryMap.get( dep ).map( sourceEntry => {
+println( "FOUND " + dep )
                   val edge = EntryEdge( sourceEntry, targetEntry )
                   topo.addEdge( edge ) match {
-                     case Some( (newTopo, _, _) ) => topo = newTopo
-                     case None => error( "Unsatisfied dependancy " + edge )
+                     case Some( (newTopo, _, _) ) => {
+                        println( "EDGE ADDED" )
+                        topo = newTopo
+                        // clumping occurs when a synchronous message depends on
+                        // an asynchronous message
+                        if( !sourceEntry.msg.isSynchronous && targetEntry.msg.isSynchronous ) {
+                           clumpEdges += targetEntry -> (clumpEdges.getOrElse( targetEntry, Set.empty ) + sourceEntry)
+                        }
+                     }
+                     case None => {
+                        error( "Unsatisfied dependancy " + edge )
+                     }
                   }
                }).getOrElse({
+println( "FOUND NOT " + dep )
                   val (state, value) = dep
-                  if( !state.isSatisfied( value )( tx )) error( "Unsatisfied dependancy " + dep )
+                  if( stateMap.get( state ) != Some( value )) {
+                     error( "Unsatisfied dependancy " + dep )
+                  }
                })
             })
-            println( "Topology:\n" + topo )
-            
          })
+//         println( topo.toString )
+         
+         // clumping
+         var clumpIdx   = 0
+         var clumpMap   = Map.empty[ Entry, Int ]
+         var clumps     = IntMap.empty[ IQueue[ OSCMessage ]]
+         val audibleIdx = Int.MaxValue
+         topo.vertices.foreach( targetEntry => {
+            if( targetEntry.audible ) {
+               clumps += audibleIdx -> (clumps.getOrElse( audibleIdx, IQueue.empty ) enqueue targetEntry.msg)
+               clumpMap += targetEntry -> audibleIdx
+            } else {
+               val depIdx = clumpEdges.get( targetEntry ).map( set => {
+                  set.map( clumpMap.getOrElse( _, error( "Unsatisfied dependancy " + targetEntry ))).max
+               }).getOrElse( -1 )
+               if( depIdx > clumpIdx ) error( "Unsatisfied dependancy " + targetEntry )
+               if( depIdx == clumpIdx ) clumpIdx += 1
+               clumps += clumpIdx -> (clumps.getOrElse( clumpIdx, IQueue.empty ) enqueue targetEntry.msg)
+               clumpMap += targetEntry -> clumpIdx
+            }
+         })
+         clumps.foreach( tup => {
+            val (idx, msgs) = tup
+            println( "clump #" + idx + " : " + msgs.toList )
+         })
+
+         (clumps, if( clumps.contains( audibleIdx )) clumpIdx else clumpIdx - 1)
       }
 
 //      def addFirst( server: Server, msg: OSCMessage ) {
@@ -247,7 +340,7 @@ println( "COMMIT. Ooops. Suddendly supported???" )
 //         data.secondAbortMsgs = data.secondAbortMsgs.enqueue( msg )
 //      }
 
-      private case class Entry( msg: OSCMessage with OSCSend, change: Option[ (RichState, Boolean) ],
+      private case class Entry( msg: OSCMessage with OSCSend, change: Option[ (FilterMode, RichState, Boolean) ],
                                 audible: Boolean, dependancies: Map[ RichState, Boolean ])
 
       private case class EntryEdge( sourceVertex: Entry, targetVertex: Entry ) extends Topology.Edge[ Entry ] 

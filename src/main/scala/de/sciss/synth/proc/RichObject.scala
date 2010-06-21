@@ -30,6 +30,7 @@ package de.sciss.synth.proc
 
 import de.sciss.synth._
 import collection.breakOut
+import ProcTxn._
 
 /**
  *    @version 0.11, 21-Jun-10
@@ -43,30 +44,30 @@ object RichObject {
 trait RichObject { /* def state: RichObject.State; */ def server: Server }
 
 case class RichBuffer( buf: Buffer ) extends RichObject {
-   val isOnline: RichState   = new RichState( false )
-   val hasContent: RichState = new RichState( false )
+   val isOnline: RichState   = new RichState( "isOnline", false )
+   val hasContent: RichState = new RichState( "hasContent", false )
 
    def server = buf.server
 
    def alloc( numFrames: Int, numChannels: Int = 1 )( implicit tx: ProcTxn ) {
-      val wasOnline = isOnline.swap( true )
-      if( !wasOnline ) tx.add( buf.allocMsg( numFrames, numChannels ), Some( isOnline -> true ), false )
+//      val wasOnline = isOnline.swap( true )
+//      if( !wasOnline )
+      tx.add( buf.allocMsg( numFrames, numChannels ), Some( (RequiresChange, isOnline, true) ), false )
    }
 
    def cue( path: String, startFrame: Int = 0 )( implicit tx: ProcTxn ) {
-      tx.add( buf.cueMsg( path, startFrame ), Some( hasContent -> true ), false, Map( isOnline -> true ))
+      tx.add( buf.cueMsg( path, startFrame ), Some( (Always, hasContent, true) ), false, Map( isOnline -> true ))
    }
 }
 
 abstract class RichNode( val initOnline : Boolean ) extends RichObject {
-   val isOnline: RichState = new RichState( initOnline )
+   val isOnline: RichState = new RichState( "isOnline", initOnline )
    def node: Node
 
    def server = node.server
 
    def free( audible: Boolean = true )( implicit tx: ProcTxn ) {
-      val wasOnline = isOnline.swap( false )
-      if( wasOnline ) tx.add( node.freeMsg, Some( isOnline -> false ), audible )
+      tx.add( node.freeMsg, Some( (IfChanges, isOnline, false) ), audible )
    }
 
    def set( audible: Boolean, pairs: ControlSetMap* )( implicit tx: ProcTxn ) {
@@ -92,8 +93,8 @@ case class RichSynth( synth: Synth, synthDef: RichSynthDef ) extends RichNode( f
       bufs.foreach( b => require( b.server == server ))
 
       val deps: Map[ RichState, Boolean ] = bufs.map( _.hasContent -> true )( breakOut )      
-      tx.add( synth.newMsg( synthDef.name, target.node, args, addAction ), Some( isOnline -> true ), true,
-         deps + (target.isOnline -> true) )
+      tx.add( synth.newMsg( synthDef.name, target.node, args, addAction ), Some( (RequiresChange, isOnline, true) ),
+              true, deps ++ Map( target.isOnline -> true, synthDef.isOnline -> true ))
    }
 }
 
@@ -113,8 +114,8 @@ class RichGroup private( val group: Group, initOnline: Boolean ) extends RichNod
    def play( target: RichNode, addAction: AddAction = addToHead )( implicit tx: ProcTxn ) {
       require( target.server == server )
 
-      tx.add( group.newMsg( target.node, addAction ), Some( isOnline -> true ), true,
-         Map( target.isOnline -> true ))
+      tx.add( group.newMsg( target.node, addAction ), Some( (RequiresChange, isOnline, true) ), false,
+              Map( target.isOnline -> true ))
    }
 }
 
@@ -136,7 +137,7 @@ case class RichSynthDef( server: Server, synthDef: SynthDef ) extends RichObject
    import RichSynthDef._
    
 //   val online = Ref( false )
-   val isOnline: RichState = new RichState( false )
+   val isOnline: RichState = new RichState( "isOnline", false )
 
    def name : String = synthDef.name
 
@@ -146,8 +147,7 @@ case class RichSynthDef( server: Server, synthDef: SynthDef ) extends RichObject
     *    will be queued.
     */
    def recv( implicit tx: ProcTxn ) {
-      val wasOnline = isOnline.swap( true )
-      if( !wasOnline ) tx.add( synthDef.recvMsg, Some( isOnline -> true ), false )
+      tx.add( synthDef.recvMsg, Some( (IfChanges, isOnline, true) ), false )
    }
 
    def play( target: RichNode, args: Seq[ ControlSetMap ] = Nil,
@@ -160,9 +160,13 @@ case class RichSynthDef( server: Server, synthDef: SynthDef ) extends RichObject
    }
 }
 
-class RichState( init: Boolean ) {
+class RichState( name: String, init: Boolean ) {
    private val value = Ref( init )
-   def isSatisfied( value: Boolean )( implicit tx: ProcTxn ) : Boolean = this.value() == value
+//   def isSatisfied( value: Boolean )( implicit tx: ProcTxn ) : Boolean = this.value() == value
 //   def currentState( implicit tx: ProcTxn ) : AnyRef
    def swap( newValue: Boolean )( implicit tx: ProcTxn ) : Boolean = value.swap( newValue )
+   def get( implicit tx: ProcTxn ) : Boolean = value.apply
+   def set( newValue: Boolean )( implicit tx: ProcTxn ) : Unit = value.set( newValue )
+
+   override def toString = "<" + name + ">"
 }
