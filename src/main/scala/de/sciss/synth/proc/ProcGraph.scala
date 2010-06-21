@@ -28,13 +28,11 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{Group, Model}
-
 /**
- *    @version 0.12, 15-Jun-10
+ *    @version 0.12, 21-Jun-10
  */
 trait ProcEntry {
-   def play( target: Group )( implicit tx: ProcTxn ) : ProcRunning
+   def play( target: RichGroup )( implicit tx: ProcTxn ) : ProcRunning
 }
 
 //trait ProcPlayable {

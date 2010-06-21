@@ -28,13 +28,18 @@
 
 package de.sciss.synth.proc
 
-import collection.immutable.{ Queue => IQueue }
-import de.sciss.synth.osc.OSCSyncMessage
 import de.sciss.synth._
-import de.sciss.scalaosc.{OSCPacket, OSCBundle, OSCMessage}
-import actors.{Futures, DaemonActor, Future, TIMEOUT}
-import edu.stanford.ppl.ccstm.{STM, Txn}
+import de.sciss.scalaosc.{ OSCBundle, OSCMessage, OSCPacket }
+import actors.{ DaemonActor, Future, Futures, TIMEOUT }
+import edu.stanford.ppl.ccstm.{ STM, Txn }
+import osc.{ OSCAsyncSend, OSCSend, OSCSyncMessage, OSCSyncSend }
+import collection.immutable.{ IntMap, Queue => IQueue, SortedMap => ISortedMap }
+import collection.mutable.{ Queue => MQueue }
+import collection.{ breakOut, SortedMap }
 
+/**
+ *    @version 0.11, 21-Jun-10
+ */
 trait ProcTxn {
 //   def addSynthGraph( graph: SynthGraph ) : String
 //   def addSynth( graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ] = Nil ) : Unit
@@ -50,14 +55,18 @@ trait ProcTxn {
 
 //   def apply[ Z ]( block: Txn => Z ) : Z
 
-   def addFirst( server: Server, msg: OSCMessage ) : Unit
-   def addSecond( server: Server, msg: OSCMessage ) : Unit
-   def addFirstAbort( server: Server )( thunk: => Unit ) : Unit
-   def addSecondAbort( server: Server, msg: OSCMessage ) : Unit
+//   def addFirst( server: Server, msg: OSCMessage ) : Unit
+//   def addSecond( server: Server, msg: OSCMessage ) : Unit
+//   def addFirstAbort( server: Server )( thunk: => Unit ) : Unit
+//   def addSecondAbort( server: Server, msg: OSCMessage ) : Unit
 
    def waitFor( server: Server, ids: Int* ) : Unit
 
    def syncID: Int
+
+//   def swapLate[ @specialized T ]( r: Ref[ T ], newValue: T ) : T
+   def add( msg: OSCMessage with OSCSend, change: Option[ (RichState, Boolean) ], audible: Boolean,
+                     dependancies: Map[ RichState, Boolean ] = Map.empty ) : Unit
 
    private[ proc ] def ccstm : Txn
 }
@@ -114,29 +123,31 @@ object ProcTxn {
 
       def prepare( t: Txn ) : Boolean = t.status.mightCommit && {
 println( "PREPARE" )
-         var futs          = IQueue.empty[ Future[ Any ]]
-         val datas         = serverData.values
-         datas.foreach( data => {
-            import data._
-println( "   first:  " + firstMsgs )
-println( "   second: " + secondMsgs )
-            if( firstMsgs.nonEmpty ) {
-               server ! OSCBundle( firstMsgs.enqueue( OSCSyncMessage( syncID )): _* )
-            }
-            if( waitID >= 0 ) {
-               futs = futs.enqueue( ProcWorldActor.sync( server, waitID ))
-            } else {
-               if( secondMsgs.nonEmpty ) server ! OSCBundle( secondMsgs: _* )
-//               secondAborts = secondAborts.enqueue( data )
-               secondSent  = true
-            }
-         })
-println( "PREPARE 2" )
-         // warning: must be receive, not react because of ccstm
-         val res = !Futures.awaitAll( 10000L, futs: _* ).contains( None )
-println( "PREPARE 3 " + res )
-         if( !res ) error( "Timeout" ) // returning false will block indefinitely
-         else res
+         establishDependancies
+//         var futs          = IQueue.empty[ Future[ Any ]]
+//         val datas         = serverData.values
+//         datas.foreach( data => {
+//            import data._
+////println( "   first:  " + firstMsgs )
+////println( "   second: " + secondMsgs )
+//            if( firstMsgs.nonEmpty ) {
+//               server ! OSCBundle( firstMsgs.enqueue( OSCSyncMessage( syncID )): _* )
+//            }
+//            if( waitID >= 0 ) {
+//               futs = futs.enqueue( ProcDemiurg.sync( server, waitID ))
+//            } else {
+//               if( secondMsgs.nonEmpty ) server ! OSCBundle( secondMsgs: _* )
+////               secondAborts = secondAborts.enqueue( data )
+//               secondSent  = true
+//            }
+//         })
+////println( "PREPARE 2" )
+//         // warning: must be receive, not react because of ccstm
+//         val res = !Futures.awaitAll( 10000L, futs: _* ).contains( None )
+////println( "PREPARE 3 " + res )
+//         if( !res ) error( "Timeout" ) // returning false will block indefinitely
+//         else res
+         true
       }
 
       def performRollback( t: Txn ) {
@@ -182,82 +193,63 @@ println( "COMMIT. Ooops. Suddendly supported???" )
             data
          })
 
-//      private def performAborts {
-//         abortFuns.foreach( fun => try { fun() } catch { case e => e.printStackTrace() })
-//      }
+      private var entries = IQueue.empty[ Entry ]
 
-//      private def exec( thunk: => Unit ) = {
-//         tx ! new Exec( thunk )
-//      }
+      def add( msg: OSCMessage with OSCSend, change: Option[ (RichState, Boolean) ], audible: Boolean,
+               dependancies: Map[ RichState, Boolean ]) {
+         entries = entries enqueue Entry( msg, change, audible, dependancies )
+      }
 
-//      def abort : Unit = tx ! Abort
-//      def commit : Future[ ProcWorld ] = tx !! (Commit, { case Committed( world ) => world })
+      private def establishDependancies {
+//         var vertices = Map.empty[ (RichState, AnyRef), Change ]
+         val entryMap: Map[ (RichState, Boolean), Entry ] = entries.collect({
+            case e @ Entry( _, Some( change ), _, _ ) => change -> e
+         })( breakOut )
 
-//      def addSynth( graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ]) {
-//         exec( txAddSynth( graph, newMsg, bufs ))
+         var topo = Topology.empty[ Entry, EntryEdge ]
+
+         entries.foreach( sourceEntry => {
+            topo = topo.addVertex( sourceEntry )
+            sourceEntry.dependancies.foreach( dep => {
+               entryMap.get( dep ).map( targetEntry => {
+                  val edge = EntryEdge( sourceEntry, targetEntry )
+                  topo.addEdge( edge ) match {
+                     case Some( (newTopo, _, _) ) => topo = newTopo
+                     case None => error( "Unsatisfied dependancy " + edge )
+                  }
+               }).getOrElse({
+                  val (state, value) = dep
+                  if( !state.isSatisfied( value )( tx )) error( "Unsatisfied dependancy " + dep )
+               })
+            })
+            println( "Topology:\n" + topo )
+            
+         })
+      }
+
+//      def addFirst( server: Server, msg: OSCMessage ) {
+//         val data = getServerData( server )
+//         data.firstMsgs = data.firstMsgs.enqueue( msg )
 //      }
 //
-//      def addBuffer( buf: Buffer, allocMsg: OSCMessage ) : RichBuffer = {
-//         val rb = RichBuffer( buf, RichObject.Pending( syncID ))
-//         exec( txAddBuffer( rb, allocMsg ))
-//         rb
+//      def addSecond( server: Server, msg: OSCMessage ) {
+//         val data = getServerData( server )
+//         data.secondMsgs = data.secondMsgs.enqueue( msg )
 //      }
 //
-//      def addProc( proc: Proc ) {
-//         exec( txAddProc( proc ))
+//      def addFirstAbort( server: Server )( thunk: => Unit ) {
+//         val data = getServerData( server )
+//         data.firstAbortFuns = data.firstAbortFuns.enqueue( () => thunk )
+//      }
+//
+//      def addSecondAbort( server: Server, msg: OSCMessage ) {
+//         val data = getServerData( server )
+//         data.secondAbortMsgs = data.secondAbortMsgs.enqueue( msg )
 //      }
 
-//      def addEdge( e: ProcTopology.Edge ) {
-//         exec( txAddEdge( e ))
-////         tx !!( new Exec( txAddEdge( e )), { case b: Boolean => b })
-//      }
+      private case class Entry( msg: OSCMessage with OSCSend, change: Option[ (RichState, Boolean) ],
+                                audible: Boolean, dependancies: Map[ RichState, Boolean ])
 
-//      private def txAddBuffer( rb: RichBuffer, allocMsg: OSCMessage ) {
-//         addFirst( allocMsg )
-//         abortFuns = abortFuns.enqueue( () => rb.buf.release )
-//      }
-
-//      private def txAddSynth( graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ]) {
-//         val rd = builder.synthGraphs.get( graph ).getOrElse({
-//            val name = "proc" + nextDefID
-//            val rd   = RichSynthDef( SynthDef( name, graph ), RichObject.Pending( syncID ))
-//            builder.synthGraphs += graph -> rd
-//            addFirst( rd.synthDef.recvMsg )
-//            rd
-//         })
-////         println( "txAddSynth : " + rd.synthDef.name )
-//         val msg = newMsg( rd.synthDef.name )
-//         val ids = (rd +: bufs).map( _.state ).collect({ case RichObject.Pending( syncID ) => syncID })
-//         if( ids.isEmpty ) {
-//            addFirst( msg )
-//         } else {
-//            waitID = math.max( waitID, ids.max )
-//            addSecond( msg )
-//         }
-//      }
-
-//      private def txAddProc( proc: Proc ) {
-//         builder.topology = builder.topology.addVertex( proc )
-//      }
-
-      def addFirst( server: Server, msg: OSCMessage ) {
-         val data = getServerData( server )
-         data.firstMsgs = data.firstMsgs.enqueue( msg )
-      }
-
-      def addSecond( server: Server, msg: OSCMessage ) {
-         val data = getServerData( server )
-         data.secondMsgs = data.secondMsgs.enqueue( msg )
-      }
-
-      def addFirstAbort( server: Server )( thunk: => Unit ) {
-         val data = getServerData( server )
-         data.firstAbortFuns = data.firstAbortFuns.enqueue( () => thunk )
-      }
-
-      def addSecondAbort( server: Server, msg: OSCMessage ) {
-         val data = getServerData( server )
-         data.secondAbortMsgs = data.secondAbortMsgs.enqueue( msg )
-      }
+      private case class EntryEdge( sourceVertex: Entry, targetVertex: Entry ) extends Topology.Edge[ Entry ] 
    }
 }

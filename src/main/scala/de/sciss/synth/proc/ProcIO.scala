@@ -29,7 +29,7 @@
 package de.sciss.synth.proc
 
 /**
- *    @version 0.10, 03-Jun-10
+ *    @version 0.11, 21-Jun-10
  */
 trait ProcAudioOutput {
    def ~>  ( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioInput

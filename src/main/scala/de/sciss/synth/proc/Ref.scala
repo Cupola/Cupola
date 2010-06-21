@@ -33,6 +33,7 @@ import edu.stanford.ppl.ccstm.{ Ref => CRef }
 class Ref[ @specialized T ] private( c: CRef[ T ]) {
     def apply()( implicit tx: ProcTxn ) : T  = c.apply()( tx.ccstm )
     def set( v: T )( implicit tx: ProcTxn ) : Unit = c.set( v )( tx.ccstm )
+    def swap( v: T )( implicit tx: ProcTxn ) : T = c.swap( v )( tx.ccstm )   
     def transform( f: T => T )( implicit tx: ProcTxn ) : Unit = c.transform( f )( tx.ccstm )
     def transformIfDefined( pf: PartialFunction[ T, T ])( implicit tx: ProcTxn ) : Boolean = c.transformIfDefined( pf )( tx.ccstm )
 }

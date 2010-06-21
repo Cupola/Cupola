@@ -28,22 +28,141 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{ Buffer, Server, Synth, SynthDef }
+import de.sciss.synth._
+import collection.breakOut
 
+/**
+ *    @version 0.11, 21-Jun-10
+ */
 object RichObject {
-   sealed abstract class State
-   case class Pending( syncID: Int ) extends State
-   case object Online  extends State
+//   sealed abstract class State
+//   case class Pending( syncID: Int ) extends State
+//   case object Online extends State
 }
 
-trait RichObject { def state: RichObject.State; def server: Server }
+trait RichObject { /* def state: RichObject.State; */ def server: Server }
 
-case class RichBuffer( buf: Buffer, state: RichObject.State ) extends RichObject {
+case class RichBuffer( buf: Buffer ) extends RichObject {
+   val isOnline: RichState   = new RichState( false )
+   val hasContent: RichState = new RichState( false )
+
    def server = buf.server
+
+   def alloc( numFrames: Int, numChannels: Int = 1 )( implicit tx: ProcTxn ) {
+      val wasOnline = isOnline.swap( true )
+      if( !wasOnline ) tx.add( buf.allocMsg( numFrames, numChannels ), Some( isOnline -> true ), false )
+   }
+
+   def cue( path: String, startFrame: Int = 0 )( implicit tx: ProcTxn ) {
+      tx.add( buf.cueMsg( path, startFrame ), Some( hasContent -> true ), false, Map( isOnline -> true ))
+   }
 }
 
-case class RichSynth( synth: Synth, state: RichObject.State ) extends RichObject {
-   def server = synth.server
+abstract class RichNode( val initOnline : Boolean ) extends RichObject {
+   val isOnline: RichState = new RichState( initOnline )
+   def node: Node
+
+   def server = node.server
+
+   def free( audible: Boolean = true )( implicit tx: ProcTxn ) {
+      val wasOnline = isOnline.swap( false )
+      if( wasOnline ) tx.add( node.freeMsg, Some( isOnline -> false ), audible )
+   }
+
+   def set( audible: Boolean, pairs: ControlSetMap* )( implicit tx: ProcTxn ) {
+      tx.add( node.setMsg( pairs: _* ), None, audible, Map( isOnline -> true ))
+   }
+
+   def moveToHead( audible: Boolean, group: RichGroup )( implicit tx: ProcTxn ) {
+      tx.add( node.moveToHeadMsg( group.group ), None, audible, Map( isOnline -> true )) // XXX no entry?
+   }
+
+   def moveAfter( audible: Boolean, node: RichNode )( implicit tx: ProcTxn ) {
+      tx.add( this.node.moveAfterMsg( node.node ), None, audible, Map( isOnline -> true )) // XXX no entry?
+   }
 }
 
-case class RichSynthDef( server: Server, synthDef: SynthDef, state: RichObject.State ) extends RichObject
+case class RichSynth( synth: Synth, synthDef: RichSynthDef ) extends RichNode( false ) {
+   def node: Node = synth
+
+   def play( target: RichNode, args: Seq[ ControlSetMap ] = Nil, addAction: AddAction = addToHead,
+             bufs: Seq[ RichBuffer ] = Nil )( implicit tx: ProcTxn ) {
+
+      require( target.server == server )
+      bufs.foreach( b => require( b.server == server ))
+
+      val deps: Map[ RichState, Boolean ] = bufs.map( _.hasContent -> true )( breakOut )      
+      tx.add( synth.newMsg( synthDef.name, target.node, args, addAction ), Some( isOnline -> true ), true,
+         deps + (target.isOnline -> true) )
+   }
+}
+
+object RichGroup {
+   def apply( group: Group ) : RichGroup = new RichGroup( group, false )
+   def default( server: Server ) : RichGroup = new RichGroup( server.defaultGroup, true ) // not very fortunate XXX
+}
+
+/**
+ *    @todo needs unapply and equals?
+ */
+class RichGroup private( val group: Group, initOnline: Boolean ) extends RichNode( initOnline ) {
+   def node: Node = group
+
+   override def toString = "RichGroup(" + group.toString + ")"
+
+   def play( target: RichNode, addAction: AddAction = addToHead )( implicit tx: ProcTxn ) {
+      require( target.server == server )
+
+      tx.add( group.newMsg( target.node, addAction ), Some( isOnline -> true ), true,
+         Map( target.isOnline -> true ))
+   }
+}
+
+object RichSynthDef {
+   def apply( server: Server, graph: SynthGraph )( implicit tx: ProcTxn ) : RichSynthDef =
+      ProcDemiurg.getSynthDef( server, graph )
+
+//   private class IsOnline extends RichState {
+//      val value = Ref( false )
+//      def isSatisfied( value: AnyRef )( implicit tx: ProcTxn ) = this.value() == value
+////      def currentState( implicit tx: ProcTxn ) : AnyRef = value()
+//      def swap( newValue: AnyRef )( implicit tx: ProcTxn ) : AnyRef = {
+//         value.swap( newValue.asInstanceOf[ Boolean ]).asInstanceOf[ AnyRef ]
+//      }
+//   }
+}
+
+case class RichSynthDef( server: Server, synthDef: SynthDef ) extends RichObject {
+   import RichSynthDef._
+   
+//   val online = Ref( false )
+   val isOnline: RichState = new RichState( false )
+
+   def name : String = synthDef.name
+
+   /**
+    *    Actually checks if the def is already online.
+    *    Only if that is not the case, the receive message
+    *    will be queued.
+    */
+   def recv( implicit tx: ProcTxn ) {
+      val wasOnline = isOnline.swap( true )
+      if( !wasOnline ) tx.add( synthDef.recvMsg, Some( isOnline -> true ), false )
+   }
+
+   def play( target: RichNode, args: Seq[ ControlSetMap ] = Nil,
+             addAction: AddAction = addToHead, bufs: Seq[ RichBuffer ] = Nil )( implicit tx: ProcTxn ) : RichSynth = {
+      recv  // make sure it is online
+      val synth   = Synth( server )
+      val rs      = RichSynth( synth, this )
+      rs.play( target, args, addAction, bufs )
+      rs
+   }
+}
+
+class RichState( init: Boolean ) {
+   private val value = Ref( init )
+   def isSatisfied( value: Boolean )( implicit tx: ProcTxn ) : Boolean = this.value() == value
+//   def currentState( implicit tx: ProcTxn ) : AnyRef
+   def swap( newValue: Boolean )( implicit tx: ProcTxn ) : Boolean = value.swap( newValue )
+}

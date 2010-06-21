@@ -33,7 +33,7 @@ import de.sciss.synth.{ AudioBus, Group, Server }
 import de.sciss.scalaosc.OSCMessage
 
 /**
- *    @version 0.12, 15-Jun-10
+ *    @version 0.12, 21-Jun-10
  *
  *    @todo XXX after switching to using an actor
  *          to represent a proc, we should get rid
@@ -62,8 +62,8 @@ trait Proc {
    def audioInputs : ISeq[ ProcAudioInput ]
    def audioOutputs : ISeq[ ProcAudioOutput ]
 
-   def group( implicit tx: ProcTxn ) : Option[ Group ]
-   private[proc] def setGroup( g: Group )( implicit tx: ProcTxn ) : Unit
+   def group( implicit tx: ProcTxn ) : Option[ RichGroup ]
+   private[proc] def setGroup( g: RichGroup )( implicit tx: ProcTxn ) : Unit
 
    private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
    private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit

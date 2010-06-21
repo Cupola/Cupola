@@ -34,7 +34,7 @@ import de.sciss.scalaosc.OSCMessage
 import actors.{Future, Actor, DaemonActor, TIMEOUT}
 
 /**
- *    @version 0.12, 15-Jun-10
+ *    @version 0.12, 21-Jun-10
  */
 //trait ProcWorldLike {
 ////   def server: Server
@@ -52,15 +52,12 @@ class ProcWorld {
 //   def empty = ProcWorld( Map.empty, ProcTopology.empty )
 //}
 
-object ProcWorldActor {
-//   private case class Tx( fun: (ProcTransaction) => Unit )
-//   private case class OpenTx( preparePos: Long, latency: Int )
-//   private case class CloseTx( tx: ProcTransaction, world: ProcWorld )
-   private case object Stop
+object ProcDemiurg { // ( val server: Server )
+   demi =>
+
+//   private case object Stop
    private case class Synced( id: Int )
    private case class Sync( id: Int )
-
-   var default: ProcWorldActor = null 
 
    private val syn = new AnyRef
    private var syncActors = Map.empty[ Server, SyncActor ]
@@ -78,10 +75,6 @@ object ProcWorldActor {
       sa !! Sync( id )
    }
 
-   private def add( wa: ProcWorldActor ) {
-      if( default == null ) default = wa
-   }
-
    private var uniqueDefID    = 0
    private def nextDefID      = { val res = uniqueDefID; uniqueDefID += 1; res }
 
@@ -94,17 +87,11 @@ object ProcWorldActor {
          }}
       }
    }
-}
-
-class ProcWorldActor { // ( val server: Server )
-   wa =>
-
-   import ProcWorldActor._
-
-   ProcWorldActor.add( this )
+   
+//   ProcDemiurg.add( this )
 
    // commented out for debugging inspection
-   /* private */ val world = new ProcWorld
+   /* private */ var worlds = Map.empty[ Server, ProcWorld ] // new ProcWorld
 //   val transport = ProcTransport( server.sampleRate, (server.sampleRate * 0.5).toInt )
 
 //   def act = {
@@ -117,7 +104,7 @@ class ProcWorldActor { // ( val server: Server )
 //         react {
 ////            case OpenTx( preparePos, latency ) => {
 ////               println( "OpenTx " + preparePos + ", " + latency )
-////               val tx = ProcTransaction( wa, world )
+////               val tx = ProcTransaction( demi, world )
 ////               reply( tx )
 //////               println( "OpenTx : replied" )
 ////               react {
@@ -142,7 +129,7 @@ class ProcWorldActor { // ( val server: Server )
 //   def sync( id: Int ) : Future[ Any ] = syncActor !! Sync( id )
 
 //   def stop {
-//      wa ! Stop
+//      demi ! Stop
 //   }
 
 //   private def await[ A ]( timeOut: Long, fut: Future[ A ])( handler: Function1[ Option[ A ], Unit ]) {
@@ -153,18 +140,19 @@ class ProcWorldActor { // ( val server: Server )
 //   }
    
 //   def tx( fun: (ProcTransaction) => Unit ) {
-//      wa ! Tx( fun )
+//      demi ! Tx( fun )
 //   }
 
 //   def openTx( preparePos: Long, latency: Int ) : Future[ ProcTransaction ] = {
-//      wa !! (OpenTx( preparePos: Long, latency: Int ), { case tx: ProcTransaction => tx })
+//      demi !! (OpenTx( preparePos: Long, latency: Int ), { case tx: ProcTransaction => tx })
 //   }
 //
 //   private[proc] def closeTx( tx: ProcTransaction, world: ProcWorld ) {
-//      wa ! CloseTx( tx, world )
+//      demi ! CloseTx( tx, world )
 //   }
 
    def addEdge( e: ProcTopology.Edge )( implicit tx: ProcTxn ) {
+      val world = worlds( e._1.proc.server )
       val res = world.topology().addEdge( e )
       if( res.isEmpty ) error( "Could not add edge" )
 
@@ -177,21 +165,23 @@ class ProcWorldActor { // ( val server: Server )
       val srcGroup     = source.group
       val tgtGroups    = affected.map( p => (p, p.group) )
 
-      def startMoving( g: Group ) {
-         var succ          = g
-         var pred : Group  = null
-         val iter          = tgtGroups.iterator
+      def startMoving( g: RichGroup ) {
+         var succ                = g
+         var pred : RichGroup    = null
+         val iter                = tgtGroups.iterator
          while( iter.hasNext ) {
             pred = succ
             val (target, tgtGroup) = iter.next
             tgtGroup match {
                case Some( g ) => {
-                  tx.addFirst( g.server, g.moveAfterMsg( pred ))
+//                  tx.addFirst( g.server, g.moveAfterMsg( pred ))
+                  g.moveAfter( true, pred )
                   succ = g
                }
                case None => {
-                  val g = Group( target.server )
-                  tx.addFirst( g.server, g.newMsg( pred, addAfter ))
+                  val g = RichGroup( Group( target.server ))
+//                  tx.addFirst( g.server, g.newMsg( pred, addAfter ))
+                  g.play( pred, addAfter )
                   target.setGroup( g )
                   succ = g
                }
@@ -201,8 +191,9 @@ class ProcWorldActor { // ( val server: Server )
 
       srcGroup match {
          case None => {
-            val g = Group( source.server )
-            tx.addFirst( g.server, g.newMsg( g.server.defaultGroup, addToHead ))
+            val g = RichGroup( Group( source.server ))
+//            tx.addFirst( g.server, g.newMsg( g.server.defaultGroup, addToHead ))
+            g.play( RichGroup.default( g.server ))
             source.setGroup( g )
             startMoving( g )
          }
@@ -218,38 +209,49 @@ class ProcWorldActor { // ( val server: Server )
 //      rb
 //   }
 
-   def addSynth( synth: Synth, graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ])
-               ( implicit tx: ProcTxn ) : RichSynth = {
-      val rs = RichSynth( synth, RichObject.Pending( tx.syncID ))
-      val server = rs.server
-      val rd = world.synthGraphs().get( graph ).getOrElse({
+   def getSynthDef( server: Server, graph: SynthGraph )( implicit tx: ProcTxn ) : RichSynthDef = {
+      val w    = worlds( server )
+      w.synthGraphs().get( graph ).getOrElse({
          val name = "proc" + nextDefID
-         val rd   = RichSynthDef( server, SynthDef( name, graph ), RichObject.Pending( tx.syncID ))
-         world.synthGraphs.transform( _ + (graph -> rd) )
-         tx.addFirst( server, rd.synthDef.recvMsg )
+         val rd   = RichSynthDef( server, SynthDef( name, graph ))
+         w.synthGraphs.transform( _ + (graph -> rd) )
+//         tx.add( server, rd.synthDef.recvMsg )
          rd
       })
-      val msg = newMsg( rd.synthDef.name )
-      val ids = (rd +: bufs).map( _.state ).collect({ case RichObject.Pending( syncID ) => syncID })
-      if( ids.isEmpty ) {
-         tx.addFirst( server, msg )
-      } else {
-         tx.waitFor( server, ids: _* )
-         tx.addSecond( server, msg )
-      }
-      rs
    }
 
-   def add( ro: RichObject, msg: OSCMessage )( implicit tx: ProcTxn ) {
-      ro.state match {
-         case RichObject.Pending( syncID ) => {
-            tx.waitFor( ro.server, syncID )
-            tx.addSecond( ro.server, msg )
-         }
+//   def addSynth( synth: Synth, graph: SynthGraph, newMsg: String => OSCMessage, bufs: Seq[ RichBuffer ])
+//               ( implicit tx: ProcTxn ) : RichSynth = {
+//      val rs = RichSynth( synth, RichObject.Pending( tx.syncID ))
+//      val server = rs.server
+//      val rd = world.synthGraphs().get( graph ).getOrElse({
+//         val name = "proc" + nextDefID
+//         val rd   = RichSynthDef( server, SynthDef( name, graph ), RichObject.Pending( tx.syncID ))
+//         world.synthGraphs.transform( _ + (graph -> rd) )
+//         tx.addFirst( server, rd.synthDef.recvMsg )
+//         rd
+//      })
+//      val msg = newMsg( rd.synthDef.name )
+//      val ids = (rd +: bufs).map( _.state ).collect({ case RichObject.Pending( syncID ) => syncID })
+//      if( ids.isEmpty ) {
+//         tx.addFirst( server, msg )
+//      } else {
+//         tx.waitFor( server, ids: _* )
+//         tx.addSecond( server, msg )
+//      }
+//      rs
+//   }
 
-         case _ => tx.addFirst( ro.server, msg )
-      }
-   }
+//   def add( ro: RichObject, msg: OSCMessage )( implicit tx: ProcTxn ) {
+//      ro.state match {
+//         case RichObject.Pending( syncID ) => {
+//            tx.waitFor( ro.server, syncID )
+//            tx.addSecond( ro.server, msg )
+//         }
+//
+//         case _ => tx.addFirst( ro.server, msg )
+//      }
+//   }
 }
 
 //class ProcWorldBuilder( previous: ProcWorld ) extends ProcWorldLike {

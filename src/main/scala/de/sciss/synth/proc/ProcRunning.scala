@@ -31,7 +31,7 @@ package de.sciss.synth.proc
 import de.sciss.synth.{ AudioBus, Group, Model }
 
 /**
- *    @version 0.11, 04-Jun-10
+ *    @version 0.11, 21-Jun-10
  */
 object ProcRunning {
    case object Stopped
@@ -42,5 +42,5 @@ trait ProcRunning extends Model {
    def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Unit
    def setString( name: String, value: String )( implicit tx: ProcTxn ) : Unit
    def setAudioBus( name: String, value: AudioBus )( implicit tx: ProcTxn ) : Unit
-   def setGroup( group: Group )( implicit tx: ProcTxn ) : Unit
+   def setGroup( group: RichGroup )( implicit tx: ProcTxn ) : Unit
 }

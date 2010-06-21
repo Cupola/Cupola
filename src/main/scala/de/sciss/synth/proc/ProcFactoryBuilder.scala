@@ -38,7 +38,7 @@ import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq }
 import ProcTransport._
 
 /**
- *    @version 0.12, 15-Jun-10
+ *    @version 0.12, 21-Jun-10
  */
 trait ProcFactoryBuilder {
    def name : String
@@ -68,7 +68,6 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
    // ---------------------------- ProcFactoryBuilder implementation ----------------------------
 
    private class BuilderImpl( val name: String ) extends ProcFactoryBuilder {
-      private val wa                         = ProcWorldActor.default
       private var finished                   = false
       private var params                     = Map[ String, ProcParam[ _ ]]()
       private var buffers                    = Map[ String, ProcBuffer ]()
@@ -112,7 +111,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def graph( thunk: => GE ) : ProcGraph = {
          requireOngoing
          require( graph.isEmpty, "Graph already defined" )
-         val res = new GraphImpl( wa, thunk )
+         val res = new GraphImpl( thunk )
          graph = Some( res )
          enter( res )
          res
@@ -139,7 +138,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          requireOngoing
          finished = true
          require( entry.isDefined, "No entry point defined" )
-         new FactoryImpl( wa, name, entry.get, params, pAudioIns, pAudioOuts )
+         new FactoryImpl( name, entry.get, params, pAudioIns, pAudioOuts )
       }
 
       private def addParam( p: ProcParam[ _ ]) {
@@ -165,7 +164,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
    // ---------------------------- ProcFactory implementation ----------------------------
 
-   private class FactoryImpl( val wa: ProcWorldActor, val name: String, val entry: ProcEntry,
+   private class FactoryImpl( val name: String, val entry: ProcEntry,
                               val params: Map[ String, ProcParam[ _ ]],
                               val pAudioIns: IIdxSeq[ ProcParamAudioInBus ],
                               val pAudioOuts: IIdxSeq[ ProcParamAudioOutBus ])
@@ -199,7 +198,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
 //      private val sync           = new AnyRef
       private val running           = Ref[ Option[ ProcRunning ]]( None )
-      private val groupVar          = Ref[ Option[ Group ]]( None )
+      private val groupVar          = Ref[ Option[ RichGroup ]]( None )
       private val pFloatValues      = Ref( Map.empty[ ProcParamFloat, Float ])
       private val pStringValues     = Ref( Map.empty[ ProcParamString, String ])
       private val pAudioBusValues   = Ref( Map.empty[ ProcParamAudioBus, AudioBus ])
@@ -276,9 +275,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             error( "Param '" + name + "' has not yet been assigned ")))
       }
 
-      def group( implicit tx: ProcTxn ) : Option[ Group ] = groupVar()
+      def group( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupVar()
 
-      private[proc] def setGroup( g: Group )( implicit tx: ProcTxn ) {
+      private[proc] def setGroup( g: RichGroup )( implicit tx: ProcTxn ) {
          groupVar.set( Some( g ))
          running().foreach( _.setGroup( g ))
       }
@@ -318,7 +317,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          val e = out -> in
          require( (out.proc == proc) && !edges().contains( e ))
          edges.transform( _ + e )
-         fact.wa.addEdge( e )
+         ProcDemiurg.addEdge( e )
       }
 
       private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) {
@@ -335,7 +334,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             println( "WARNING: Proc.play - '" + this + "' already playing")
          } else {
             val run = Proc.use( proc ) {
-               fact.entry.play( groupVar().getOrElse( server.defaultGroup ))
+               fact.entry.play( groupVar().getOrElse( RichGroup.default( server )))
             }
             lazy val l: Model.Listener = {
                case ProcRunning.Stopped => {
@@ -399,10 +398,11 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
    // ---------------------------- ProcGraph implementation ----------------------------
 
-   private class GraphImpl( val wa: ProcWorldActor, thunk: => GE ) extends ProcGraph {
+   private class GraphImpl( thunk: => GE ) extends ProcGraph {
       def fun : GE = thunk
 
-      def play( target: Group )( implicit tx: ProcTxn ) : ProcRunning = new GraphBuilderImpl( this, tx ).play( target )
+      def play( target: RichGroup )( implicit tx: ProcTxn ) : ProcRunning =
+         new GraphBuilderImpl( this, tx ).play( target )
    }
 
    // ---------------------------- ProcGraphBuilder implementation ----------------------------
@@ -430,21 +430,29 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          }
       }
 
-      def play( target: Group ) : ProcRunning = {
+      def play( target: RichGroup ) : ProcRunning = {
          ProcGraphBuilder.use( this ) {
             val g          = SynthGraph.wrapOut( graph.fun, None )
             val server     = Proc.local.server
-            val addAction  = addToHead
+            val rsd        = RichSynthDef( server, g )( tx )
+//            rsd.recv( tx )
+//            val addAction  = addToHead
             val args       = controls.toSeq
-            val synth      = Synth( server )
-            val bufs: Seq[ RichBuffer ] = buffers.map( _.create( synth )( tx ))( breakOut )
-            val rs         = graph.wa.addSynth( synth, g, synth.newMsg( _, target, args, addAction ), bufs )( tx )
-            new RunningImpl( graph.wa, rs )
+//            val synth      = Synth( server )
+            val bufSeq     = buffers.toSeq
+            val bufs       = bufSeq.map( _.create( server )( tx ))
+//            val rs         = ProcDemiurg.addSynth( synth, g, synth.newMsg( _, target, args, addAction ), bufs )( tx )
+            val rs         = rsd.play( target, args, addToHead, bufs )( tx )
+            bufSeq.zip( bufs ).foreach( tup => {
+               val (b, rb) = tup
+               b.disposeWith( rb, rs )
+            })
+            new RunningImpl( rs )
          }
       }
    }
 
-   private class RunningImpl( wa: ProcWorldActor, rs: RichSynth ) extends ProcRunning {
+   private class RunningImpl( rs: RichSynth ) extends ProcRunning {
       import ProcRunning._
       
 //      var pendingControls
@@ -455,19 +463,22 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      synth.server ! synthNewMsg
 
       def stop( implicit tx: ProcTxn ) = {
-         wa.add( rs, rs.synth.freeMsg )
+//         wa.add( rs, rs.synth.freeMsg )
+         rs.free()
       }
 
       def setString( name: String, value: String )( implicit tx: ProcTxn ) { error( "not yet supported" )}
 
       def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) {
-         wa.add( rs, rs.synth.setMsg( name -> value ))
+//         wa.add( rs, rs.synth.setMsg( name -> value ))
+         rs.set( true, name -> value )
       }
 
       def setAudioBus( name: String, value: AudioBus )( implicit tx: ProcTxn ) { error( "not yet supported" )}
 
-      def setGroup( g: Group )( implicit tx: ProcTxn ) {
-         wa.add( rs, rs.synth.moveToHeadMsg( g ))
+      def setGroup( g: RichGroup )( implicit tx: ProcTxn ) {
+//         wa.add( rs, rs.synth.moveToHeadMsg( g ))
+         rs.moveToHead( true, g )
       }
    }
 
@@ -520,16 +531,20 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //         b.allocMsg( 32768, numChannels, b.cueMsg( path ))
 //      }
 
-      def create( synth: Synth )( implicit tx: ProcTxn ) : RichBuffer = {
-         val server = synth.server
+      def create( server: Server )( implicit tx: ProcTxn ) : RichBuffer = {
          val b = Buffer( server )
-         synth.onEnd { server ! b.closeMsg( b.freeMsg )}
-         val allocMsg = b.allocMsg( 32768, numChannels, b.cueMsg( path( tx )))
-         val rb = RichBuffer( b, RichObject.Pending( tx.syncID ))
-         tx.addFirst( server, allocMsg )
-         tx.addFirstAbort( server ) { b.release }
-         tx.addSecondAbort( server, b.closeMsg( b.freeMsg( release = false )))
+//         val allocMsg = b.allocMsg( 32768, numChannels, b.cueMsg( path( tx )))
+         val rb = RichBuffer( b )
+         rb.alloc( 32768, numChannels )
+         rb.cue( path( tx ))
+//         tx.addFirst( server, allocMsg )
+//         tx.addFirstAbort( server ) { b.release }
+//         tx.addSecondAbort( server, b.closeMsg( b.freeMsg( release = false )))
          rb
+      }
+
+      def disposeWith( rb: RichBuffer, rs: RichSynth ) {
+         rs.synth.onEnd { rb.server ! rb.buf.closeMsg( rb.buf.freeMsg )} // XXX update RichBuffer fields !
       }
 
       def numChannels : Int = {
