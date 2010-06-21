@@ -69,3 +69,9 @@ trait Proc {
    private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit
    private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) : Unit
 }
+
+case class ProcEdge( out: ProcAudioOutput, in: ProcAudioInput )
+extends Topology.Edge[ Proc ] {
+   def sourceVertex = out.proc
+   def targetVertex = in.proc
+}

@@ -35,10 +35,6 @@ trait ProcEntry {
    def play( target: RichGroup )( implicit tx: ProcTxn ) : ProcRunning
 }
 
-//trait ProcPlayable {
-//   def play : ProcRunning
-//}
-
 trait ProcGraph extends ProcEntry {
 }
 

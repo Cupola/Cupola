@@ -39,14 +39,6 @@ class Ref[ @specialized T ] private( c: CRef[ T ]) {
 }
 
 object Ref {
-//   def apply[ @specialized T ]( initialValue: T ) : Ref[ T ] = initialValue match {
-//      case s: Int       => new Ref( CRef( s ))
-//      case s: Long      => new Ref( CRef( s ))
-//      case s: Float     => new Ref( CRef( s ))
-//      case s: Double    => new Ref( CRef( s ))
-//      case s: Boolean   => new Ref( CRef( s ))
-//      case _            => new Ref( CRef( initialValue ))
-//   }
    def apply[ @specialized T ]( initialValue: T )( implicit m: ClassManifest[ T ]) : Ref[ T ] =
       new Ref( CRef( initialValue ))
 }

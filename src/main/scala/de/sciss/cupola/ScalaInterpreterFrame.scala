@@ -74,18 +74,17 @@ val h = gen( "process2" ) {
 
 val p = h.make
 
-ProcTxn.atomic { implicit t =>
+// ProcTxn.atomic { implicit t =>
     p.setString( "path", audioDir + "ZahnradGong1 den-L.aif" )
     p.setFloat( "speed", 4 )
     p.play
-}
+// }
 
 p.setFloat( "speed", 0.25f )
 p.stop
-p.play; p.stop    // this is safe now!
+p.play; p.stop    // this has problems again ...
 
-val fut = p.getFloat( "speed" )
-if( fut.isSet ) println( fut() )
+
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 

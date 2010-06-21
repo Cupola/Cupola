@@ -35,13 +35,7 @@ import ProcTxn._
 /**
  *    @version 0.11, 21-Jun-10
  */
-object RichObject {
-//   sealed abstract class State
-//   case class Pending( syncID: Int ) extends State
-//   case object Online extends State
-}
-
-trait RichObject { /* def state: RichObject.State; */ def server: Server }
+trait RichObject { def server: Server }
 
 case class RichBuffer( buf: Buffer ) extends RichObject {
    val isOnline: RichState   = new RichState( "isOnline", false )
@@ -50,8 +44,6 @@ case class RichBuffer( buf: Buffer ) extends RichObject {
    def server = buf.server
 
    def alloc( numFrames: Int, numChannels: Int = 1 )( implicit tx: ProcTxn ) {
-//      val wasOnline = isOnline.swap( true )
-//      if( !wasOnline )
       tx.add( buf.allocMsg( numFrames, numChannels ), Some( (RequiresChange, isOnline, true) ), false )
    }
 
@@ -67,7 +59,7 @@ abstract class RichNode( val initOnline : Boolean ) extends RichObject {
    def server = node.server
 
    def free( audible: Boolean = true )( implicit tx: ProcTxn ) {
-      tx.add( node.freeMsg, Some( (IfChanges, isOnline, false) ), audible )
+      tx.add( node.freeMsg, Some( (IfChanges, isOnline, false) ), audible, Map( isOnline -> true ))
    }
 
    def set( audible: Boolean, pairs: ControlSetMap* )( implicit tx: ProcTxn ) {
@@ -122,21 +114,9 @@ class RichGroup private( val group: Group, initOnline: Boolean ) extends RichNod
 object RichSynthDef {
    def apply( server: Server, graph: SynthGraph )( implicit tx: ProcTxn ) : RichSynthDef =
       ProcDemiurg.getSynthDef( server, graph )
-
-//   private class IsOnline extends RichState {
-//      val value = Ref( false )
-//      def isSatisfied( value: AnyRef )( implicit tx: ProcTxn ) = this.value() == value
-////      def currentState( implicit tx: ProcTxn ) : AnyRef = value()
-//      def swap( newValue: AnyRef )( implicit tx: ProcTxn ) : AnyRef = {
-//         value.swap( newValue.asInstanceOf[ Boolean ]).asInstanceOf[ AnyRef ]
-//      }
-//   }
 }
 
 case class RichSynthDef( server: Server, synthDef: SynthDef ) extends RichObject {
-   import RichSynthDef._
-   
-//   val online = Ref( false )
    val isOnline: RichState = new RichState( "isOnline", false )
 
    def name : String = synthDef.name
