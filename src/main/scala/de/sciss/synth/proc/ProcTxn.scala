@@ -155,7 +155,7 @@ val server = Server.default // XXX vergación
 
          if( verbose ) println( "TXN ADD : " + (msg, change, audible, dependancies) )
 
-         def processDeps {
+         def processDeps : Entry = {
             dependancies.foreach( tup => {
                val (state, value) = tup
                if( !stateMap.contains( state )) {
@@ -164,10 +164,7 @@ val server = Server.default // XXX vergación
             })
             val entry = Entry( msg, change, audible, dependancies )
             entries = entries.enqueue( entry )
-            change.foreach( tup => {
-               val (_, state, value) = tup
-               entryMap += (state, value) -> entry
-            })
+            entry
          }
 
          change.map( tup => {
@@ -178,7 +175,8 @@ val server = Server.default // XXX vergación
                // it is important that processDeps is
                // executed before state.set as the object
                // might depend on a current state of its own
-               processDeps
+               val entry = processDeps
+               entryMap += (state, value) -> entry
                if( changed ) state.set( value )( tx )
             }
          }).getOrElse( processDeps )
