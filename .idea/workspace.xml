@@ -69,10 +69,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ProcTxn.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="ProcTxn.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTxn.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="57" column="22" selection-start="1909" selection-end="1909" vertical-scroll-proportion="0.0">
+            <state line="179" column="60" selection-start="6391" selection-end="6391" vertical-scroll-proportion="0.84008527">
               <folding />
             </state>
           </provider>
@@ -123,10 +123,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="RichObject.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="RichObject.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/RichObject.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="61" column="98" selection-start="2120" selection-end="2120" vertical-scroll-proportion="0.6567164">
+            <state line="61" column="98" selection-start="2120" selection-end="2120" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -171,11 +171,11 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Package.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/package.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcWorld.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTxn.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/RichObject.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTxn.scala" />
       </list>
     </option>
   </component>
@@ -760,20 +760,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTxn.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="57" column="22" selection-start="1909" selection-end="1909" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="75" column="29" selection-start="2874" selection-end="2874" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="87" column="0" selection-start="2181" selection-end="2181" vertical-scroll-proportion="0.0">
@@ -790,7 +776,21 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/RichObject.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="61" column="98" selection-start="2120" selection-end="2120" vertical-scroll-proportion="0.6567164">
+        <state line="61" column="98" selection-start="2120" selection-end="2120" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="75" column="29" selection-start="2874" selection-end="2874" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTxn.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="179" column="60" selection-start="6391" selection-end="6391" vertical-scroll-proportion="0.84008527">
           <folding />
         </state>
       </provider>

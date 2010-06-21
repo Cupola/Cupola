@@ -155,16 +155,7 @@ val server = Server.default // XXX vergación
 
          if( verbose ) println( "TXN ADD : " + (msg, change, audible, dependancies) )
 
-         val filter = change.map( tup => {
-            val (mode, state, value) = tup
-            val changed = state.get( tx ) != value
-            require( changed || (mode != RequiresChange) )
-            val res = changed || (mode == Always)
-            if( res ) state.set( value )( tx )
-            res
-         }).getOrElse( true )
-
-         if( filter ) {
+         def processDeps {
             dependancies.foreach( tup => {
                val (state, value) = tup
                if( !stateMap.contains( state )) {
@@ -175,9 +166,22 @@ val server = Server.default // XXX vergación
             entries = entries.enqueue( entry )
             change.foreach( tup => {
                val (_, state, value) = tup
-               entryMap += (state, value) -> entry 
+               entryMap += (state, value) -> entry
             })
          }
+
+         change.map( tup => {
+            val (mode, state, value) = tup
+            val changed = state.get( tx ) != value
+            require( changed || (mode != RequiresChange) )
+            if( changed || (mode == Always) ) {
+               // it is important that processDeps is
+               // executed before state.set as the object
+               // might depend on a current state of its own
+               processDeps
+               if( changed ) state.set( value )( tx )
+            }
+         }).getOrElse( processDeps )
       }
 
       private def establishDependancies : (IntMap[ IQueue[ OSCMessage ]], Int) = {
