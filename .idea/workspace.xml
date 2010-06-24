@@ -90,7 +90,7 @@
       <file leaf-file-name="ProcFactoryBuilder.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="124" column="99" selection-start="4486" selection-end="4486" vertical-scroll-proportion="0.8325991">
+            <state line="34" column="46" selection-start="1243" selection-end="1243" vertical-scroll-proportion="0.7687225">
               <folding />
             </state>
           </provider>
@@ -1088,7 +1088,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="124" column="99" selection-start="4486" selection-end="4486" vertical-scroll-proportion="0.8325991">
+        <state line="34" column="46" selection-start="1243" selection-end="1243" vertical-scroll-proportion="0.7687225">
           <folding />
         </state>
       </provider>

@@ -76,6 +76,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       private var pAudioIns                  = Vector.empty[ ProcParamAudioInput ]
       private var pAudioOuts                 = Vector.empty[ ProcParamAudioOutput ]
 
+      private var implicitAudioIn   = false
+      private var implicitAudioOut  = false
+
       @inline private def requireOngoing = require( !finished, "ProcFactory build has finished" )
 
       def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat = {
@@ -108,24 +111,21 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          p
       }
 
-      def graph( thunk: => GE ) : ProcGraph = {
-         requireOngoing
-         require( graph.isEmpty, "Graph already defined" )
-         val fun = () => thunk
-         val res = new GraphImpl( fun )
-         graph = Some( res )
-         enter( res )
+//      def graph( thunk: => GE ) : ProcGraph = graph( () => thunk )
+
+      def graph( fun: GE => GE ) : ProcGraph = {
+         val res = graph( fun( Proc.local.getParam( "in" ).asInstanceOf[ ProcParamAudioInput ].ar ))
+         implicitAudioIn = true
          res
       }
 
-      def graph( fun: GE => GE ) : ProcGraph = {
+      def graph( thunk: => GE ) : ProcGraph = {
          requireOngoing
          require( graph.isEmpty, "Graph already defined" )
-//         val fun2 = () => fun( DSL.procToAudioInput( Proc.local ))
-         val fun2 = () => fun( Proc.local.getParam( "in" ).asInstanceOf[ ProcParamAudioInput ].ar )
-         val res = new GraphImpl( fun2 )
+         val res = new GraphImpl( thunk )
          graph = Some( res )
          enter( res )
+         implicitAudioOut = true
          res
       }
 
@@ -148,8 +148,14 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       def finish : ProcFactory = {
          requireOngoing
-         finished = true
          require( entry.isDefined, "No entry point defined" )
+         if( implicitAudioIn && !params.contains( "in" )) {
+            pAudioIn( "in", None )
+         }
+         if( implicitAudioOut && !params.contains( "out" )) {
+            pAudioOut( "out", None )
+         }
+         finished = true
          new FactoryImpl( name, entry.get, params, pAudioIns, pAudioOuts )
       }
 
@@ -339,7 +345,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
    // ---------------------------- ProcGraph implementation ----------------------------
 
-   private class GraphImpl( val fun: () => GE ) extends ProcGraph {
+   private class GraphImpl( thunk: => GE ) extends ProcGraph {
+      def fun = thunk
       def play( target: RichGroup )( implicit tx: ProcTxn ) : ProcRunning =
          new GraphBuilderImpl( this, tx ).play( target )
    }
@@ -371,7 +378,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       def play( target: RichGroup ) : ProcRunning = {
          ProcGraphBuilder.use( this ) {
-            val g          = SynthGraph.wrapOut( graph.fun(), None )
+            val g          = SynthGraph.wrapOut( graph.fun, None )
             val server     = Proc.local.server
             val rsd        = RichSynthDef( server, g )( tx )
 //            rsd.recv( tx )
