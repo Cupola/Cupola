@@ -31,7 +31,7 @@ extends JFrame( "Scala Interpreter" ) {
 """// Press '""" + KeyEvent.getKeyModifiersText( txnKeyStroke.getModifiers() ) + " + " +
       KeyEvent.getKeyText( txnKeyStroke.getKeyCode() ) + """' to execute transactionally.
 
-val g = gen( "process1" ) {
+val g1 = gen( "process1" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
 
     graph {
@@ -39,25 +39,22 @@ val g = gen( "process1" ) {
     }
 }
 
-val p = g.make
+val p1 = g1.make
 
-p.setFloat( "freq", 441 )
-p.play
+p1.setFloat( "freq", 441 )
+p1.play
 
+val g2 = gen( "process2" ) {
+    val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
 
-ProcTxn.atomic { implicit t =>
-    p.setFloat( "freq", 441 )
-    p.play
-    p.stop  // this one doesn't work yet regarding sync
+    graph { in =>
+        in * SinOsc.ar( p1.kr )
+    }
 }
 
-p.stop
-
-s.dumpOSC(1)
-ProcTxn.atomic( implicit t => p.setFloat( "freq", 441 ))
-ProcTxn.atomic( implicit t => p.getFloat( "freq" ))
-ProcTxn.atomic( implicit t => p.play )
-ProcTxn.atomic( implicit t => p.stop )
+val p2 = g2.make
+p1 ~> p2
+p2.play
 
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"

@@ -1,0 +1,45 @@
+=== algorithmus p1 ~> p2 (add patch) ===
+
+aout := p1 audio output
+ain  := p2 audio input
+edge := aout -> ain
+
+edgeMap.contains( edge ) ? error
+
+addEdge( edge ) -> cyclic graph ? error
+create groups if necessary / move existing groups if necessary
+
+create + set output bus if necessary
+was silent-bus ? : after-commit : free silent-bus
+: after-rollback --> free bus
+// --> future refinement: re-use buses if possible
+
+check ain
+- was patched --> disconnect
+// --> future enhancement : special multi-in-bus (for summing)
+- numChannels changed && p2 playing --> stop p2
+- set input bus
+- numChannels changed && p2 was playing?
+  [ALGO1]( proc = p2 ) :=
+    - start proc 
+    - for each pAudioOutBus if numChannels changes:
+	- each target vertex playing --> stop proc
+	- free old synthetic bus
+	- create + assign new bus
+	- stopped procs : start [ALGO1]( _ )
+// note: (23-jun-10) : ProcParamAudioOutBus:ar needs change
+
+
+=== algorithmus p1 ~/> p2 (remove patch) ===
+
+aout := p1 audio output
+ain  := p2 audio input
+edge := aout -> ain
+
+!edgeMap.contains( edge ) ? error
+last edge of aout ?
+- sb := [ALLOC-SILENT-BUS]( numChannels )
+- set aout bus to sb
+- : after-commit --> free bus
+- : after-rollback --> free sb
+

@@ -28,17 +28,73 @@
 
 package de.sciss.synth.proc
 
-import edu.stanford.ppl.ccstm.{ Ref => CRef }
+import edu.stanford.ppl.ccstm.{Txn, Ref => CRef}
 
-class Ref[ @specialized T ] private( c: CRef[ T ]) {
-    def apply()( implicit tx: ProcTxn ) : T  = c.apply()( tx.ccstm )
-    def set( v: T )( implicit tx: ProcTxn ) : Unit = c.set( v )( tx.ccstm )
-    def swap( v: T )( implicit tx: ProcTxn ) : T = c.swap( v )( tx.ccstm )   
-    def transform( f: T => T )( implicit tx: ProcTxn ) : Unit = c.transform( f )( tx.ccstm )
-    def transformIfDefined( pf: PartialFunction[ T, T ])( implicit tx: ProcTxn ) : Boolean = c.transformIfDefined( pf )( tx.ccstm )
+/**
+ *    @version 0.11, 24-Jun-10
+ */
+trait Ref[ @specialized T ] {
+    def apply()( implicit tx: ProcTxn ) : T
+    def set( v: T )( implicit tx: ProcTxn ) : Unit
+    def swap( v: T )( implicit tx: ProcTxn ) : T
+    def transform( f: T => T )( implicit tx: ProcTxn ) : Unit
+    def transformIfDefined( pf: PartialFunction[ T, T ])( implicit tx: ProcTxn ) : Boolean
+
+    def +=( rhs: T )( implicit tx: ProcTxn, num: Numeric[ T ]): Unit
 }
 
 object Ref {
+   def make[ @specialized T ]( implicit m: ClassManifest[ T ]) : Ref[ T ] =
+      new Impl( CRef.make[ T ])
+
    def apply[ @specialized T ]( initialValue: T )( implicit m: ClassManifest[ T ]) : Ref[ T ] =
-      new Ref( CRef( initialValue ))
+      new Impl( CRef( initialValue ))
+
+// SCALA BUG : CANNOT OVERLOAD
+//   def apply[ @specialized T ]( initialValue: T, cleanUp: PartialFunction[ T, Unit ])
+//                              ( implicit m: ClassManifest[ T ]) : Ref[ T ] =
+
+   def withCheck[ @specialized T ]( initialValue: T )( cleanUp: PartialFunction[ T, Unit ])
+                              ( implicit m: ClassManifest[ T ]) : Ref[ T ] =
+      new CleanUpImpl( CRef( initialValue ), cleanUp )
+
+   private class Impl[ T ]( c: CRef[ T ]) extends Ref[ T ] {
+      def apply()( implicit tx: ProcTxn ) : T  = c.apply()( tx.ccstm )
+      def set( v: T )( implicit tx: ProcTxn ) : Unit = c.set( v )( tx.ccstm )
+      def swap( v: T )( implicit tx: ProcTxn ) : T = c.swap( v )( tx.ccstm )
+      def transform( f: T => T )( implicit tx: ProcTxn ) : Unit = c.transform( f )( tx.ccstm )
+      def transformIfDefined( pf: PartialFunction[ T, T ])( implicit tx: ProcTxn ) : Boolean =
+         c.transformIfDefined( pf )( tx.ccstm )
+
+      def +=( rhs: T )( implicit tx: ProcTxn, num: Numeric[ T ]): Unit = c.+=( rhs )( tx.ccstm, num )   
+
+      override def toString = c.toString
+   }
+
+   private class CleanUpImpl[ T ]( _c: CRef[ T ], fun: PartialFunction[ T, Unit ])
+   extends Impl( _c ) {
+      private val touched = CRef( false )
+
+      private def touch( tx: ProcTxn ) {
+         implicit val t = tx.ccstm
+         if( !touched.swap( true )) t.beforeCommit( _ => {
+            touched.set( false )  // make sure it is reset for the next transaction
+            val aqui = _c()
+            if( fun.isDefinedAt( aqui ) ) {
+                 t.addWriteResource( new Txn.WriteResource {
+                     def prepare( t: Txn )         = true
+                     def performCommit( t: Txn )   = fun( aqui )
+                     def performRollback( t: Txn ) = ()
+                 }, Int.MaxValue )
+             }
+         }, Int.MaxValue )
+      }
+
+      override def set( v: T )( implicit tx: ProcTxn ) : Unit = { touch( tx ); super.set( v )}
+      override def swap( v: T )( implicit tx: ProcTxn ) : T = { touch( tx ); super.swap( v )}
+      override def transform( f: T => T )( implicit tx: ProcTxn ) : Unit = { touch( tx ); super.transform( f )}
+      override def transformIfDefined( pf: PartialFunction[ T, T ])( implicit tx: ProcTxn ) : Boolean = {
+         touch( tx ); super.transformIfDefined( pf )
+      }
+   }
 }

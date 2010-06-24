@@ -45,17 +45,17 @@ object DSL {
 
    // ---- scope : gen (ProcFactoryBuilder) ----
 
-   def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat =
+   def pFloat( name: String, spec: ParamSpec = ParamSpec(), default: Option[ Float ] = None ) : ProcParamFloat =
       ProcFactoryBuilder.local.pFloat( name, spec, default )
-   def pString( name: String, default: Option[ String ]) : ProcParamString =
+   def pString( name: String, default: Option[ String ] = None ) : ProcParamString =
       ProcFactoryBuilder.local.pString( name, default )
-   def pAudioIn( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioInBus =
+   def pAudioIn( name: String, default: Option[ RichBus ] = None ) : ProcParamAudioInput =
       ProcFactoryBuilder.local.pAudioIn( name, default )
-   def pAudioOut( name: String, default: Option[ (Int, Int) ]) : ProcParamAudioOutBus =
+   def pAudioOut( name: String, default: Option[ RichBus ] = None ) : ProcParamAudioOutput =
       ProcFactoryBuilder.local.pAudioOut( name, default )
 
    def graph( thunk: => GE ) : ProcGraph = ProcFactoryBuilder.local.graph( thunk )
-//   def enter( entry: ProcEntry ) : Unit = ProcFactoryBuilder.local.enter( entry )
+   def graph( fun: GE => GE ) : ProcGraph = ProcFactoryBuilder.local.graph( fun )
 
    def bufCue( name: String, path: String ) : ProcBuffer =
       ProcFactoryBuilder.local.bufCue( name, path )

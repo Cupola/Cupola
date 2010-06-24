@@ -54,8 +54,10 @@ trait Proc {
    def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc
    def getString( name: String )( implicit tx: ProcTxn ) : String
    def setString( name: String, value: String )( implicit tx: ProcTxn ) : Proc
-   def getAudioBus( name: String )( implicit tx: ProcTxn ) : AudioBus
-   def setAudioBus( name: String, value: AudioBus )( implicit tx: ProcTxn ) : Proc
+   def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichBus
+   def setAudioBus( name: String, value: RichBus )( implicit tx: ProcTxn ) : Proc
+
+   private[proc] def getParam( name: String ) : ProcParam[ _ ]
 
    def audioInput( name: String ) : ProcAudioInput
    def audioOutput( name: String ) : ProcAudioOutput
@@ -65,9 +67,9 @@ trait Proc {
    def group( implicit tx: ProcTxn ) : Option[ RichGroup ]
    private[proc] def setGroup( g: RichGroup )( implicit tx: ProcTxn ) : Unit
 
-   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
-   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit
-   private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) : Unit
+//   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
+//   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit
+//   private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) ) : Unit
 }
 
 case class ProcEdge( out: ProcAudioOutput, in: ProcAudioInput )

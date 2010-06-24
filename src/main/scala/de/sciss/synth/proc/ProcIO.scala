@@ -31,16 +31,19 @@ package de.sciss.synth.proc
 /**
  *    @version 0.11, 21-Jun-10
  */
-trait ProcAudioOutput {
+sealed trait ProcAudioBus {
+   def proc : Proc
+   def bus( implicit tx: ProcTxn ): Option[ RichBus ]
+   def bus_=( newBus: Option[ RichBus ])( implicit tx: ProcTxn ): Unit
+}
+
+trait ProcAudioOutput extends ProcAudioBus {
    def ~>  ( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioInput
    def ~/> ( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioOutput
    def ~|  ( insert: (ProcAudioInput, ProcAudioOutput) )( implicit tx: ProcTxn ) : ProcAudioInsertion
-   def proc : Proc
 }
 
-trait ProcAudioInput {
-   def proc : Proc
-}
+trait ProcAudioInput extends ProcAudioBus
 
 trait ProcAudioInsertion {
    def |> ( in: ProcAudioInput ) : ProcAudioInput

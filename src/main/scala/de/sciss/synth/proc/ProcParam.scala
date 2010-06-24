@@ -32,7 +32,7 @@ import de.sciss.synth._
 import ugen.{Out, In}
 
 /**
- *    @version 0.11, 17-Jun-10
+ *    @version 0.12, 24-Jun-10
  */
 sealed trait ProcParam[ T ] {
 //   type t = T
@@ -67,16 +67,16 @@ trait ProcParamFloat extends ProcParam[ Float ] {
 trait ProcParamString extends ProcParam[ String ] {
 }
 
-sealed trait ProcParamAudioBus extends ProcParam[ (Int, Int) ] {
+sealed trait ProcParamAudioBus extends ProcParam[ RichBus ] {
    def index : GE = {
       ProcGraphBuilder.local.includeParam( this )
-      name.kr( default.map( _._1 ).getOrElse( 0 ))
+      name.kr( 0 ) // default.map( _._1 ).getOrElse( 0 )) // XXX
    }
 
    def numChannels : Int
 }
 
-trait ProcParamAudioInBus extends ProcParamAudioBus {
+trait ProcParamAudioInput extends ProcParamAudioBus {
    def ar : GE = {
 // note: index already includes the parameter
 //      ProcGraphBuilder.local.includeParam( this )
@@ -84,7 +84,7 @@ trait ProcParamAudioInBus extends ProcParamAudioBus {
    }
 }
 
-trait ProcParamAudioOutBus extends ProcParamAudioBus {
+trait ProcParamAudioOutput extends ProcParamAudioBus {
    def ar( sig: GE ) : GE = {
 // note: index already includes the parameter
 //      ProcGraphBuilder.local.includeParam( this )

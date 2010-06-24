@@ -1,0 +1,24 @@
+import edu.stanford.ppl.ccstm._
+
+val x = Ref( 3 )
+val touched = Ref( false )
+def dec { STM.atomic { implicit t0 =>
+   t0.beforeCommit( implicit t1 => {
+       println( "BEFORE COMMIT" )
+       if( x()( t1 ) == 0 ) {
+           println( "IS ZERO" )
+           t1.addWriteResource( new Txn.WriteResource {
+               def prepare( t: Txn ) = true
+               def performCommit( t: Txn ) {
+                   println( "COMMIT --> FREE" )
+               }
+               def performRollback( t: Txn ) {
+                   println( "ROLLBACK --> IGNORE" )
+               }
+           }, Int.MaxValue )
+       }
+   }, Int.MaxValue )
+   x -= 1
+   if( x() < 0 ) error( "GAGA" )
+}}
+
