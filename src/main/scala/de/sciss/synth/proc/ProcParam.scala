@@ -44,6 +44,9 @@ sealed trait ProcParam[ T ] {
 //   def get : T = Proc.local.getParam[ T ]( name )
 }
 
+class ProcParamUnspecifiedException( name: String )
+extends RuntimeException( "Proc parameter unspecified: "  + name )
+                                                                                                             
 trait ProcParamFloat extends ProcParam[ Float ] {
 //   def kr      : GE = name.kr( default.getOrElse( spec.lo ))
 //   def mapKr   : GE = spec.map( name.kr( spec.unmap( default.getOrElse( spec.lo ))))
@@ -68,26 +71,32 @@ trait ProcParamString extends ProcParam[ String ] {
 }
 
 sealed trait ProcParamAudioBus extends ProcParam[ RichBus ] {
-   def index : GE = {
-      ProcGraphBuilder.local.includeParam( this )
-      name.kr( 0 ) // default.map( _._1 ).getOrElse( 0 )) // XXX
-   }
+//   def index : GE = {
+//      ProcGraphBuilder.local.includeParam( this )
+//      name.kr( 0 ) // default.map( _._1 ).getOrElse( 0 )) // XXX
+//   }
+//
 
+   // ---- scope: graph ----
    def numChannels : Int
 }
 
 trait ProcParamAudioInput extends ProcParamAudioBus {
-   def ar : GE = {
-// note: index already includes the parameter
-//      ProcGraphBuilder.local.includeParam( this )
-      In.ar( index, numChannels )
-   }
+   // ---- scope: graph ----
+   def ar : GE
+//   = {
+//// note: index already includes the parameter
+////      ProcGraphBuilder.local.includeParam( this )
+//      In.ar( index, numChannels )
+//   }
 }
 
 trait ProcParamAudioOutput extends ProcParamAudioBus {
-   def ar( sig: GE ) : GE = {
-// note: index already includes the parameter
-//      ProcGraphBuilder.local.includeParam( this )
-      Out.ar( index, sig )
-   }
+   // ---- scope: graph ----
+   def ar( sig: GE ) : GE
+//   = {
+//// note: index already includes the parameter
+////      ProcGraphBuilder.local.includeParam( this )
+//      Out.ar( index, sig )
+//   }
 }

@@ -32,7 +32,7 @@ import de.sciss.synth.{Server, Bus}
 import collection.immutable.{ SortedMap => ISortedMap, SortedSet => ISortedSet }
 
 /**
- *    @version 0.10, 24-Jun-10
+ *    @version 0.10, 25-Jun-10
  */
 trait RichBus {
    import RichBus._
@@ -61,7 +61,7 @@ object RichBus {
    }
 
    trait User {
-      def busChanged( index: Int )( implicit tx: ProcTxn )
+      def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) : Unit
    }
 
    private class BusHolder( bus: Bus ) {
@@ -136,13 +136,13 @@ object RichBus {
    private case class HardwareImpl( server: Server, index: Int, numChannels: Int )
    extends RichBus {
       def addReader( u: User )( implicit tx: ProcTxn ) {
-         u.busChanged( index  )
+         u.busChanged( index, numChannels  )
       }
 
       def removeReader( u: User )( implicit tx: ProcTxn ) {}
 
       def addWriter( u: User )( implicit tx: ProcTxn ) {
-         u.busChanged( index )
+         u.busChanged( index, numChannels )
       }
 
       def removeWriter( u: User )( implicit tx: ProcTxn ) {}
@@ -165,10 +165,11 @@ object RichBus {
                val res = allocReadOnlyBus( server, numChannels )
                bus.set( res )
                res
-            } else { // dispose old dummy  bus, create new bus
+            } else { // dispose old dummy bus, create new bus
                val res     = allocBus( server, numChannels )
                val idx     = res.index
-               r.foreach( _.busChanged( idx ))
+               r.foreach( _.busChanged( idx, numChannels ))
+               w.foreach( _.busChanged( idx, numChannels ))
                val oldBus  = bus.swap( res )
                oldBus.free
                res
@@ -179,11 +180,37 @@ object RichBus {
             res
          }
          readers.transform( _ + u )
-         u.busChanged( newBus.index )
+         // always perform this on the newly added
+         // reader no matter if the bus is new:
+         u.busChanged( newBus.index, numChannels )
       }
 
       def addWriter( u: User )( implicit tx: ProcTxn ) {
-         error( "NOT YET IMPLEMENTED" )
+         val w       = writers()
+         val newBus  = if( w.size == 0 ) {
+            val r = readers()
+            if( r.size == 0 ) { // no bus yet, create an empty shared one
+               val res = allocWriteOnlyBus( server, numChannels )
+               bus.set( res )
+               res
+            } else { // dispose old dummy bus, create new bus
+               val res     = allocBus( server, numChannels )
+               val idx     = res.index
+               r.foreach( _.busChanged( idx, numChannels ))
+               w.foreach( _.busChanged( idx, numChannels ))
+               val oldBus  = bus.swap( res )
+               oldBus.free
+               res
+            }
+         } else { // re-use existing bus
+            val res = bus()
+            res.alloc
+            res
+         }
+         writers.transform( _ + u )
+         // always perform this on the newly added
+         // reader no matter if the bus is new:
+         u.busChanged( newBus.index, numChannels )
       }
 
       def removeReader( u: User )( implicit tx: ProcTxn ) {

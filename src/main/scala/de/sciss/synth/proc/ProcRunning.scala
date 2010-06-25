@@ -41,6 +41,7 @@ trait ProcRunning extends Model {
    def stop( implicit tx: ProcTxn ) : Unit
    def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Unit
    def setString( name: String, value: String )( implicit tx: ProcTxn ) : Unit
-   def setAudioBus( name: String, value: RichBus )( implicit tx: ProcTxn ) : Unit
+//   def setAudioBus( name: String, value: RichBus )( implicit tx: ProcTxn ) : Unit
+   def busChanged( name: String, index: Int, numChannels: Int )( implicit tx: ProcTxn ) : Unit
    def setGroup( group: RichGroup )( implicit tx: ProcTxn ) : Unit
 }

@@ -81,7 +81,8 @@ object Cupola extends Actor {
    }
 
    private def init {
-      val sif  = new ScalaInterpreterFrame( /* ntp */ )
+      val support = new REPLSupport
+      val sif  = new ScalaInterpreterFrame( support /* ntp */ )
       val ssp  = new ServerStatusPanel()
       val sspw = ssp.makeWindow
       val ntp  = new NodeTreePanel()
@@ -98,7 +99,9 @@ object Cupola extends Actor {
             ntp.server = Some( srv )
             ProcDemiurg.addServer( srv )
             s = srv
-            sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
+            support.s = srv
+//println( "HERE" )
+//            sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
          }
       }
       Runtime.getRuntime().addShutdownHook( new Thread { override def run = shutDown })

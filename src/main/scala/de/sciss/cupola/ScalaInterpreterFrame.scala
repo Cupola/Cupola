@@ -12,11 +12,12 @@ import javax.swing._
 /**
  *    @version 0.11, 04-Jun-10
  */
-class ScalaInterpreterFrame( /* s: Server, ntp: NodeTreePanel*/ )
+class ScalaInterpreterFrame( support: REPLSupport /* s: Server, ntp: NodeTreePanel*/ )
 extends JFrame( "Scala Interpreter" ) {
    val pane = new ScalaInterpreterPane
-   private val sync = new AnyRef
-   private var inCode: Option[ Interpreter => Unit ] = None
+//   private val sync = new AnyRef
+//   private var inCode: Option[ Interpreter => Unit ] = None
+//   private var interpreter: Option[ Interpreter ] = None
 
    private val txnKeyStroke = {
       val ms = Toolkit.getDefaultToolkit.getMenuShortcutKeyMask
@@ -30,6 +31,8 @@ extends JFrame( "Scala Interpreter" ) {
       pane.initialText = pane.initialText +
 """// Press '""" + KeyEvent.getKeyModifiersText( txnKeyStroke.getModifiers() ) + " + " +
       KeyEvent.getKeyText( txnKeyStroke.getKeyCode() ) + """' to execute transactionally.
+
+s.dumpOSC(1)
 
 val g1 = gen( "process1" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
@@ -130,14 +133,17 @@ import de.sciss.synth.swing._
 import de.sciss.temporal._
 import de.sciss.synth.proc._
 import de.sciss.synth.proc.DSL._
+import support._
 """
       )
 
       pane.bindingsCreator = Some( (in: Interpreter ) => {
-         sync.synchronized {
-            inCode.foreach( _.apply( in ))
-         }
-//         in.bind( "s", classOf[ Server ].getName, s )
+//         sync.synchronized {
+//            interpreter = Some( in )
+//println( "bindingsCreator " + inCode.isDefined )
+//            inCode.foreach( _.apply( in ))
+//         }
+         in.bind( "support", classOf[ REPLSupport ].getName, support )
 //         in.bind( "ntp", classOf[ NodeTreePanel ].getName, ntp )
 //         in.bind( "in", classOf[ Interpreter ].getName, in )
       })
@@ -183,11 +189,12 @@ import _txnRes""" + txnId + """._
       })
    }
 
-   def withInterpreter( fun: Interpreter => Unit ) {
-      sync.synchronized {
-         pane.interpreter.map( fun( _ )) getOrElse {
-            inCode = Some( fun )
-         }
-      }
-   }
+//   def withInterpreter( fun: Interpreter => Unit ) {
+//      sync.synchronized {
+//println( "withInterpreter " + interpreter.isDefined )
+//         interpreter.map( fun( _ )) getOrElse {
+//            inCode = Some( fun )
+//         }
+//      }
+//   }
 }
