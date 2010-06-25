@@ -66,6 +66,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       }
    }
 
+   var verbose = false
+
    // ---------------------------- ProcFactoryBuilder implementation ----------------------------
 
    private class BuilderImpl( val name: String ) extends ProcFactoryBuilder {
@@ -318,7 +320,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      }
 
       private[proc] def busChanged( bus: ProcAudioBus, index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
-println( "PROC BUSCHANGED " + name + " / " + bus.name + " / " + index + " / " + running() )
+         if( verbose ) println( "PROC BUSCHANGED " + name + " / " + bus.name + " / " + index + " / " + running() )
          running().foreach( _.busChanged( bus.name, index, numChannels ))
       }
 
@@ -484,7 +486,7 @@ println( "PROC BUSCHANGED " + name + " / " + bus.name + " / " + index + " / " + 
       def name = param.name
 
       def bus_=( newBus: Option[ RichBus ])( implicit tx: ProcTxn ) {
-println( "IN BUS " + proc.name + " / " + newBus )
+         if( verbose ) println( "IN BUS " + proc.name + " / " + newBus )
          val oldBus = busRef.swap( newBus )
          if( oldBus != newBus ) { // crucial to avoid infinite loops
             oldBus.foreach( _.removeReader( this ))
@@ -501,7 +503,7 @@ println( "IN BUS " + proc.name + " / " + newBus )
       }
 
       def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
-println( "IN INDEX " + proc.name + " / " + index )
+         if( verbose ) println( "IN INDEX " + proc.name + " / " + index )
          indexRef.set( index )
          proc.busChanged( this, index, numChannels )
       }
@@ -518,7 +520,7 @@ println( "IN INDEX " + proc.name + " / " + index )
       def name = param.name
 
       def bus_=( newBus: Option[ RichBus ])( implicit tx: ProcTxn ) {
-println( "OUT BUS " + proc.name + " / " + newBus )
+         if( verbose ) println( "OUT BUS " + proc.name + " / " + newBus )
          val oldBus = busRef.swap( newBus )
          if( oldBus != newBus ) { // crucial to avoid infinite loops
             oldBus.foreach( _.removeWriter( this ))
@@ -535,7 +537,7 @@ println( "OUT BUS " + proc.name + " / " + newBus )
       }
 
       def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
-println( "OUT INDEX " + proc.name + " / " + index )
+         if( verbose ) println( "OUT INDEX " + proc.name + " / " + index )
          indexRef.set( index )
          proc.busChanged( this, index, numChannels )
       }

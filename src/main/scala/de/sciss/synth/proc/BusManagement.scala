@@ -159,9 +159,9 @@ object RichBus {
 
       def addReader( u: User )( implicit tx: ProcTxn ) {
          val r       = readers()
-         val newBus  = if( r.size == 0 ) {
+         val newBus  = if( r.isEmpty ) {
             val w = writers()
-            if( w.size == 0 ) { // no bus yet, create an empty shared one
+            if( w.isEmpty ) { // no bus yet, create an empty shared one
                val res = allocReadOnlyBus( server, numChannels )
                bus.set( res )
                res
@@ -187,18 +187,18 @@ object RichBus {
 
       def addWriter( u: User )( implicit tx: ProcTxn ) {
          val w       = writers()
-         val newBus  = if( w.size == 0 ) {
+         val newBus  = if( w.isEmpty ) {
             val r = readers()
-            if( r.size == 0 ) { // no bus yet, create an empty shared one
+            if( r.isEmpty ) { // no bus yet, create an empty shared one
                val res = allocWriteOnlyBus( server, numChannels )
                bus.set( res )
                res
             } else { // dispose old dummy bus, create new bus
                val res     = allocBus( server, numChannels )
                val idx     = res.index
+               val oldBus  = bus.swap( res )
                r.foreach( _.busChanged( idx, numChannels ))
                w.foreach( _.busChanged( idx, numChannels ))
-               val oldBus  = bus.swap( res )
                oldBus.free
                res
             }
@@ -214,11 +214,35 @@ object RichBus {
       }
 
       def removeReader( u: User )( implicit tx: ProcTxn ) {
-         error( "NOT YET IMPLEMENTED" )
+         readers.transform( _ - u )
+         val r       = readers()
+         val oldBus  = bus()
+         if( r.isEmpty ) {
+            val w = writers()
+            if( w.nonEmpty ) { // they can all go to write only
+               val res  = allocWriteOnlyBus( server, numChannels )
+               val idx  = res.index
+               bus.set( res )
+               w.foreach( _.busChanged( idx, numChannels ))
+            }
+         }
+         oldBus.free
       }
 
       def removeWriter( u: User )( implicit tx: ProcTxn ) {
-         error( "NOT YET IMPLEMENTED" )
+         writers.transform( _ - u )
+         val w       = writers()
+         val oldBus  = bus()
+         if( w.isEmpty ) {
+            val r = readers()
+            if( r.nonEmpty ) { // they can all go to write only
+               val res  = allocReadOnlyBus( server, numChannels )
+               val idx  = res.index
+               bus.set( res )
+               r.foreach( _.busChanged( idx, numChannels ))
+            }
+         }
+         oldBus.free
       }
    }
 

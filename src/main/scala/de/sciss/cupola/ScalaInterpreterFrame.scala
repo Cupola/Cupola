@@ -88,35 +88,30 @@ p.play; p.stop    // this has problems again ...
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
-val h = gen( "process2" ) {
+val h = gen( "process3" ) {
     val p1  = pFloat( "speed", ParamSpec(), Some( 1 ))
     val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
     val b   = bufCue( "disk", p2 )
-    val p3  = pAudioOut( "out", None )
+//    val p3  = pAudioOut( "out", None )
 
     graph {
-        val sig = VDiskIn.ar( b.numChannels, b.id, p1.kr * BufRateScale.ir( b.id ), loop = 1 )
-        p3.ar( sig )
+        VDiskIn.ar( b.numChannels, b.id, p1.kr * BufRateScale.ir( b.id ), loop = 1 )
+//        p3.ar( sig )
     }
 }
 
-val i = gen( "process3" ) {
+val i = gen( "process4" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 100 ))
-    val p2 = pAudioIn( "in", None )
+//    val p2 = pAudioIn( "in", None )
 
-    graph {
-        FreqShift.ar( p2.ar, p1.kr )
+    graph { in =>
+        FreqShift.ar( in, p1.kr )
     }
 }
 
 val p1 = h.make
 val p2 = i.make
 p1 ~> p2
-
-// XXX this should be done automatically by ~>
-val b = Bus.audio( Server.default, 2 )
-p1.setAudioBus( "out", b )
-p2.setAudioBus( "in", b )
 
 p1.play
 p2.play

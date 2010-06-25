@@ -89,6 +89,8 @@ case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unposi
    }
 
    def addVertex( v: V ) : T = {
+// XXX TEST
+//      copy( vertices.patch( unpositioned, Vector( v ), 0 ), unpositioned + 1 )
       copy( v +: vertices, unpositioned + 1 )
    }
 

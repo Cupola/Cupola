@@ -32,7 +32,7 @@ import de.sciss.synth._
 import de.sciss.scalaosc.{ OSCBundle, OSCMessage, OSCPacket }
 import actors.{ DaemonActor, Future, Futures, TIMEOUT }
 import edu.stanford.ppl.ccstm.{ STM, Txn }
-import collection.immutable.{ IntMap, Queue => IQueue, SortedMap => ISortedMap }
+import collection.immutable.{ IndexedSeq => IIdxSeq, IntMap, Queue => IQueue, Seq => ISeq, SortedMap => ISortedMap }
 import collection.mutable.{ HashMap, Queue => MQueue, Set => MSet }
 import collection.{ breakOut, SortedMap }
 import osc._
@@ -68,8 +68,12 @@ object ProcTxn {
       tx =>
 
       private var serverData  = Map.empty[ Server, ServerData ]
-
-      private var waitIDs  = Map.empty[ Server, Int ]
+//    private var waitIDs     = Map.empty[ Server, Int ]
+      private val syn         = new AnyRef
+      private var entries     = IQueue.empty[ Entry ]
+      private var entryMap    = Map.empty[ (RichState, Boolean), Entry ]
+      private var stateMap    = Map.empty[ RichState, Boolean ]
+      private var entryCnt    = 0 
 
       private class ServerData( val server: Server ) {
          var firstMsgs        = IQueue.empty[ OSCMessage ]
@@ -93,7 +97,8 @@ val server = Server.default // XXX vergación
             if( idx <= maxSync ) {
                val syncMsg    = server.syncMsg
                val syncID     = syncMsg.id
-               val bndl       = OSCBundle( msgs.enqueue( syncMsg ): _* )  
+//               val bndl       = OSCBundle( msgs.enqueue( syncMsg ): _* )
+               val bndl       = OSCBundle( (msgs :+ syncMsg): _* )
                val fut        = server !! (bndl, { case OSCSyncedMessage( syncID ) => true })
                // XXX should use heuristic for timeouts
                Futures.awaitAll( 10000L, fut ) match {
@@ -145,11 +150,6 @@ val server = Server.default // XXX vergación
             data
          })
 
-      private val syn      = new AnyRef
-      private var entries  = IQueue.empty[ Entry ]
-      private var entryMap = Map.empty[ (RichState, Boolean), Entry ]
-      private var stateMap = Map.empty[ RichState, Boolean ]
-
       def add( msg: OSCMessage with OSCSend, change: Option[ (FilterMode, RichState, Boolean) ], audible: Boolean,
                dependancies: Map[ RichState, Boolean ]) : Unit = syn.synchronized {
 
@@ -162,7 +162,8 @@ val server = Server.default // XXX vergación
                   stateMap += state -> state.get( tx )
                }
             })
-            val entry = Entry( msg, change, audible, dependancies )
+            val entry = Entry( entryCnt, msg, change, audible, dependancies )
+            entryCnt += 1
             entries = entries.enqueue( entry )
             entry
          }
@@ -182,7 +183,9 @@ val server = Server.default // XXX vergación
          }).getOrElse( processDeps )
       }
 
-      private def establishDependancies : (IntMap[ IQueue[ OSCMessage ]], Int) = {
+      // XXX IntMap lost. might eventually implement the workaround
+      // by jason zaugg : http://gist.github.com/452874
+      private def establishDependancies : (Map[ Int, IIdxSeq[ OSCMessage ]], Int) = {
          var topo = Topology.empty[ Entry, EntryEdge ]
 
          var clumpEdges = Map.empty[ Entry, Set[ Entry ]]
@@ -217,11 +220,13 @@ val server = Server.default // XXX vergación
          // clumping
          var clumpIdx   = 0
          var clumpMap   = Map.empty[ Entry, Int ]
-         var clumps     = IntMap.empty[ IQueue[ OSCMessage ]]
+//         var clumps     = IntMap.empty[ IQueue[ OSCMessage ]]
+         var clumps     = IntMap.empty[ List[ Entry ]]
          val audibleIdx = Int.MaxValue
          topo.vertices.foreach( targetEntry => {
             if( targetEntry.audible ) {
-               clumps += audibleIdx -> (clumps.getOrElse( audibleIdx, IQueue.empty ) enqueue targetEntry.msg)
+//               clumps += audibleIdx -> (clumps.getOrElse( audibleIdx, IQueue.empty ) enqueue targetEntry.msg)
+               clumps += audibleIdx -> (targetEntry :: clumps.getOrElse( audibleIdx, Nil ))
                clumpMap += targetEntry -> audibleIdx
             } else {
                val depIdx = clumpEdges.get( targetEntry ).map( set => {
@@ -229,7 +234,8 @@ val server = Server.default // XXX vergación
                }).getOrElse( -1 )
                if( depIdx > clumpIdx ) error( "Unsatisfied dependancy " + targetEntry )
                if( depIdx == clumpIdx ) clumpIdx += 1
-               clumps += clumpIdx -> (clumps.getOrElse( clumpIdx, IQueue.empty ) enqueue targetEntry.msg)
+//               clumps += clumpIdx -> (clumps.getOrElse( clumpIdx, IQueue.empty ) enqueue targetEntry.msg)
+               clumps += clumpIdx -> (targetEntry :: clumps.getOrElse( clumpIdx, Nil ))
                clumpMap += targetEntry -> clumpIdx
             }
          })
@@ -239,12 +245,34 @@ val server = Server.default // XXX vergación
             println( "clump #" + idx + " : " + msgs.toList )
          })
 
-         (clumps, if( clumps.contains( audibleIdx )) clumpIdx else clumpIdx - 1)
+         val sorted: Map[ Int, IIdxSeq[ OSCMessage ]] = clumps.mapValues(
+            _.sortWith( (a, b) => {
+               // here comes the tricky bit:
+               // preserve dependancies, but also
+               // entry indices in the case that there
+               // are no indices... we should modify
+               // topology instead eventually XXX
+               val someB = Some( b )
+               val someA = Some( a )
+               val adep  = a.dependancies.exists( tup => entryMap.get( tup ) == someB )
+               if( !adep ) {
+                  val bdep = b.dependancies.exists( tup => entryMap.get( tup ) == someA )
+                  if( !bdep ) a.idx < b.idx
+                  else true
+               } else false
+
+            }).map( _.msg )( breakOut ))
+         (sorted, if( clumps.contains( audibleIdx )) clumpIdx else clumpIdx - 1)
       }
-
-      private case class Entry( msg: OSCMessage with OSCSend, change: Option[ (FilterMode, RichState, Boolean) ],
-                                audible: Boolean, dependancies: Map[ RichState, Boolean ])
-
-      private case class EntryEdge( sourceVertex: Entry, targetVertex: Entry ) extends Topology.Edge[ Entry ] 
    }
+
+   private case class Entry( idx: Int, msg: OSCMessage with OSCSend,
+                             change: Option[ (FilterMode, RichState, Boolean) ],
+                             audible: Boolean, dependancies: Map[ RichState, Boolean ])
+
+//   private object EntryOrdering extends Ordering[ Entry ] {
+//      def compare( a: Entry, b: Entry ) = a.idx.compare( b.idx )
+//   }
+
+   private case class EntryEdge( sourceVertex: Entry, targetVertex: Entry ) extends Topology.Edge[ Entry ]
 }
