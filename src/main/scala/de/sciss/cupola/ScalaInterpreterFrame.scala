@@ -73,6 +73,21 @@ p3.play
 
 ///////
 
+val f = new javax.swing.JFrame( "Freq" )
+val slid = new javax.swing.JSlider()
+f.getContentPane.add( slid )
+slid.addChangeListener( new javax.swing.event.ChangeListener {
+    def stateChanged( e: javax.swing.event.ChangeEvent ) {
+        val freq = (slid.getValue() + 20).midicps
+        ProcTxn.atomic { implicit t => p1.setFloat( "freq", freq )}
+    }
+})
+f.setResizable( false )
+f.pack
+f.setVisible( true )
+
+///////
+
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
 val h = gen( "process2" ) {

@@ -16,7 +16,13 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    val dep7 = "de.sciss" %% "scalacolliderswing" % "0.17"
    val dep8 = "de.sciss" %% "temporalobjects" % "0.13"
    val dep9 = "Stanford CS - Pervasive Parallelism Laboratory" %% "ccstm" % "0.2"
-   val dep10= "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC2-SNAPSHOT" // for ccstm
+
+   // ---- ccstm dependancies ----
+   val scalatest = crossScalaVersionString match {
+     case "2.8.0.Beta1" => "org.scalatest" % "scalatest" % "1.0.1-for-scala-2.8.0.Beta1-with-test-interfaces-0.3-SNAPSHOT"
+     case "2.8.0.RC1" => "org.scalatest" % "scalatest" % "1.0.1-for-scala-2.8.0.RC1-SNAPSHOT"
+     case _ => "org.scalatest" % "scalatest" % ("1.2-for-scala-" + crossScalaVersionString + "-SNAPSHOT")
+   }
    val scalaToolsSnapshots = "Scala-Tools Maven2 Snapshots Repository" at "http://scala-tools.org/repo-snapshots"
 
    val camelCaseName          = "Cupola"

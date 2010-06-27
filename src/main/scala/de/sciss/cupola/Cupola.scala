@@ -94,15 +94,17 @@ object Cupola extends Actor {
       sif.setVisible( true )
       booting = Server.boot()
       booting.addListener {
-         case BootingServer.Running( srv ) => {
+         case BootingServer.Preparing( srv ) => {
             ssp.server = Some( srv )
             ntp.server = Some( srv )
+         }
+         case BootingServer.Running( srv ) => {
             ProcDemiurg.addServer( srv )
             s = srv
             support.s = srv
 //println( "HERE" )
 //            sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
-            Test.run2
+//            Test.run2
          }
       }
       Runtime.getRuntime().addShutdownHook( new Thread { override def run = shutDown })
