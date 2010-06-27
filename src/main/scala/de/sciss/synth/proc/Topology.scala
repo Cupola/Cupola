@@ -32,7 +32,7 @@ import collection.immutable.{ IndexedSeq => IIdxSeq, Map => IMap, Seq => ISeq, S
 import collection.mutable.{ HashSet => MHashSet, Set => MSet, Stack => MStack }
 
 /**
- *    @version 0.12, 21-Jun-10
+ *    @version 0.12, 27-Jun-10
  */
 object Topology {
    def empty[ V, E <: Edge[ V ]] = apply( Vector.empty[ V ], 0, Map.empty[ V, ISet[ E ]])
@@ -53,6 +53,7 @@ case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unposi
       val target	   = e.targetVertex
       val upBound	   = vertices.indexOf( source )
       val loBound	   = vertices.indexOf( target )
+      require( (loBound >= 0) && (upBound >= 0) )
       val newEdgeMap = edgeMap + (source -> (edgeMap.getOrElse( source,  Set.empty ) + e))
 
       // dealing with unpositioned elements
@@ -89,6 +90,7 @@ case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unposi
    }
 
    def addVertex( v: V ) : T = {
+      require( !vertices.contains( v ))
 // XXX TEST
 //      copy( vertices.patch( unpositioned, Vector( v ), 0 ), unpositioned + 1 )
       copy( v +: vertices, unpositioned + 1 )

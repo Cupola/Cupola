@@ -198,7 +198,11 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
                               val pAudioIns: IIdxSeq[ ProcParamAudioInput ],
                               val pAudioOuts: IIdxSeq[ ProcParamAudioOutput ])
    extends ProcFactory {
-      def make : Proc = new Impl( this, Server.default, name )
+      def make( implicit tx: ProcTxn ) : Proc = {
+         val res = new Impl( this, Server.default, name )
+         ProcDemiurg.addVertex( res )
+         res
+      }
 
       override def toString = "gen(" + name + ")"
    }
@@ -485,6 +489,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       def name = param.name
 
+      override def toString = "aIn(" + proc.name + " @ " + param.name + ")"
+
       def bus_=( newBus: Option[ RichBus ])( implicit tx: ProcTxn ) {
          if( verbose ) println( "IN BUS " + proc.name + " / " + newBus )
          val oldBus = busRef.swap( newBus )
@@ -518,6 +524,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       out =>
 
       def name = param.name
+
+      override def toString = "aOut(" + proc.name + " @ " + param.name + ")"
 
       def bus_=( newBus: Option[ RichBus ])( implicit tx: ProcTxn ) {
          if( verbose ) println( "OUT BUS " + proc.name + " / " + newBus )

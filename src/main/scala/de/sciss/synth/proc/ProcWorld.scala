@@ -60,6 +60,11 @@ object ProcDemiurg { // ( val server: Server )
    // commented out for debugging inspection
    var worlds = Map.empty[ Server, ProcWorld ] // new ProcWorld
 
+   def addVertex( e: Proc )( implicit tx: ProcTxn ) : Unit = syn.synchronized {
+      val world = worlds( e.server )
+      world.topology.transform( _.addVertex( e ))
+   }
+
    def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) : Unit = syn.synchronized {
 //      val world = worlds( e._1.proc.server )
       val world = worlds( e.sourceVertex.server )

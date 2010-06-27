@@ -83,5 +83,5 @@ trait ProcBuffer {
 
 trait ProcFactory {
    def name : String
-   def make : Proc 
+   def make( implicit tx: ProcTxn ) : Proc 
 }
