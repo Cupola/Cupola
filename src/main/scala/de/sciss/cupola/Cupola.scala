@@ -102,6 +102,7 @@ object Cupola extends Actor {
             support.s = srv
 //println( "HERE" )
 //            sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
+            Test.run2
          }
       }
       Runtime.getRuntime().addShutdownHook( new Thread { override def run = shutDown })

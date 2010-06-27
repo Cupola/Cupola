@@ -59,6 +59,19 @@ val p2 = g2.make
 p1 ~> p2
 p2.play
 
+val g3 = gen( "process3" ) {
+    val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
+
+    graph { in =>
+        Pan2.ar( Mix( in ), SinOsc.ar( p1.kr ))
+    }
+}
+
+val p3 = g3.make
+p2 ~> p3
+p3.play
+
+///////
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
@@ -85,36 +98,40 @@ p.stop
 p.play; p.stop    // this has problems again ...
 
 
-
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
-val h = gen( "process3" ) {
+val h = gen( "disk" ) {
     val p1  = pFloat( "speed", ParamSpec(), Some( 1 ))
     val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
     val b   = bufCue( "disk", p2 )
-//    val p3  = pAudioOut( "out", None )
 
     graph {
         VDiskIn.ar( b.numChannels, b.id, p1.kr * BufRateScale.ir( b.id ), loop = 1 )
-//        p3.ar( sig )
     }
 }
 
-val i = gen( "process4" ) {
+val i = gen( "freqshift" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 100 ))
-//    val p2 = pAudioIn( "in", None )
 
     graph { in =>
         FreqShift.ar( in, p1.kr )
     }
 }
 
+val j = gen( "pan" ) {
+    val p1 = pFloat( "pan", ParamSpec(), Some( 0.0 ))
+
+    graph { in =>
+        Pan2.ar( Mix( in ), p1.kr )
+    }
+}
+
 val p1 = h.make
 val p2 = i.make
-p1 ~> p2
+val p3 = j.make
+p1 ~> p2; p2 ~> p3
 
-p1.play
-p2.play
+p1.play; p2.play; p3.play
 
 p2.setFloat( "freq", -200 )
 """

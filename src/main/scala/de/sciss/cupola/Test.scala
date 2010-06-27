@@ -8,6 +8,7 @@ import de.sciss.synth.ugen._
 import de.sciss.trees.{ Interval => TInterval, LongManager, ManagedLong, Rect, RTree, Shaped }
 import math._
 import de.sciss.scalaosc.OSCBundle
+import proc.{ProcTxn, DSL, ParamSpec}
 
 object Test {
    val server     = Cupola.s
@@ -17,6 +18,60 @@ object Test {
    val srvLatency = (0.1 * sampleRate).toLong
    val t          = new BasicTransport( sampleRate, tickFrames )
    val milliSmpPeriod = 1000.0 / sampleRate
+
+   def run2 = {
+      val s = Cupola.s
+      import DSL._
+         
+      s.dumpOSC(1)
+
+      val (p1, p2, p3) =
+    ProcTxn.atomic { implicit t =>
+
+      val g1 = gen( "process1" ) {
+          val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
+
+          graph {
+              SinOsc.ar( p1.kr )
+          }
+      }
+
+      val p1 = g1.make
+
+      p1.setFloat( "freq", 441 )
+      p1.play
+
+      val g2 = gen( "process2" ) {
+          val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
+
+          graph { in =>
+              in * SinOsc.ar( p1.kr )
+          }
+      }
+
+      val p2 = g2.make
+      p1 ~> p2
+      p2.play
+
+      val g3 = gen( "process3" ) {
+          val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
+
+          graph { in =>
+              Pan2.ar( Mix( in ), SinOsc.ar( p1.kr ))
+          }
+      }
+
+      val p3 = g3.make
+
+       (p1, p2, p3)
+    }
+    ProcTxn.atomic { implicit t =>
+      p2 ~> p3
+    }
+    ProcTxn.atomic { implicit t =>
+      p3.play
+    }
+   }
 
    def run {
       SynthDef.recv( server, "disk1" ) {
