@@ -34,6 +34,8 @@ import javax.swing._
 import de.sciss.synth.{Server, Model}
 
 class NuagesFrame( server: Server ) extends JFrame {
+   private val ggPanel = new NuagesPanel( server )
+
    // ---- constructor ----
    {
       // XXX should query current gen list
@@ -49,13 +51,15 @@ class NuagesFrame( server: Server ) extends JFrame {
       ggGens.setFixedCellWidth( 64 )
       val ggGensScroll = new JScrollPane( ggGens, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
          ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER )
-      val ggPanel = new NuagesPanel( server )
       cp.add( BorderLayout.EAST, ggGensScroll )
       cp.add( BorderLayout.CENTER, ggPanel )
+
+      setDefaultCloseOperation( WindowConstants.DISPOSE_ON_CLOSE )
    }
 
    override def dispose {
       Wolkenpumpe.removeListener( GensModel.nuagesListener )
+      ggPanel.dispose
       super.dispose
    }
 

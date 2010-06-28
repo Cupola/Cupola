@@ -94,11 +94,12 @@ class NuagesPanel( server: Server ) extends JPanel {
       vis.add( GROUP_GRAPH, g )
 //      vis.addFocusGroup( GROUP_PAUSED, setPaused )
 
-      val nodeRenderer = new LabelRenderer( COL_LABEL )
-      nodeRenderer.setRenderType( AbstractShapeRenderer.RENDER_TYPE_FILL )
-      nodeRenderer.setHorizontalAlignment( Constants.LEFT )
-      nodeRenderer.setRoundedCorner( 8, 8 )
-      nodeRenderer.setVerticalPadding( 2 )
+//      val nodeRenderer = new LabelRenderer( COL_LABEL )
+      val nodeRenderer = new NuagesProcRenderer
+//      nodeRenderer.setRenderType( AbstractShapeRenderer.RENDER_TYPE_FILL )
+//      nodeRenderer.setHorizontalAlignment( Constants.LEFT )
+//      nodeRenderer.setRoundedCorner( 8, 8 )
+//      nodeRenderer.setVerticalPadding( 2 )
 //      val edgeRenderer = new EdgeRenderer( Constants.EDGE_TYPE_CURVE )
       val edgeRenderer = new EdgeRenderer( Constants.EDGE_TYPE_LINE, Constants.EDGE_ARROW_FORWARD )
 
@@ -144,7 +145,7 @@ class NuagesPanel( server: Server ) extends JPanel {
 
       // ------------------------------------------------
 
-      nodeRenderer.setHorizontalAlignment( Constants.CENTER )
+//      nodeRenderer.setHorizontalAlignment( Constants.CENTER )
       edgeRenderer.setHorizontalAlignment1( Constants.CENTER )
       edgeRenderer.setHorizontalAlignment2( Constants.CENTER )
       edgeRenderer.setVerticalAlignment1( Constants.CENTER )
