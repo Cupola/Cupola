@@ -34,12 +34,32 @@ import de.sciss.scalaosc.OSCMessage
 import actors.{Future, Actor, DaemonActor, TIMEOUT}
 
 /**
- *    @version 0.12, 21-Jun-10
+ *    @version 0.12, 28-Jun-10
  */
-class ProcWorld {
-   val synthGraphs = Ref( Map.empty[ SynthGraph, RichSynthDef ])  // XXX per server?
-//   val topology    = Ref( ProcTopology.empty )
-   val topology    = Ref( Topology.empty[ Proc, ProcEdge ])
+object ProcWorld {
+   case class VerticesRemoved( procs: Proc* )
+   case class VerticesAdded( procs: Proc* )
+   case class EdgesRemoved( edges: ProcEdge* )
+   case class EdgesAdded( edges: ProcEdge* )
+}
+class ProcWorld extends Model {
+   import ProcWorld._
+   
+   val synthGraphs = Ref( Map.empty[ SynthGraph, RichSynthDef ])
+   val topology    = Ref.withObserver( Topology.empty[ Proc, ProcEdge ]) { (oldTop, newTop) =>
+      // getting nasty... we should track the changes eventually
+      // inside a customized Ref object XXX
+      val verticesRemoved  = oldTop.vertices.diff( newTop.vertices )
+      val verticesAdded    = newTop.vertices.diff( oldTop.vertices )
+      val oldEdges         = oldTop.edgeMap.values.flatten.toSeq // ayayay
+      val newEdges         = newTop.edgeMap.values.flatten.toSeq
+      val edgesRemoved     = oldEdges.diff( newEdges )
+      val edgesAdded       = newEdges.diff( oldEdges )
+      if( edgesRemoved.nonEmpty )      dispatch( EdgesRemoved( edgesRemoved: _* ))
+      if( verticesRemoved.nonEmpty )   dispatch( VerticesRemoved( verticesRemoved: _* ))
+      if( verticesAdded.nonEmpty )     dispatch( VerticesAdded( verticesAdded: _* ))
+      if( edgesAdded.nonEmpty )        dispatch( EdgesAdded( edgesAdded: _* ))
+   }
 }
 
 object ProcDemiurg { // ( val server: Server )

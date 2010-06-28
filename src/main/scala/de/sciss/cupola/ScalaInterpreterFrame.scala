@@ -34,7 +34,7 @@ extends JFrame( "Scala Interpreter" ) {
 
 s.dumpOSC(1)
 
-val f = new de.sciss.nuages.NuagesFrame
+val f = new de.sciss.nuages.NuagesFrame( s )
 f.setSize( 200, 200 )
 f.setVisible( true )
 

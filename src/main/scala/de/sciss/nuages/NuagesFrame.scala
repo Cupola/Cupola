@@ -28,28 +28,34 @@
 
 package de.sciss.nuages
 
-import javax.swing.{AbstractListModel, JList, JFrame}
 import de.sciss.synth.proc.ProcFactory
-import de.sciss.synth.Model
-import java.awt.{EventQueue, BorderLayout}
+import java.awt.{Color, Component, EventQueue, BorderLayout}
+import javax.swing._
+import de.sciss.synth.{Server, Model}
 
-class NuagesFrame extends JFrame {
-   private val gensModel = new GensModel
-
+class NuagesFrame( server: Server ) extends JFrame {
    // ---- constructor ----
    {
       // XXX should query current gen list
       // but then we need to figure out
       // a proper synchronization
-      Wolkenpumpe.addListener( gensModel.nuagesListener )
+      Wolkenpumpe.addListener( GensModel.nuagesListener )
 
       val cp = getContentPane
-      val ggGens = new JList( gensModel )
-      cp.add( BorderLayout.EAST, ggGens )
+      cp.setBackground( Color.black )
+      val ggGens = new JList( GensModel )
+      ggGens.setBackground( Color.black )
+      ggGens.setCellRenderer( GensRenderer )
+      ggGens.setFixedCellWidth( 64 )
+      val ggGensScroll = new JScrollPane( ggGens, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER )
+      val ggPanel = new NuagesPanel( server )
+      cp.add( BorderLayout.EAST, ggGensScroll )
+      cp.add( BorderLayout.CENTER, ggPanel )
    }
 
    override def dispose {
-      Wolkenpumpe.removeListener( gensModel.nuagesListener )
+      Wolkenpumpe.removeListener( GensModel.nuagesListener )
       super.dispose
    }
 
@@ -57,14 +63,32 @@ class NuagesFrame extends JFrame {
       EventQueue.invokeLater( new Runnable { def run = thunk })
    }
 
-   private class GensModel extends AbstractListModel with Ordering[ ProcFactory ] {
-      model =>
+   private object GensRenderer extends DefaultListCellRenderer {
+      private val colrUnfocused = new Color( 0xC0, 0xC0, 0xC0 )
+
+      override def getListCellRendererComponent( list: JList, value: AnyRef, index: Int,
+         isSelected: Boolean, isFocused: Boolean ) : Component = {
+
+         val obj = value match {
+            case pf: ProcFactory => pf.name
+            case x => x
+         }
+//         super.getListCellRendererComponent( list, obj, index, isSelected, isFocused )
+         setText( obj.toString )
+         setBackground( if( isSelected ) { if( isFocused ) Color.white else colrUnfocused } else Color.black )
+         setForeground( if( isSelected ) Color.black else Color.white )
+         this
+      }
+   }
+
+   private object GensModel extends AbstractListModel with Ordering[ ProcFactory ] {
+//      model =>
 
       private var coll = Vector.empty[ ProcFactory ]
 
       val nuagesListener : Model.Listener = {
          case Wolkenpumpe.GensRemoved( pfs @ _* ) => defer {
-            val indices = pfs.map( Util.binarySearch( coll, _ )( model )).filter( _ >= 0 )
+            val indices = pfs.map( Util.binarySearch( coll, _ )( GensModel )).filter( _ >= 0 )
             coll = coll.diff( pfs )
             val index0 = indices.min
             val index1 = indices.max
@@ -73,25 +97,25 @@ class NuagesFrame extends JFrame {
          }
          case Wolkenpumpe.GensAdded( pfs @ _* ) => defer {
             val indices = pfs.map( pf => {
-               val idx  = Util.binarySearch( coll, pf )( model )
+               val idx  = Util.binarySearch( coll, pf )( GensModel )
                val idx0 = if( idx < 0) (-idx - 1) else idx
                coll     = coll.patch( idx0, Vector( pf ), 0 )
                idx0
             })
             val index0 = indices.min
             val index1 = indices.max
-println( "fireIntervalAdded( " + model + ", " + index0 + ", " + index1 +" )" )
+//println( "fireIntervalAdded( " + model + ", " + index0 + ", " + index1 +" )" )
 //            fireIntervalAdded( model, index0, index1 )
             added( index0, index1 ) // WARNING: IllegalAccessError with fireIntervalAdded
          }
       }
 
       private def removed( index0: Int, index1: Int ) {
-         fireIntervalRemoved( model, index0, index1 )
+         fireIntervalRemoved( GensModel, index0, index1 )
       }
 
       private def added( index0: Int, index1: Int ) {
-         fireIntervalAdded( model, index0, index1 )
+         fireIntervalAdded( GensModel, index0, index1 )
       }
 
       // Ordering
