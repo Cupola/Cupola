@@ -28,10 +28,16 @@
 
 package de.sciss.synth.proc
 
-import edu.stanford.ppl.ccstm.{Txn, Ref => CRef}
+import edu.stanford.ppl.ccstm.{TxnLocal, Txn, Ref => CRef}
 
 /**
- *    @version 0.11, 24-Jun-10
+ *    ScalaCollider-Proc's Ref wraps CCSTM's in order to isolate the rest of the
+ *    code from the need to import ccstm packages. It also changes the method
+ *    naming slightly, and most importantly adds refined Refs through the
+ *    companion object's <code>withCheck</code> and <code>withObserver</code>
+ *    methods.
+ *
+ *    @version 0.11, 27-Jun-10
  */
 trait Ref[ @specialized T ] {
     def apply()( implicit tx: ProcTxn ) : T
@@ -54,9 +60,33 @@ object Ref {
 //   def apply[ @specialized T ]( initialValue: T, cleanUp: PartialFunction[ T, Unit ])
 //                              ( implicit m: ClassManifest[ T ]) : Ref[ T ] =
 
+   /**
+    *    Creates a Ref whose value is checked before commit using the provided
+    *    <code>PartialFunction</code>. If the function is defined at the particular
+    *    value (the new value as changed during the transaction), the function
+    *    is evaluated after the commit. Therefore clean-up behaviour such as
+    *    freeing resources and other side-effect actions can take place.
+    */
    def withCheck[ @specialized T ]( initialValue: T )( cleanUp: PartialFunction[ T, Unit ])
                               ( implicit m: ClassManifest[ T ]) : Ref[ T ] =
       new CleanUpImpl( CRef( initialValue ), cleanUp )
+
+   /**
+    *    Creates a Ref along with a <code>Function</code> which will be called after
+    *    the commit if the Ref was touched during the transaction. The function is
+    *    called in any case, even if as a result of the manipulations the actually
+    *    stored value of the reference did not change. The function is called with
+    *    the old value of the reference (as read before the first manipulation
+    *    within the transaction) as first argument, and the new value (as read before
+    *    commit) as second argument. The function may then broadcast a notification
+    *    to observers of the object, informing them about the changes. A simple
+    *    <code>==</code> comparision between old and new value may be used to
+    *    determine if the value of the reference effectively changed during the
+    *    transaction. 
+    */
+   def withObserver[ @specialized T ]( initialValue: T )( observer: Function2[ T, T, Unit ])
+                              ( implicit m: ClassManifest[ T ]) : Ref[ T ] =
+      new ObserverImpl( CRef( initialValue ), observer )
 
    private class Impl[ T ]( c: CRef[ T ]) extends Ref[ T ] {
       def apply()( implicit tx: ProcTxn ) : T  = c.apply()( tx.ccstm )
@@ -71,24 +101,22 @@ object Ref {
       override def toString = c.toString
    }
 
-   private class CleanUpImpl[ T ]( _c: CRef[ T ], fun: PartialFunction[ T, Unit ])
-   extends Impl( _c ) {
-      private val touched = CRef( false )
+   private abstract class TouchImpl[ T ]( _c: CRef[ T ]) extends Impl[ T ]( _c ) {
+      me: Impl[ T ] =>
+
+      private val touchedRef = new TxnLocal[ Boolean ] {
+         override def initialValue( t: Txn ) = false
+      }
 
       private def touch( tx: ProcTxn ) {
          implicit val t = tx.ccstm
-         if( !touched.swap( true )) t.beforeCommit( _ => {
-            touched.set( false )  // make sure it is reset for the next transaction
-            val aqui = _c()
-            if( fun.isDefinedAt( aqui ) ) {
-                 t.addWriteResource( new Txn.WriteResource {
-                     def prepare( t: Txn )         = true
-                     def performCommit( t: Txn )   = fun( aqui )
-                     def performRollback( t: Txn ) = ()
-                 }, Int.MaxValue )
-             }
-         }, Int.MaxValue )
+         if( !touchedRef.get ) {
+            touchedRef.set( true )
+            touched( tx )
+         }
       }
+
+      protected def touched( tx: ProcTxn ) : Unit
 
       override def set( v: T )( implicit tx: ProcTxn ) : Unit = { touch( tx ); super.set( v )}
       override def swap( v: T )( implicit tx: ProcTxn ) : T = { touch( tx ); super.swap( v )}
@@ -97,4 +125,50 @@ object Ref {
          touch( tx ); super.transformIfDefined( pf )
       }
    }
+
+   private class CleanUpImpl[ T ]( _c: CRef[ T ], fun: PartialFunction[ T, Unit ])
+   extends TouchImpl( _c ) {
+      protected def touched( tx: ProcTxn ) {
+         val t = tx.ccstm
+         t.beforeCommit( implicit t0 => {
+            val newValue = _c()
+            if( fun.isDefinedAt( newValue )) t0.afterCommit { _ => fun( newValue )}
+         }, Int.MaxValue )
+      }
+   }
+
+   private class ObserverImpl[ T ]( _c: CRef[ T ], fun: Function2[ T, T, Unit ])
+   extends TouchImpl( _c ) {
+      protected def touched( tx: ProcTxn ) {
+         val t = tx.ccstm
+         val oldValue = _c()( t )
+         t.beforeCommit( implicit t0 => {
+            val newValue = _c()
+            t0.afterCommit { _ => fun( oldValue, newValue )}
+         }, Int.MaxValue )
+      }
+   }
 }
+
+//trait TxnLocal[ @specialized T ] {
+//   def get( implicit tx: ProcTxn ) : T
+//   def set( v: T )( implicit tx: ProcTxn ) : Unit
+//}
+//
+//object TxnLocal {
+//   def apply[ @specialized T ] : TxnLocal = new Impl[ T ]( new CTxnLocal[ T ])
+//   def apply[ @specialized T ]( initValue: T ) : TxnLocal = new Impl[ T ]( new CTxnLocal[ T ] {
+//      override def initialValue( tx: Txn ): T = initValue
+//   })
+//
+//   private class Impl[ T ]( c: CTxnLocal[ T ]) extends TxnLocal[ T ] {
+//      def apply( implicit tx: ProcTxn ) : T = c.get( tx.ccstm )
+//      def set( v: T )( implicit tx: ProcTxn ) : Unit = c.set( v )( tx.ccstm )
+//      def swap( v: T )( implicit tx: ProcTxn ) : T = {
+//         // currently not implemented in CTxnLocal
+//         val oldV = apply()
+//         set( v )
+//         oldV
+//      }
+//   }
+//}

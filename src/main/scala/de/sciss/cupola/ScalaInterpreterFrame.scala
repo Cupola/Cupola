@@ -34,12 +34,14 @@ extends JFrame( "Scala Interpreter" ) {
 
 s.dumpOSC(1)
 
-val g1 = gen( "process1" ) {
+val f = new de.sciss.nuages.NuagesFrame
+f.setSize( 200, 200 )
+f.setVisible( true )
+
+val g1 = ngen( "process1" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
 
-    graph {
-        SinOsc.ar( p1.kr )
-    }
+    graph { SinOsc.ar( p1.kr )}
 }
 
 val p1 = g1.make
@@ -47,19 +49,17 @@ val p1 = g1.make
 p1.setFloat( "freq", 441 )
 p1.play
 
-val g2 = gen( "process2" ) {
+val g2 = ngen( "process2" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
 
-    graph { in =>
-        in * SinOsc.ar( p1.kr )
-    }
+    graph { _ * SinOsc.ar( p1.kr )}
 }
 
 val p2 = g2.make
 p1 ~> p2
 p2.play
 
-val g3 = gen( "process3" ) {
+val g3 = ngen( "process3" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
 
     graph { in =>
@@ -160,6 +160,7 @@ import de.sciss.synth.swing._
 import de.sciss.temporal._
 import de.sciss.synth.proc._
 import de.sciss.synth.proc.DSL._
+import de.sciss.nuages.DSL._
 import support._
 """
       )
