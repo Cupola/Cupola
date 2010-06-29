@@ -28,7 +28,6 @@
 
 package de.sciss.nuages
 
-import java.awt.{EventQueue, Color, BorderLayout}
 import javax.swing.JPanel
 import collection.immutable.{ IndexedSeq => IIdxSeq, IntMap }
 import prefuse.{Constants, Display, Visualization}
@@ -47,6 +46,9 @@ import prefuse.visual.{AggregateItem, VisualItem}
 import de.sciss.synth.proc._
 import prefuse.render._
 import prefuse.action.assignment.{FontAction, ColorAction}
+import java.awt._
+import event.MouseEvent
+import geom._
 
 /**
  *    @version 0.11, 29-Jun-10
@@ -54,23 +56,188 @@ import prefuse.action.assignment.{FontAction, ColorAction}
 object NuagesPanel {
    var verbose = false
 
-   private[nuages] case class VisualProc( proc: Proc, pNode: PNode, aggr: AggregateItem, params: IndexedSeq[ VisualParam ]) {
-      var playing = false
+   private[nuages] object VisualData {
+      val diam  = 50
+      private val eps   = 1.0e-2
+
+      val colrPlaying = new Color( 0x00, 0xC0, 0x00 )
+      val colrStopped = new Color( 0x80, 0x80, 0x80 )
+      val colrMapped  = new Color( 210, 60, 60 )
+      val colrManual  = new Color( 60, 60, 240 )
    }
 
-   private[nuages] trait VisualParam {
+   private[nuages] trait VisualData {
+      import VisualData._
+      
+      protected val r: Rectangle2D    = new Rectangle2D.Double()
+      protected var outline : Shape   = r
+      protected val outerE   = new Ellipse2D.Double()
+      protected val innerE   = new Ellipse2D.Double()
+      protected val margin   = diam * 0.2
+      protected val margin2  = margin * 2
+      protected val gp       = new GeneralPath()
+
+      def update( shp: Shape ) {
+         val newR = shp.getBounds2D()
+         if( (math.abs( newR.getWidth() - r.getWidth() ) < eps) &&
+             (math.abs( newR.getHeight() - r.getHeight() ) < eps) ) {
+
+            r.setFrame( newR.getX(), newR.getY(), r.getWidth(), r.getHeight() )
+            return
+         }
+         r.setFrame( newR )
+         outline = shp
+
+         outerE.setFrame( 0, 0, r.getWidth(), r.getHeight() )
+         innerE.setFrame( margin, margin, r.getWidth() - margin2, r.getHeight() - margin2 )
+         gp.reset()
+         gp.append( outerE, false )
+         boundsResized
+      }
+
+      def render( g: Graphics2D, vi: VisualItem ) {
+         g.setColor( ColorLib.getColor( vi.getFillColor ))
+         g.fill( outline )
+         val atOrig = g.getTransform
+         g.translate( r.getX(), r.getY() )
+         renderDetail( g, vi )
+         g.setTransform( atOrig )
+      }
+
+      def itemEntered( vi: VisualItem, e: MouseEvent, pt: Point2D ) {}
+      def itemExited( vi: VisualItem, e: MouseEvent, pt: Point2D ) {}
+      def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = false
+      def itemReleased( vi: VisualItem, e: MouseEvent, pt: Point2D ) {}
+      def itemDragged( vi: VisualItem, e: MouseEvent, pt: Point2D ) {}
+
+      protected def drawName( g: Graphics2D, vi: VisualItem, font: Font, name: String ) {
+         val cx   = r.getWidth() / 2
+         val cy   = r.getHeight() / 2
+         g.setFont( font )
+         val fm   = g.getFontMetrics()
+         g.setColor( ColorLib.getColor( vi.getTextColor() ))
+         g.drawString( name, (cx - (fm.stringWidth( name ) * 0.5)).toFloat,
+                             (cy + ((fm.getAscent() - fm.getLeading()) * 0.5)).toFloat )
+      }
+
+      protected def boundsResized : Unit
+      protected def renderDetail( g: Graphics2D, vi: VisualItem )
+   }
+
+   private[nuages] case class VisualProc( proc: Proc, pNode: PNode, aggr: AggregateItem,
+                                          params: IndexedSeq[ VisualParam ]) extends VisualData {
+      import VisualData._
+
+      var playing = false
+
+      private val playArea = new Area()
+
+      override def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = {
+         if( super.itemPressed( vi, e, pt )) return true
+
+         if( playArea.contains( pt.getX() - r.getX(), pt.getY() - r.getY() )) {
+            ProcTxn.atomic { implicit t => if( playing ) proc.stop else proc.play }
+            true
+         } else false
+      }
+
+      protected def boundsResized {
+         val playArc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), 135, 90, Arc2D.PIE )
+         playArea.reset()
+         playArea.add( new Area( playArc ))
+         playArea.subtract( new Area( innerE ))
+         gp.append( playArea, false )
+      }
+
+      protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
+         g.setColor( if( playing ) colrPlaying else colrStopped )
+         g.fill( playArea )
+         g.setColor( ColorLib.getColor( vi.getStrokeColor ))
+         g.draw( gp )
+
+         val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.33333f )
+         drawName( g, vi, font, proc.name )
+      }
+   }
+
+   private[nuages] trait VisualParam extends VisualData {
       def param: ProcParam[ _ ]
       def pNode: PNode
       def pEdge: Edge
    }
 
    private[nuages] case class VisualBus( param: ProcParamAudioBus, pNode: PNode, pEdge: Edge )
-   extends VisualParam
-
-   private[nuages] case class VisualFloat( param: ProcParamFloat, pNode: PNode, pEdge: Edge )
    extends VisualParam {
+      import VisualData._
+      
+      protected def boundsResized {}
+      
+      protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
+         val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.5f )
+         drawName( g, vi, font, param.name )
+      }
+   }
+
+   private[nuages] case class VisualFloat( proc: Proc, param: ProcParamFloat, pNode: PNode, pEdge: Edge )
+   extends VisualParam {
+      import VisualData._
+      
       var value   = 0f 
       var mapped  = false
+
+      private var renderedValue  = Float.NaN
+      private val containerArea  = new Area()
+      private val valueArea      = new Area()
+
+      override def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = {
+         if( super.itemPressed( vi, e, pt )) return true
+
+         if( containerArea.contains( pt.getX() - r.getX(), pt.getY() - r.getY() )) {
+            val dy   = r.getCenterY() - pt.getY()
+            val dx   = pt.getX() - r.getCenterX()
+//            if( e.isAltDown() ) {
+               val v    = math.min( 1.0, ((-math.atan2( dy, dx ) / math.Pi + 3.25) % 2.0) / 1.5 ).toFloat
+               val m    = param.spec.map( v )
+   //            println( m )
+               ProcTxn.atomic { implicit t => proc.setFloat( param.name, m )}
+//            } else {
+//
+//            }
+            true
+         } else false
+      }
+
+      protected def boundsResized {
+         val pContArc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), -45, 270, Arc2D.PIE )
+         containerArea.reset()
+         containerArea.add( new Area( pContArc ))
+         containerArea.subtract( new Area( innerE ))
+         gp.append( containerArea, false )
+         renderedValue = Float.NaN   // triggers updateRenderValue
+      }
+
+      private def updateRenderValue {
+         renderedValue = value
+         val angExtent = (renderedValue * 270).toInt
+         val angStart  = 225 - angExtent
+         val pValArc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), angStart, angExtent, Arc2D.PIE )
+         valueArea.reset()
+         valueArea.add( new Area( pValArc ))
+         valueArea.subtract( new Area( innerE ))
+      }
+
+      protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
+         if( renderedValue != value ) {
+            updateRenderValue
+         }
+         g.setColor( if( mapped ) colrMapped else colrManual )
+         g.fill( valueArea )
+         g.setColor( ColorLib.getColor( vi.getStrokeColor ))
+         g.draw( gp )
+
+         val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.33333f )
+         drawName( g, vi, font, param.name )
+      }
    }
 
    private[nuages] val COL_NUAGES = "nuages"
@@ -209,7 +376,7 @@ class NuagesPanel( server: Server ) extends JPanel {
       display.addControlListener( new ZoomControl() )
       display.addControlListener( new WheelZoomControl() )
       display.addControlListener( new PanControl() )
-      display.addControlListener( new PrefuseAggregateDragControl )
+      display.addControlListener( new DragControl( vis ))
       display.setHighQuality( true )
 
       // ------------------------------------------------
@@ -306,7 +473,7 @@ class NuagesPanel( server: Server ) extends JPanel {
                val pParamEdge = g.addEdge( pNode, pParamNode )
                val vi = vis.getVisualItem( GROUP_GRAPH, pParamNode )
                aggr.addItem( vi )
-               val vFloat = VisualFloat( pFloat, pParamNode, pParamEdge )
+               val vFloat = VisualFloat( p, pFloat, pParamNode, pParamEdge )
                val mVal = p.getFloat( pFloat.name )
                vFloat.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
    //            vFloat.mapped = ...
