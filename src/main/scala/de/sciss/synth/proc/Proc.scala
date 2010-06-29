@@ -28,12 +28,12 @@
 
 package de.sciss.synth.proc
 
-import collection.immutable.{ Seq => ISeq }
+import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq }
 import de.sciss.synth.{ AudioBus, Group, Server }
 import de.sciss.scalaosc.OSCMessage
 
 /**
- *    @version 0.12, 21-Jun-10
+ *    @version 0.12, 29-Jun-10
  *
  *    @todo XXX after switching to using an actor
  *          to represent a proc, we should get rid
@@ -57,7 +57,8 @@ trait Proc {
    def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichBus
    def setAudioBus( name: String, value: RichBus )( implicit tx: ProcTxn ) : Proc
 
-   private[proc] def getParam( name: String ) : ProcParam[ _ ]
+   def getParam( name: String ) : ProcParam[ _ ]
+   def params : IIdxSeq[ ProcParam[ _ ]]
 
    def audioInput( name: String ) : ProcAudioInput
    def audioOutput( name: String ) : ProcAudioOutput

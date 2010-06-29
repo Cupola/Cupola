@@ -38,7 +38,7 @@ val f = new de.sciss.nuages.NuagesFrame( s )
 f.setSize( 200, 200 )
 f.setVisible( true )
 
-val g1 = ngen( "process1" ) {
+val g1 = ngen( "Sine" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
 
     graph { SinOsc.ar( p1.kr )}
@@ -49,7 +49,7 @@ val p1 = g1.make
 p1.setFloat( "freq", 441 )
 p1.play
 
-val g2 = ngen( "process2" ) {
+val g2 = ngen( "Mod" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
 
     graph { _ * SinOsc.ar( p1.kr )}
@@ -59,7 +59,7 @@ val p2 = g2.make
 p1 ~> p2
 p2.play
 
-val g3 = ngen( "process3" ) {
+val g3 = ngen( "Pan" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
 
     graph { in =>

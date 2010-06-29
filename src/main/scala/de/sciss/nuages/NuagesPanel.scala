@@ -37,39 +37,32 @@ import prefuse.action.animate.{VisibilityAnimator, LocationAnimator, ColorAnimat
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.{ForceDirectedLayout, NodeLinkTreeLayout}
 import prefuse.activity.Activity
-import prefuse.render.{DefaultRendererFactory, EdgeRenderer, AbstractShapeRenderer, LabelRenderer}
 import prefuse.util.ColorLib
-import prefuse.visual.VisualItem
 import prefuse.visual.sort.TreeDepthItemSorter
 import prefuse.visual.expression.InGroupPredicate
 import de.sciss.synth.{Model, Server}
 import de.sciss.synth.swing.PrefuseHelper
-import de.sciss.synth.proc.{ProcEdge, Proc, ProcDemiurg, ProcWorld}
 import prefuse.data.{Edge, Node => PNode, Graph}
 import prefuse.controls._
+import prefuse.visual.{AggregateItem, VisualItem}
+import de.sciss.synth.proc._
+import prefuse.render._
+
+/**
+ *    @version 0.11, 29-Jun-10
+ */
+object NuagesPanel {
+   var verbose = false
+}
 
 class NuagesPanel( server: Server ) extends JPanel {
-
+   import NuagesPanel._
    import ProcWorld._
 
    val vis     = new Visualization()
    val world   = ProcDemiurg.worlds( server )
 
-   private val COL_LABEL            = "name"
-   val g                    = {
-      val g       = new Graph
-      val nodes   = g.getNodeTable()
-      g.addColumn( COL_LABEL, classOf[ String ])
-//val test = g.addNode()
-//test.set( COL_LABEL, "HALLLLLO" )
-      g
-   }
-
-   var procMap = Map.empty[ Proc, PNode ]
-   var edgeMap = Map.empty[ ProcEdge, Edge ]
-
-   // create the tree layout action
-   private val orientation = Constants.ORIENT_LEFT_RIGHT
+   private val AGGR_PROC            = "aggregates"
    private val GROUP_GRAPH          = "graph"
    private val GROUP_NODES          = "graph.nodes"
    private val GROUP_EDGES          = "graph.edges"
@@ -79,6 +72,25 @@ class NuagesPanel( server: Server ) extends JPanel {
    private val ACTION_COLOR         = "color"
    private val ACTION_COLOR_ANIM    = "layout-anim"
    private val FADE_TIME            = 333
+   private val COL_LABEL            = "name"
+
+   val g                    = {
+      val g       = new Graph
+      val nodes   = g.getNodeTable()
+      g.addColumn( COL_LABEL, classOf[ String ])
+//val test = g.addNode()
+//test.set( COL_LABEL, "HALLLLLO" )
+      g
+   }
+   val vg   = vis.add( GROUP_GRAPH, g )
+   private val aggrTable            = {
+      val res = vis.addAggregates( AGGR_PROC )
+      res.addColumn( VisualItem.POLYGON, classOf[ Array[ Float ]])
+      res.addColumn( "id", classOf[ Int ]) // XXX not needed
+      res
+   }
+   private var procMap              = Map.empty[ Proc, VisualProc ]
+   private var edgeMap              = Map.empty[ ProcEdge, Edge ]
 
    private val topoListener: Model.Listener = {
       case VerticesRemoved( procs @ _* )  => defer( topRemoveProcs( procs: _* ))
@@ -91,20 +103,27 @@ class NuagesPanel( server: Server ) extends JPanel {
    {
       val display = new Display( vis )
 
-      vis.add( GROUP_GRAPH, g )
+      vis.setValue( GROUP_NODES, null, VisualItem.SHAPE, new java.lang.Integer( Constants.SHAPE_ELLIPSE ))
+//      vis.add( GROUP_GRAPH, g )
 //      vis.addFocusGroup( GROUP_PAUSED, setPaused )
 
-//      val nodeRenderer = new LabelRenderer( COL_LABEL )
-      val nodeRenderer = new NuagesProcRenderer
+      val nodeRenderer = new LabelRenderer( COL_LABEL )
+//      val nodeRenderer = new NuagesProcRenderer
 //      nodeRenderer.setRenderType( AbstractShapeRenderer.RENDER_TYPE_FILL )
 //      nodeRenderer.setHorizontalAlignment( Constants.LEFT )
 //      nodeRenderer.setRoundedCorner( 8, 8 )
 //      nodeRenderer.setVerticalPadding( 2 )
 //      val edgeRenderer = new EdgeRenderer( Constants.EDGE_TYPE_CURVE )
       val edgeRenderer = new EdgeRenderer( Constants.EDGE_TYPE_LINE, Constants.EDGE_ARROW_FORWARD )
+      val aggrRenderer = new PolygonRenderer( Constants.POLY_TYPE_CURVE )
+      aggrRenderer.setCurveSlack( 0.15f )
 
       val rf = new DefaultRendererFactory( nodeRenderer )
       rf.add( new InGroupPredicate( GROUP_EDGES), edgeRenderer )
+      rf.add( new InGroupPredicate( AGGR_PROC ), aggrRenderer )
+//      val rf = new DefaultRendererFactory
+//      rf.setDefaultRenderer( new ShapeRenderer( 20 ))
+//      rf.add( "ingroup('aggregates')", aggrRenderer )
       vis.setRendererFactory( rf )
 
       // colors
@@ -112,7 +131,9 @@ class NuagesPanel( server: Server ) extends JPanel {
 //      actionNodeColor.add( new InGroupPredicate( GROUP_PAUSED ), ColorLib.rgb( 200, 0, 0 ))
       val actionTextColor = new ColorAction( GROUP_NODES, VisualItem.TEXTCOLOR, ColorLib.rgb( 0, 0, 0 ))
 
-      val actionEdgeColor = new ColorAction( GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb( 200, 200, 200 ))
+      val actionEdgeColor  = new ColorAction( GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb( 200, 200, 200 ))
+      val actionAggrFill   = new ColorAction( AGGR_PROC, VisualItem.FILLCOLOR, ColorLib.rgb( 60, 60, 180 ))
+      val actionAggrStroke = new ColorAction( AGGR_PROC, VisualItem.STROKECOLOR, ColorLib.rgb( 200, 200, 200 ))
 
       val lay = new ForceDirectedLayout( GROUP_GRAPH )
 
@@ -121,11 +142,14 @@ class NuagesPanel( server: Server ) extends JPanel {
       actionColor.add( actionTextColor )
       actionColor.add( actionNodeColor )
       actionColor.add( actionEdgeColor )
+      actionColor.add( actionAggrFill )
+      actionColor.add( actionAggrStroke )
 //      actionColor.add( actionArrowColor )
       vis.putAction( ACTION_COLOR, actionColor )
       
       val actionLayout = new ActionList( Activity.INFINITY, 50 )
       actionLayout.add( lay )
+      actionLayout.add( new PrefuseAggregateLayout( AGGR_PROC ))
       actionLayout.add( new RepaintAction() )
       vis.putAction( ACTION_LAYOUT, actionLayout )
 //      vis.runAfter( ACTION_COLOR, ACTION_LAYOUT )
@@ -135,12 +159,13 @@ class NuagesPanel( server: Server ) extends JPanel {
 
       // initialize the display
       display.setSize( 400, 400 )
-      display.setItemSorter( new TreeDepthItemSorter() )
-      display.addControlListener( new DragControl() )
+//      display.setItemSorter( new TreeDepthItemSorter() )
+//      display.addControlListener( new DragControl() )
       display.addControlListener( new ZoomToFitControl() )
       display.addControlListener( new ZoomControl() )
       display.addControlListener( new WheelZoomControl() )
       display.addControlListener( new PanControl() )
+      display.addControlListener( new PrefuseAggregateDragControl )
       display.setHighQuality( true )
 
       // ------------------------------------------------
@@ -215,32 +240,42 @@ class NuagesPanel( server: Server ) extends JPanel {
 //   }
 
    private def topAddProcs( procs: Proc* ) {
-println( "topAddProcs : " + procs )
+      if( verbose ) println( "topAddProcs : " + procs )
       vis.synchronized {
          stopAnimation
-         procs.foreach( p => {
-            val pNode = g.addNode()
-            procMap += p -> pNode
-            pNode.set( COL_LABEL, p.name )
-//            pNode.set( COL_LABEL, "GAGAISM" )
-//            val vi = vis.getVisualItem( GROUP_GRAPH, pNode )
-//            if( vi != null ) {
-//               vi.setX( 200 )
-//               vi.setY( 200 )
-//            }
-         })
+         procs.foreach( topAddProc( _ ))
          startAnimation
       }
    }
 
+   private def topAddProc( p: Proc ) {
+      val pNode   = g.addNode()
+      pNode.set( COL_LABEL, p.name )
+      val aggr    = aggrTable.addItem().asInstanceOf[ AggregateItem ]
+      aggr.addItem( vis.getVisualItem( GROUP_GRAPH, pNode ))
+      val vParams = p.params.map( param => {
+         val pParamNode = g.addNode()
+         pParamNode.set( COL_LABEL, param.name )
+         val pParamEdge = g.addEdge( pNode, pParamNode )
+         aggr.addItem( vis.getVisualItem( GROUP_GRAPH, pParamNode ))
+         VisualParam( param, pParamNode, pParamEdge )
+      })
+      val vProc = VisualProc( p, pNode, aggr, vParams )
+      procMap  += p -> vProc
+   }
+
    private def topAddEdges( edges: ProcEdge* ) {
-println( "topAddEdges : " + edges )
+      if( verbose ) println( "topAddEdges : " + edges )
       vis.synchronized {
          stopAnimation
          edges.foreach( e => {
-            procMap.get( e.sourceVertex ).foreach( pNodeSrc => {
-               procMap.get( e.targetVertex ).foreach( pNodeTgt => {
-                  val pEdge = g.addEdge( pNodeSrc, pNodeTgt )
+            procMap.get( e.sourceVertex ).foreach( vProcSrc => {
+               procMap.get( e.targetVertex ).foreach( vProcTgt => {
+                  val outName = e.out.name
+                  val inName  = e.in.name
+                  val pSrc= vProcSrc.params.find( _.param.name == outName ).map( _.pNode ).getOrElse( vProcSrc.pNode )
+                  val pTgt= vProcTgt.params.find( _.param.name == inName  ).map( _.pNode ).getOrElse( vProcTgt.pNode )
+                  val pEdge = g.addEdge( pSrc, pTgt )
                   edgeMap += e -> pEdge
                })
             })
@@ -250,21 +285,29 @@ println( "topAddEdges : " + edges )
    }
    
    private def topRemoveProcs( procs: Proc* ) {
-println( "topRemoveProcs : " + procs )
+      if( verbose ) println( "topRemoveProcs : " + procs )
       vis.synchronized {
          stopAnimation
          procs.foreach( p => {
-            procMap.get( p ).foreach( pNode => {
-               g.removeNode( pNode )
-               procMap -= p
-            })
+            procMap.get( p ).foreach( topRemoveProc( _ ))
          })
          startAnimation
       }
    }
 
+   private def topRemoveProc( vProc: VisualProc ) {
+      g.removeNode( vProc.pNode )
+//      aggrTable.removeItem( vProc.aggr )
+      aggrTable.removeTuple( vProc.aggr ) // XXX OK???
+      vProc.params.foreach( vParam => {
+         g.removeEdge( vParam.pEdge )
+         g.removeNode( vParam.pNode )
+      })
+      procMap -= vProc.proc
+   }
+
    private def topRemoveEdges( edges: ProcEdge* ) {
-println( "topRemoveEdges : " + edges )
+      if( verbose ) println( "topRemoveEdges : " + edges )
       vis.synchronized {
          stopAnimation
          edges.foreach( e => {
@@ -276,4 +319,7 @@ println( "topRemoveEdges : " + edges )
          startAnimation
       }
    }
+
+   private case class VisualProc( proc: Proc, pNode: PNode, aggr: AggregateItem, params: IndexedSeq[ VisualParam ])
+   private case class VisualParam( param: ProcParam[ _ ], pNode: PNode, pEdge: Edge )
 }

@@ -72,7 +72,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
    private class BuilderImpl( val name: String ) extends ProcFactoryBuilder {
       private var finished                   = false
-      private var params                     = Map[ String, ProcParam[ _ ]]()
+      private var paramMap                   = Map.empty[ String, ProcParam[ _ ]]
+      private var paramSeq                   = Vector.empty[ ProcParam[ _ ]]
       private var buffers                    = Map[ String, ProcBuffer ]()
       private var graph: Option[ ProcGraph ] = None
       private var entry: Option[ ProcEntry ] = None
@@ -159,20 +160,21 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def finish : ProcFactory = {
          requireOngoing
          require( entry.isDefined, "No entry point defined" )
-         if( implicitAudioIn && !params.contains( "in" )) {
+         if( implicitAudioIn && !paramMap.contains( "in" )) {
             pAudioIn( "in", None, true )
          }
 //println( "implicitAudioOut = " + implicitAudioOut + "; params.contains( \"out\" ) = " + params.contains( "out" ))
-         if( implicitAudioOut && !params.contains( "out" )) {
+         if( implicitAudioOut && !paramMap.contains( "out" )) {
             pAudioOut( "out", None, true )
          }
          finished = true
-         new FactoryImpl( name, entry.get, params, pAudioIns, pAudioOuts )
+         new FactoryImpl( name, entry.get, paramMap, paramSeq, pAudioIns, pAudioOuts )
       }
 
       private def addParam( p: ProcParam[ _ ]) {
-         require( !params.contains( p.name ), "Param name '" + p.name + "' already taken" )
-         params += p.name -> p
+         require( !paramMap.contains( p.name ), "Param name '" + p.name + "' already taken" )
+         paramMap  += p.name -> p
+         paramSeq :+= p 
       }
 
       private def addBuffer( b: ProcBuffer ) {
@@ -194,7 +196,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
    // ---------------------------- ProcFactory implementation ----------------------------
 
    private class FactoryImpl( val name: String, val entry: ProcEntry,
-                              val params: Map[ String, ProcParam[ _ ]],
+                              val paramMap: Map[ String, ProcParam[ _ ]],
+                              val paramSeq: IIdxSeq[ ProcParam[ _ ]],
                               val pAudioIns: IIdxSeq[ ProcParamAudioInput ],
                               val pAudioOuts: IIdxSeq[ ProcParamAudioOutput ])
    extends ProcFactory {
@@ -242,24 +245,25 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def audioInput( name: String ) : ProcAudioInput    = audioInputs.find(  _.param.name == name ).get
       def audioOutput( name: String ) : ProcAudioOutput  = audioOutputs.find( _.param.name == name ).get
 
-      private[proc] def getParam( name: String ) : ProcParam[ _ ] = fact.params( name )
+      def getParam( name: String ) : ProcParam[ _ ] = fact.paramMap( name )
+      def params : IIdxSeq[ ProcParam[ _ ]] = fact.paramSeq
 
       def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc = {
-         val p = fact.params( name ).asInstanceOf[ ProcParamFloat ]
+         val p = fact.paramMap( name ).asInstanceOf[ ProcParamFloat ]
          pFloatValues.transform( _ + (p -> value) )
          running().foreach( _.setFloat( name, value ))
          this
       }
 
       def setString( name: String, value: String )( implicit tx: ProcTxn ) : Proc = {
-         val p = fact.params( name ).asInstanceOf[ ProcParamString ]
+         val p = fact.paramMap( name ).asInstanceOf[ ProcParamString ]
          pStringValues.transform( _ + (p -> value) )
          running().foreach( _.setString( name, value ))
          this
       }
 
       def setAudioBus( name: String, value: RichBus )( implicit tx: ProcTxn ) : Proc = {
-         val p = fact.params( name ).asInstanceOf[ ProcParamAudioBus ]
+         val p = fact.paramMap( name ).asInstanceOf[ ProcParamAudioBus ]
          pAudioBusValues.transform( _ + (p -> value) )
 //         running().foreach( _.setAudioBus( name, value ))
          val aout = audioOutput( name )
@@ -268,17 +272,17 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       }
 
       def getFloat( name: String )( implicit tx: ProcTxn ) : Float = {
-         val p = fact.params( name ).asInstanceOf[ ProcParamFloat ]
+         val p = fact.paramMap( name ).asInstanceOf[ ProcParamFloat ]
          pFloatValues().get( p ).getOrElse( p.default.getOrElse( pError( name )))
       }
 
        def getString( name: String )( implicit tx: ProcTxn ) : String = {
-          val p = fact.params( name ).asInstanceOf[ ProcParamString ]
+          val p = fact.paramMap( name ).asInstanceOf[ ProcParamString ]
           pStringValues().get( p ).getOrElse( p.default.getOrElse( pError( name )))
       }
 
       def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichBus = {
-         val p = fact.params( name ).asInstanceOf[ ProcParamAudioBus ]
+         val p = fact.paramMap( name ).asInstanceOf[ ProcParamAudioBus ]
          pAudioBusValues().get( p ).getOrElse( p.default.getOrElse( pError( name )))
       }
 

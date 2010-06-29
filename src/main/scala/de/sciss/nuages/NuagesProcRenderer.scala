@@ -32,7 +32,7 @@ import prefuse.render.Renderer
 import prefuse.visual.VisualItem
 import java.awt.geom.Point2D
 import java.awt._
-import javax.swing.{JLabel, JSlider, JButton, JPanel}
+import javax.swing._
 
 /**
  *    @version 0.10, 28-Jun-10
@@ -47,9 +47,15 @@ class NuagesProcRenderer extends Renderer {
    panel.revalidate()
    val ps = panel.getPreferredSize()
    panel.setSize( ps.width, ps.height )
-   panel.getLayout().layoutContainer( panel )
+//   panel.getLayout().layoutContainer( panel )
+   deepLayout( panel )
 println( "PS = " + ps )
 //   panel.setSize( 100, 100 )
+
+//   val f = new JFrame( "TEST" )
+//   f.getContentPane.add( panel )
+//   f.pack
+//   f.setVisible( true )
 
    def setBounds( vi: VisualItem ) {
 //    val shape = getShape( vi )
@@ -60,6 +66,47 @@ println( "PS = " + ps )
       val x    = ix - w/2
       val y    = iy - h/2
       vi.setBounds( x, y, w, h )
+   }
+
+   private def deepLayout( c: Container ) {
+      invalidateAll( c )
+      c.setSize( c.getPreferredSize )
+      validateAll( c )
+   }
+
+   private def validateAll( c: Container ) {
+      c.getComponents().foreach( _ match {
+         case c2: Container => validateAll( c2 )
+         case _ =>
+      })
+      c.setSize( c.getPreferredSize )
+      c.validate
+      val lay = c.getLayout()
+      if( lay != null ) lay.layoutContainer( c )
+   }
+
+   private def invalidateAll( c: Container ) {
+      c.invalidate // invalidateTree
+      c.getComponents().foreach( _ match {
+         case c2: Container => invalidateAll( c2 )
+         case _ =>
+      })
+   }
+
+   private def deepLayoutX( c: Container ) {
+      val lay = c.getLayout()
+      val dim = c.getPreferredSize()
+      if( lay != null ) lay.layoutContainer( c )
+      c.getComponents().foreach( _ match {
+         case j: JComponent => {
+            j.revalidate
+            deepLayout( j )
+         }
+         case c2: Container => deepLayout( c2 )
+         case x => x.setSize( x.getPreferredSize )
+//         case _ =>
+      })
+      c.setSize( dim )
    }
 
    def locatePoint( pt: Point2D, vi: VisualItem ) : Boolean = {
