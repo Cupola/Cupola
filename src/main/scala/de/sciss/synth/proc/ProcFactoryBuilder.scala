@@ -43,7 +43,8 @@ import ugen.{In, Out}
  */
 trait ProcFactoryBuilder {
    def name : String
-   def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat
+   def pControl( name: String, spec: ParamSpec, default: Float ) : ProcParamControl
+   def pAudio( name: String, spec: ParamSpec, default: Float ) : ProcParamAudio
    def pString( name: String, default: Option[ String ]) : ProcParamString
    def pAudioIn( name: String, default: Option[ RichBus ]) : ProcParamAudioInput
    def pAudioOut( name: String, default: Option[ RichBus ]) : ProcParamAudioOutput
@@ -85,9 +86,16 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       @inline private def requireOngoing = require( !finished, "ProcFactory build has finished" )
 
-      def pFloat( name: String, spec: ParamSpec, default: Option[ Float ]) : ProcParamFloat = {
+      def pControl( name: String, spec: ParamSpec, default: Float ) : ProcParamControl = {
          requireOngoing
-         val p = new ParamFloatImpl( name, spec, default )
+         val p = new ParamControlImpl( name, spec, default )
+         addParam( p )
+         p
+      }
+
+      def pAudio( name: String, spec: ParamSpec, default: Float ) : ProcParamAudio = {
+         requireOngoing
+         val p = new ParamControlImpl( name, spec, default )
          addParam( p )
          p
       }
@@ -212,18 +220,19 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
    // ---------------------------- Proc implementation ----------------------------
 
-   private object Impl {
-//      class Exec( thunk: => Unit ) { def exec = thunk }
-//      case class Running( group: Group, synth: Synth ) extends Stoppable {
-//
-//      }
-   }
+//   private object Impl {
+////      class Exec( thunk: => Unit ) { def exec = thunk }
+////      case class Running( group: Group, synth: Synth ) extends Stoppable {
+////
+////      }
+//   }
 
    private class Impl( fact: FactoryImpl, val server: Server, val name: String )
    extends Proc {
       proc =>
 
-      import Impl._
+//      import Impl._
+      import Proc._
 
       // ---- constructor ----
 //      {
@@ -233,7 +242,11 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      }
 
 //      private val sync           = new AnyRef
-      private val running           = Ref[ Option[ ProcRunning ]]( None )
+      private val running           = Ref.withObserver[ Option[ ProcRunning ]]( None ) { (oldRun, newRun) =>
+         if( oldRun.isDefined != newRun.isDefined ) {
+            dispatch( PlayingChanged( proc, newRun.isDefined ))
+         }
+      }
       private val groupVar          = Ref[ Option[ RichGroup ]]( None )
       private val pFloatValues      = Ref( Map.empty[ ProcParamFloat, Float ])
       private val pStringValues     = Ref( Map.empty[ ProcParamString, String ])
@@ -648,8 +661,9 @@ check ain
 
    // ---------------------------- ProcParam implementations ----------------------------
 
-   private class ParamFloatImpl( val name: String, val spec: ParamSpec, val default: Option[ Float ])
-   extends ProcParamFloat {
+   private class ParamControlImpl( val name: String, val spec: ParamSpec, val _default: Float )
+   extends ProcParamControl with ProcParamAudio {
+      def default = Some( _default )
    }
 
    private class ParamStringImpl( val name: String, val default: Option[ String ])

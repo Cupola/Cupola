@@ -41,6 +41,7 @@ class NuagesFrame( server: Server ) extends JFrame {
       // XXX should query current gen list
       // but then we need to figure out
       // a proper synchronization
+      val font = Wolkenpumpe.condensedFont.deriveFont( 10 )
       Wolkenpumpe.addListener( GensModel.nuagesListener )
 
       val cp = getContentPane

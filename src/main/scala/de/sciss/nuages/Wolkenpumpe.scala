@@ -30,6 +30,7 @@ package de.sciss.nuages
 
 import de.sciss.synth.proc.{ Ref, ProcFactory, ProcTxn}
 import de.sciss.synth.Model
+import java.awt.Font
 
 object Wolkenpumpe extends Model {
    // --- dispatched from the model ----
@@ -49,5 +50,19 @@ object Wolkenpumpe extends Model {
 
    def remove( pf: ProcFactory )( implicit tx: ProcTxn ) {
       gens.transform( _ - pf )
+   }
+
+   /**
+    *    A condensed font for GUI usage. This is in 12 pt size,
+    *    so consumers must rescale.
+    */
+   lazy val condensedFont : Font = {
+// createFont doesn't properly create the spacing. fucking hell...
+//      val is   = Wolkenpumpe.getClass.getResourceAsStream( "BellySansCondensed.ttf" )
+//      val res  = Font.createFont( Font.TRUETYPE_FONT, is )
+//      is.close
+//      res
+      // "SF Movie Poster Condensed"
+      new Font( "BellySansCondensed", Font.PLAIN, 12 )
    }
 }

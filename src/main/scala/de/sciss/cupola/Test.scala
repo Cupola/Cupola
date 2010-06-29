@@ -29,7 +29,7 @@ object Test {
     ProcTxn.atomic { implicit t =>
 
       val g1 = gen( "process1" ) {
-          val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
+          val p1 = pControl( "freq", ParamSpec(), 882 )
 
           graph {
               SinOsc.ar( p1.kr )
@@ -42,7 +42,7 @@ object Test {
       p1.play
 
       val g2 = gen( "process2" ) {
-          val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
+          val p1 = pControl( "freq", ParamSpec(), 1 )
 
           graph { in =>
               in * SinOsc.ar( p1.kr )
@@ -54,7 +54,7 @@ object Test {
       p2.play
 
       val g3 = gen( "process3" ) {
-          val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
+          val p1 = pControl( "freq", ParamSpec(), 1 )
 
           graph { in =>
               Pan2.ar( Mix( in ), SinOsc.ar( p1.kr ))

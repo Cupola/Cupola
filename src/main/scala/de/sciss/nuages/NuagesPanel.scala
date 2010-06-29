@@ -30,11 +30,10 @@ package de.sciss.nuages
 
 import java.awt.{EventQueue, Color, BorderLayout}
 import javax.swing.JPanel
-import collection.immutable.IntMap
+import collection.immutable.{ IndexedSeq => IIdxSeq, IntMap }
 import prefuse.{Constants, Display, Visualization}
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.animate.{VisibilityAnimator, LocationAnimator, ColorAnimator}
-import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.{ForceDirectedLayout, NodeLinkTreeLayout}
 import prefuse.activity.Activity
 import prefuse.util.ColorLib
@@ -47,22 +46,45 @@ import prefuse.controls._
 import prefuse.visual.{AggregateItem, VisualItem}
 import de.sciss.synth.proc._
 import prefuse.render._
+import prefuse.action.assignment.{FontAction, ColorAction}
 
 /**
  *    @version 0.11, 29-Jun-10
  */
 object NuagesPanel {
    var verbose = false
+
+   private[nuages] case class VisualProc( proc: Proc, pNode: PNode, aggr: AggregateItem, params: IndexedSeq[ VisualParam ]) {
+      var playing = false
+   }
+
+   private[nuages] trait VisualParam {
+      def param: ProcParam[ _ ]
+      def pNode: PNode
+      def pEdge: Edge
+   }
+
+   private[nuages] case class VisualBus( param: ProcParamAudioBus, pNode: PNode, pEdge: Edge )
+   extends VisualParam
+
+   private[nuages] case class VisualFloat( param: ProcParamFloat, pNode: PNode, pEdge: Edge )
+   extends VisualParam {
+      var value   = 0f 
+      var mapped  = false
+   }
+
+   private[nuages] val COL_NUAGES = "nuages"
 }
 
 class NuagesPanel( server: Server ) extends JPanel {
    import NuagesPanel._
    import ProcWorld._
+   import Proc._
 
    val vis     = new Visualization()
    val world   = ProcDemiurg.worlds( server )
 
-   private val AGGR_PROC            = "aggregates"
+   private val AGGR_PROC            = "aggr"
    private val GROUP_GRAPH          = "graph"
    private val GROUP_NODES          = "graph.nodes"
    private val GROUP_EDGES          = "graph.edges"
@@ -72,42 +94,58 @@ class NuagesPanel( server: Server ) extends JPanel {
    private val ACTION_COLOR         = "color"
    private val ACTION_COLOR_ANIM    = "layout-anim"
    private val FADE_TIME            = 333
-   private val COL_LABEL            = "name"
+//   private val COL_LABEL            = "name"
+//   private val GROUP_PROC           = "proc"
 
    val g                    = {
-      val g       = new Graph
-      val nodes   = g.getNodeTable()
-      g.addColumn( COL_LABEL, classOf[ String ])
-//val test = g.addNode()
+      val res     = new Graph
+      val nodes   = res.getNodeTable()
+//      res.addColumn( COL_LABEL, classOf[ String ])
+//val test = res.addNode()
 //test.set( COL_LABEL, "HALLLLLO" )
-      g
+      res
    }
-   val vg   = vis.add( GROUP_GRAPH, g )
+   val vg   = {
+      val res = vis.add( GROUP_GRAPH, g )
+      res.addColumn( COL_NUAGES, classOf[ AnyRef ])
+      res
+   }
    private val aggrTable            = {
       val res = vis.addAggregates( AGGR_PROC )
       res.addColumn( VisualItem.POLYGON, classOf[ Array[ Float ]])
-      res.addColumn( "id", classOf[ Int ]) // XXX not needed
+//      res.addColumn( "id", classOf[ Int ]) // XXX not needed
       res
    }
+//   val procG   = {
+//      vis.addFocusGroup( GROUP_PROC )
+//      vis.getGroup( GROUP_PROC )
+//   }
    private var procMap              = Map.empty[ Proc, VisualProc ]
    private var edgeMap              = Map.empty[ ProcEdge, Edge ]
 
-   private val topoListener: Model.Listener = {
+   private val topoListener : Model.Listener = {
       case VerticesRemoved( procs @ _* )  => defer( topRemoveProcs( procs: _* ))
       case VerticesAdded( procs @ _* )    => defer( topAddProcs( procs: _* ))
       case EdgesRemoved( edges @ _* )     => defer( topRemoveEdges( edges: _* ))
       case EdgesAdded( edges @ _* )       => defer( topAddEdges( edges: _* ))
    }
+
+   private val procListener : Model.Listener = {
+      case PlayingChanged( proc, state ) => defer( topProcPlaying( proc, state ))
+   }
    
    // ---- constructor ----
    {
+      val font    = Wolkenpumpe.condensedFont.deriveFont( 10 )
       val display = new Display( vis )
 
-      vis.setValue( GROUP_NODES, null, VisualItem.SHAPE, new java.lang.Integer( Constants.SHAPE_ELLIPSE ))
+//      vis.setValue( GROUP_NODES, null, VisualItem.SHAPE, new java.lang.Integer( Constants.SHAPE_ELLIPSE ))
 //      vis.add( GROUP_GRAPH, g )
 //      vis.addFocusGroup( GROUP_PAUSED, setPaused )
 
-      val nodeRenderer = new LabelRenderer( COL_LABEL )
+//      val nodeRenderer = new LabelRenderer( COL_LABEL )
+      val procRenderer  = new NuagesProcRenderer( 50 )
+//      val paramRenderer = new NuagesProcParamRenderer( 50 )
 //      val nodeRenderer = new NuagesProcRenderer
 //      nodeRenderer.setRenderType( AbstractShapeRenderer.RENDER_TYPE_FILL )
 //      nodeRenderer.setHorizontalAlignment( Constants.LEFT )
@@ -118,7 +156,9 @@ class NuagesPanel( server: Server ) extends JPanel {
       val aggrRenderer = new PolygonRenderer( Constants.POLY_TYPE_CURVE )
       aggrRenderer.setCurveSlack( 0.15f )
 
-      val rf = new DefaultRendererFactory( nodeRenderer )
+      val rf = new DefaultRendererFactory( procRenderer )
+//      val rf = new DefaultRendererFactory( new ShapeRenderer( 50 ))
+//      rf.add( new InGroupPredicate( GROUP_PROC ), procRenderer )
       rf.add( new InGroupPredicate( GROUP_EDGES), edgeRenderer )
       rf.add( new InGroupPredicate( AGGR_PROC ), aggrRenderer )
 //      val rf = new DefaultRendererFactory
@@ -127,20 +167,24 @@ class NuagesPanel( server: Server ) extends JPanel {
       vis.setRendererFactory( rf )
 
       // colors
-      val actionNodeColor = new ColorAction( GROUP_NODES, VisualItem.FILLCOLOR, ColorLib.rgb( 200, 200, 200 ))
+      val actionNodeStroke = new ColorAction( GROUP_NODES, VisualItem.STROKECOLOR, ColorLib.rgb( 255, 255, 255 ))
+      val actionNodeFill   = new ColorAction( GROUP_NODES, VisualItem.FILLCOLOR, ColorLib.rgb( 0, 0, 0 ))
 //      actionNodeColor.add( new InGroupPredicate( GROUP_PAUSED ), ColorLib.rgb( 200, 0, 0 ))
-      val actionTextColor = new ColorAction( GROUP_NODES, VisualItem.TEXTCOLOR, ColorLib.rgb( 0, 0, 0 ))
+      val actionTextColor = new ColorAction( GROUP_NODES, VisualItem.TEXTCOLOR, ColorLib.rgb( 255, 255, 255 ))
 
-      val actionEdgeColor  = new ColorAction( GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb( 200, 200, 200 ))
-      val actionAggrFill   = new ColorAction( AGGR_PROC, VisualItem.FILLCOLOR, ColorLib.rgb( 60, 60, 180 ))
-      val actionAggrStroke = new ColorAction( AGGR_PROC, VisualItem.STROKECOLOR, ColorLib.rgb( 200, 200, 200 ))
+      val actionEdgeColor  = new ColorAction( GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb( 255, 255, 255 ))
+      val actionAggrFill   = new ColorAction( AGGR_PROC, VisualItem.FILLCOLOR, ColorLib.rgb( 127, 127, 127 ))
+      val actionAggrStroke = new ColorAction( AGGR_PROC, VisualItem.STROKECOLOR, ColorLib.rgb( 255, 255, 255 ))
+      val fontAction       = new FontAction( GROUP_NODES, font )
 
       val lay = new ForceDirectedLayout( GROUP_GRAPH )
 
       // quick repaint
       val actionColor = new ActionList()
+      actionColor.add( fontAction )
       actionColor.add( actionTextColor )
-      actionColor.add( actionNodeColor )
+      actionColor.add( actionNodeStroke )
+      actionColor.add( actionNodeFill )
       actionColor.add( actionEdgeColor )
       actionColor.add( actionAggrFill )
       actionColor.add( actionAggrStroke )
@@ -250,18 +294,45 @@ class NuagesPanel( server: Server ) extends JPanel {
 
    private def topAddProc( p: Proc ) {
       val pNode   = g.addNode()
-      pNode.set( COL_LABEL, p.name )
-      val aggr    = aggrTable.addItem().asInstanceOf[ AggregateItem ]
-      aggr.addItem( vis.getVisualItem( GROUP_GRAPH, pNode ))
-      val vParams = p.params.map( param => {
-         val pParamNode = g.addNode()
-         pParamNode.set( COL_LABEL, param.name )
-         val pParamEdge = g.addEdge( pNode, pParamNode )
-         aggr.addItem( vis.getVisualItem( GROUP_GRAPH, pParamNode ))
-         VisualParam( param, pParamNode, pParamEdge )
-      })
-      val vProc = VisualProc( p, pNode, aggr, vParams )
+      val vi = vis.getVisualItem( GROUP_GRAPH, pNode )
+//      procG.addTuple( vi )
+//      vi.set( VisualItem.SHAPE, Constants.SHAPE_ELLIPSE )
+      val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
+      aggr.addItem( vi )
+      val vProc = ProcTxn.atomic { implicit t =>
+         val vParams = p.params.collect {
+            case pFloat: ProcParamFloat => {
+               val pParamNode = g.addNode()
+               val pParamEdge = g.addEdge( pNode, pParamNode )
+               val vi = vis.getVisualItem( GROUP_GRAPH, pParamNode )
+               aggr.addItem( vi )
+               val vFloat = VisualFloat( pFloat, pParamNode, pParamEdge )
+               val mVal = p.getFloat( pFloat.name )
+               vFloat.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
+   //            vFloat.mapped = ...
+               vi.set( COL_NUAGES, vFloat )
+               vFloat
+            }
+            case pBus: ProcParamAudioBus => {
+               val pParamNode = g.addNode()
+               val pParamEdge = g.addEdge( pNode, pParamNode )
+               val vi = vis.getVisualItem( GROUP_GRAPH, pParamNode )
+               vi.set( VisualItem.SIZE, 0.33333f )
+               aggr.addItem( vi )
+               val vBus = VisualBus( pBus, pParamNode, pParamEdge )
+               vi.set( COL_NUAGES, vBus )
+               vBus
+            }
+         }
+         val res = VisualProc( p, pNode, aggr, vParams )
+         res.playing = p.isPlaying
+         res
+      }
+      vi.set( COL_NUAGES, vProc )
       procMap  += p -> vProc
+
+      // observer
+      p.addListener( procListener )
    }
 
    private def topAddEdges( edges: ProcEdge* ) {
@@ -296,7 +367,9 @@ class NuagesPanel( server: Server ) extends JPanel {
    }
 
    private def topRemoveProc( vProc: VisualProc ) {
+      val vi = vis.getVisualItem( GROUP_GRAPH, vProc.pNode )
       g.removeNode( vProc.pNode )
+//      procG.removeTuple( vi )
 //      aggrTable.removeItem( vProc.aggr )
       aggrTable.removeTuple( vProc.aggr ) // XXX OK???
       vProc.params.foreach( vParam => {
@@ -320,6 +393,10 @@ class NuagesPanel( server: Server ) extends JPanel {
       }
    }
 
-   private case class VisualProc( proc: Proc, pNode: PNode, aggr: AggregateItem, params: IndexedSeq[ VisualParam ])
-   private case class VisualParam( param: ProcParam[ _ ], pNode: PNode, pEdge: Edge )
+   private def topProcPlaying( p: Proc, state: Boolean ) {
+      procMap.get( p ).foreach( vProc => {
+         vProc.playing = state
+         // damageReport XXX
+      })
+   }
 }

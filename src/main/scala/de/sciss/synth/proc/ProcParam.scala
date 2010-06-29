@@ -54,17 +54,26 @@ trait ProcParamFloat extends ProcParam[ Float ] {
 //   def ir : GE
 //   def kr : GE
    
-   def ir : GE = {
-      ProcGraphBuilder.local.includeParam( this )
-      name.ir( default.getOrElse( 0f ))
-   }
+//   def ir : GE = {
+//      ProcGraphBuilder.local.includeParam( this )
+//      name.ir( default.getOrElse( 0f ))
+//   }
 
+   def spec : ParamSpec
+}
+
+trait ProcParamControl extends ProcParamFloat {
    def kr : GE = {
       ProcGraphBuilder.local.includeParam( this )
       name.kr( default.getOrElse( 0f ))
    }
+}
 
-   def spec : ParamSpec
+trait ProcParamAudio extends ProcParamFloat {
+   def ar : GE = {
+      ProcGraphBuilder.local.includeParam( this )
+      name.ar( default.getOrElse( 0f ))
+   }
 }
 
 trait ProcParamString extends ProcParam[ String ] {

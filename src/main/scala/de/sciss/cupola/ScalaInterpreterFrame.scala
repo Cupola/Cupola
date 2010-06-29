@@ -39,7 +39,7 @@ f.setSize( 200, 200 )
 f.setVisible( true )
 
 val g1 = ngen( "Sine" ) {
-    val p1 = pFloat( "freq", ParamSpec(), Some( 882 ))
+    val p1 = pControl( "freq", ParamSpec( 20, 20000, ExpWarp ), 882 )
 
     graph { SinOsc.ar( p1.kr )}
 }
@@ -50,7 +50,7 @@ p1.setFloat( "freq", 441 )
 p1.play
 
 val g2 = ngen( "Mod" ) {
-    val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
+    val p1 = pControl( "freq", ParamSpec( 0.1f, 20000, ExpWarp ), 1 )
 
     graph { _ * SinOsc.ar( p1.kr )}
 }
@@ -60,7 +60,7 @@ p1 ~> p2
 p2.play
 
 val g3 = ngen( "Pan" ) {
-    val p1 = pFloat( "freq", ParamSpec(), Some( 1 ))
+    val p1 = pControl( "freq", ParamSpec( 0.1f, 20000, ExpWarp ), 1 )
 
     graph { in =>
         Pan2.ar( Mix( in ), SinOsc.ar( p1.kr ))

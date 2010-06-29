@@ -30,8 +30,9 @@ package de.sciss.synth.proc
 
 import de.sciss.synth._
 
-case class ParamSpec( lo: Float = 0f, hi: Float = 1f, warp: Warp = LinearWarp, step: Float = 0f ) {
+case class ParamSpec( lo: Float = 0f, hi: Float = 1f, warp: Warp = LinWarp, step: Float = 0f ) {
    def range = hi - lo
+   def ratio = hi / lo
    def clip( value: Float ) : Float = math.max( lo, math.min( hi, value ))
    def map( value: Float ) : Float = warp.map( this, value )
    def unmap( value: Float ) : Float = warp.unmap( this, value )
@@ -53,9 +54,16 @@ trait Warp {
    def unmap( spec: ParamSpec, value: GE ) : GE
 }
 
-object LinearWarp extends Warp {
+object LinWarp extends Warp {
    def map( spec: ParamSpec, value: Float ) : Float   = value * spec.range + spec.lo
    def unmap( spec: ParamSpec, value: Float ) : Float = (value - spec.lo) / spec.range
    def map( spec: ParamSpec, value: GE ) : GE         = value * spec.range + spec.lo
    def unmap( spec: ParamSpec, value: GE ) : GE       = (value - spec.lo) / spec.range
+}
+
+object ExpWarp extends Warp {
+   def map( spec: ParamSpec, value: Float ) : Float   = spec.ratio.pow( value ) * spec.lo
+   def unmap( spec: ParamSpec, value: Float ) : Float = (value / spec.lo).log / spec.ratio.log
+   def map( spec: ParamSpec, value: GE ) : GE         = (spec.hi / spec.lo).pow( value ) * spec.lo
+   def unmap( spec: ParamSpec, value: GE ) : GE       = (value / spec.lo).log / spec.ratio.log
 }

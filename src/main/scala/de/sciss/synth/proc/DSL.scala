@@ -45,8 +45,10 @@ object DSL {
 
    // ---- scope : gen (ProcFactoryBuilder) ----
 
-   def pFloat( name: String, spec: ParamSpec = ParamSpec(), default: Option[ Float ] = None ) : ProcParamFloat =
-      ProcFactoryBuilder.local.pFloat( name, spec, default )
+   def pControl( name: String, spec: ParamSpec = ParamSpec(), default: Float ) : ProcParamControl =
+      ProcFactoryBuilder.local.pControl( name, spec, default )
+   def pAudio( name: String, spec: ParamSpec = ParamSpec(), default: Float ) : ProcParamAudio =
+      ProcFactoryBuilder.local.pAudio( name, spec, default )
    def pString( name: String, default: Option[ String ] = None ) : ProcParamString =
       ProcFactoryBuilder.local.pString( name, default )
    def pAudioIn( name: String, default: Option[ RichBus ] = None ) : ProcParamAudioInput =

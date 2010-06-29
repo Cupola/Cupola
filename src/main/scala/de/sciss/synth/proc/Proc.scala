@@ -29,8 +29,8 @@
 package de.sciss.synth.proc
 
 import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq }
-import de.sciss.synth.{ AudioBus, Group, Server }
 import de.sciss.scalaosc.OSCMessage
+import de.sciss.synth.{Model, AudioBus, Group, Server}
 
 /**
  *    @version 0.12, 29-Jun-10
@@ -41,9 +41,10 @@ import de.sciss.scalaosc.OSCMessage
  *          occurences of Proc.local with Actor.self 
  */
 object Proc extends ThreadLocalObject[ Proc ] {
+   case class PlayingChanged( proc: Proc, playing: Boolean )
 }
 
-trait Proc {
+trait Proc extends Model {
    def name : String
    def play( implicit tx: ProcTxn ) : Proc
    def stop( implicit tx: ProcTxn ) : Proc
