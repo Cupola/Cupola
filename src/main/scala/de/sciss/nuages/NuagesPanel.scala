@@ -43,13 +43,13 @@ import de.sciss.synth.{Model, Server}
 import de.sciss.synth.swing.PrefuseHelper
 import prefuse.data.{Edge, Node => PNode, Graph}
 import prefuse.controls._
-import prefuse.visual.{AggregateItem, VisualItem}
 import de.sciss.synth.proc._
 import prefuse.render._
 import prefuse.action.assignment.{FontAction, ColorAction}
 import java.awt._
 import event.MouseEvent
 import geom._
+import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
 
 /**
  *    @version 0.11, 29-Jun-10
@@ -171,11 +171,12 @@ object NuagesPanel {
       def pEdge: Edge
    }
 
-   private[nuages] case class VisualBus( param: ProcParamAudioBus, pNode: PNode, pEdge: Edge )
+//   private[nuages] case class VisualBus( param: ProcParamAudioBus, pNode: PNode, pEdge: Edge )
+   private[nuages] case class VisualAudioInput( bus: ProcAudioInput, pNode: PNode, pEdge: Edge )
    extends VisualParam {
       import VisualData._
 
-      def name : String = param.name
+      def name : String = bus.name
 
       protected def boundsResized {}
       
@@ -185,7 +186,21 @@ object NuagesPanel {
       }
    }
 
-   private[nuages] case class VisualFloat( control: ProcControl, pNode: PNode, pEdge: Edge )
+   private[nuages] case class VisualAudioOutput( bus: ProcAudioOutput, pNode: PNode, pEdge: Edge )
+   extends VisualParam {
+      import VisualData._
+
+      def name : String = bus.name
+
+      protected def boundsResized {}
+
+      protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
+         val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.5f )
+         drawName( g, vi, font )
+      }
+   }
+
+   private[nuages] case class VisualControl( control: ProcControl, pNode: PNode, pEdge: Edge )
    extends VisualParam {
       import VisualData._
       
@@ -295,6 +310,7 @@ with ProcFactoryProvider {
    private val ACTION_LAYOUT        = "layout"
    private val ACTION_LAYOUT_ANIM   = "layout-anim"
    private val ACTION_COLOR         = "color"
+//   private val ACTION_EDGECOLOR     = "edgecolor"
    private val ACTION_COLOR_ANIM    = "layout-anim"
    private val FADE_TIME            = 333
 //   private val COL_LABEL            = "name"
@@ -309,7 +325,7 @@ with ProcFactoryProvider {
       res
    }
    val vg   = {
-      val res = vis.add( GROUP_GRAPH, g )
+      val res = vis.addGraph( GROUP_GRAPH, g )
       res.addColumn( COL_NUAGES, classOf[ AnyRef ])
       res
    }
@@ -391,7 +407,9 @@ with ProcFactoryProvider {
       actionColor.add( actionAggrStroke )
 //      actionColor.add( actionArrowColor )
       vis.putAction( ACTION_COLOR, actionColor )
-      
+
+//      vis.putAction( ACTION_EDGECOLOR, actionEdgeColor ) // para drag 'n drop
+
       val actionLayout = new ActionList( Activity.INFINITY, 50 )
       actionLayout.add( lay )
       actionLayout.add( new PrefuseAggregateLayout( AGGR_PROC ))
@@ -403,7 +421,7 @@ with ProcFactoryProvider {
       // ------------------------------------------------
 
       // initialize the display
-      display.setSize( 400, 400 )
+      display.setSize( 800, 600 )
 //      display.setItemSorter( new TreeDepthItemSorter() )
 //      display.addControlListener( new DragControl() )
       display.addControlListener( new ZoomToFitControl() )
@@ -412,6 +430,16 @@ with ProcFactoryProvider {
       display.addControlListener( new PanControl() )
       display.addControlListener( new DragControl( vis ))
       display.addControlListener( new ClickControl( this ))
+////      val dragTgtHandle = vg.addNode().asInstanceOf[ NodeItem ]
+//      val dummy = g.addNode()
+//      val dragTgtHandle = vis.getVisualItem( GROUP_GRAPH, dummy ).asInstanceOf[ NodeItem ]
+////      dragTgtHandle.setVisible( false )
+//      dragTgtHandle.setSize( 0.0 )
+//      dragTgtHandle.setFixed( true )
+////      dragTgtHandle.setVisible( false )
+////      display.addControlListener( new ConnectControl( vg, dragTgtHandle ))
+//      display.addControlListener( new ConnectControl( g, dummy, dragTgtHandle, vis, GROUP_GRAPH ))
+      display.addControlListener( new ConnectControl2 )
       display.setHighQuality( true )
 
       // ------------------------------------------------
@@ -520,46 +548,45 @@ with ProcFactoryProvider {
 //      vi.set( VisualItem.SHAPE, Constants.SHAPE_ELLIPSE )
       val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
       aggr.addItem( vi )
+
+      def createNode = {
+         val pParamNode = g.addNode()
+         val pParamEdge = g.addEdge( pNode, pParamNode )
+         val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
+         locO.foreach( loc => {
+            vi.setEndX( loc.getX() )
+            vi.setEndY( loc.getY() )
+         })
+         aggr.addItem( vi )
+         (pParamNode, pParamEdge, vi)
+      }
+
       val vProc = ProcTxn.atomic { implicit t =>
          val vParams: Map[ String, VisualParam ] = p.params.collect({
             case pFloat: ProcParamFloat => {
-               val pParamNode = g.addNode()
-               val pParamEdge = g.addEdge( pNode, pParamNode )
-               val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
-               locO.foreach( loc => {
-//                  vi.setStartX( loc.getX() )
-//                  vi.setStartY( loc.getY() )
-//                  vi.setX( loc.getX() )
-//                  vi.setY( loc.getY() )
-                  vi.setEndX( loc.getX() )
-                  vi.setEndY( loc.getY() )
-               })
-               aggr.addItem( vi )
+               val (pParamNode, pParamEdge, vi) = createNode
                val pControl   = p.control( pFloat.name )
-               val vFloat     = VisualFloat( pControl, pParamNode, pParamEdge )
+               val vControl   = VisualControl( pControl, pParamNode, pParamEdge )
                val mVal       = pControl.value
-               vFloat.value   = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
-   //            vFloat.mapped = ...
-               vi.set( COL_NUAGES, vFloat )
-               pFloat.name -> vFloat
+               vControl.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
+               vi.set( COL_NUAGES, vControl )
+               vControl.name -> vControl
             }
-            case pBus: ProcParamAudioBus => {
-               val pParamNode = g.addNode()
-               val pParamEdge = g.addEdge( pNode, pParamNode )
-               val vi = vis.getVisualItem( GROUP_GRAPH, pParamNode )
-               locO.foreach( loc => {
-//                  vi.setStartX( loc.getX() )
-//                  vi.setStartY( loc.getY() )
-//                  vi.setX( loc.getX() )
-//                  vi.setY( loc.getY() )
-                  vi.setEndX( loc.getX() )
-                  vi.setEndY( loc.getY() )
-               })
+            case pParamBus: ProcParamAudioInput => {
+               val (pParamNode, pParamEdge, vi) = createNode
                vi.set( VisualItem.SIZE, 0.33333f )
-               aggr.addItem( vi )
-               val vBus = VisualBus( pBus, pParamNode, pParamEdge )
+               val pBus = p.audioInput( pParamBus.name )
+               val vBus = VisualAudioInput( pBus, pParamNode, pParamEdge )
                vi.set( COL_NUAGES, vBus )
-               pBus.name -> vBus
+               vBus.name -> vBus
+            }
+            case pParamBus: ProcParamAudioOutput => {
+               val (pParamNode, pParamEdge, vi) = createNode
+               vi.set( VisualItem.SIZE, 0.33333f )
+               val pBus = p.audioOutput( pParamBus.name )
+               val vBus = VisualAudioOutput( pBus, pParamNode, pParamEdge )
+               vi.set( COL_NUAGES, vBus )
+               vBus.name -> vBus
             }
          })( breakOut )
          val res = VisualProc( p, pNode, aggr, vParams )
@@ -646,7 +673,7 @@ with ProcFactoryProvider {
             seq.foreach( tup2 => {
                val (ctrl, value) = tup2
                vProc.params.get( ctrl.name ) match {
-                  case Some( vFloat: VisualFloat ) => vFloat.value = {
+                  case Some( vControl: VisualControl ) => vControl.value = {
                      val spec = ctrl.spec
                      spec.unmap( spec.clip( value ))
                   }

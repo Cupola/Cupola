@@ -116,7 +116,7 @@ p.play; p.stop    // this has problems again ...
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
 val h = ngen( "disk" ) {
-    val p1  = pFloat( "speed", ParamSpec(), Some( 1 ))
+    val p1  = pControl( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
     val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
     val b   = bufCue( "disk", p2 )
 
@@ -126,7 +126,7 @@ val h = ngen( "disk" ) {
 }
 
 val i = ngen( "freqshift" ) {
-    val p1 = pFloat( "freq", ParamSpec(), Some( 100 ))
+    val p1 = pControl( "freq", ParamSpec( -2000, 2000 ), 100 )
 
     graph { in =>
         FreqShift.ar( in, p1.kr )

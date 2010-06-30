@@ -28,12 +28,13 @@
 
 package de.sciss.nuages
 
-import java.awt.{Color, Component, EventQueue, BorderLayout}
 import javax.swing._
 import de.sciss.synth.{Server, Model}
-import event.{ListSelectionListener, ListSelectionEvent}
+import javax.swing.event.{ListSelectionListener, ListSelectionEvent}
 import java.awt.geom.Point2D
 import de.sciss.synth.proc.{Proc, ProcFactory}
+import collection.mutable.ListBuffer
+import java.awt._
 
 class NuagesFrame( server: Server ) extends JFrame {
    private val ggPanel  = new NuagesPanel( server )
@@ -44,7 +45,7 @@ class NuagesFrame( server: Server ) extends JFrame {
       // XXX should query current gen list
       // but then we need to figure out
       // a proper synchronization
-      val font = Wolkenpumpe.condensedFont.deriveFont( 12 )
+      val font = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
       Wolkenpumpe.addListener( GensModel.nuagesListener )
 
 //      ggGens.setFont( font ) // doesn't do anything, porque?
@@ -52,18 +53,29 @@ class NuagesFrame( server: Server ) extends JFrame {
       val cp = getContentPane
       cp.setBackground( Color.black )
       ggGens.setBackground( Color.black )
+println( "font = " + font )
       GensRenderer.setFont( font )
+//      val rend = new GensRenderer
+//      rend.setFont( font )
       ggGens.setCellRenderer( GensRenderer )
+//      ggGens.setCellRenderer( rend )
       ggGens.setFixedCellWidth( 64 )
       ggGens.setSelectionMode( ListSelectionModel.SINGLE_SELECTION )
       ggGens.addListSelectionListener( new ListSelectionListener {
          def valueChanged( e: ListSelectionEvent ) {
-            val idx = e.getFirstIndex()
-            val pf = if( idx >= 0 && idx < GensModel.getSize() ) {
-               Some( GensModel.getElementAt( idx ))
-            } else {
-               None
-            }
+            if( e.getValueIsAdjusting() ) return
+// this is completely wrong. first-index returns the
+// one which changed, so if you change selection, you
+// get the old + the new index in first and last index
+//            val idx = e.getFirstIndex()
+//            val pf = if( idx >= 0 && idx < GensModel.getSize() ) {
+//               Some( GensModel.getElementAt( idx ))
+//            } else {
+//               None
+//            }
+            val pf0 = ggGens.getSelectedValue()
+            val pf = if( pf0 != null ) Some( pf0.asInstanceOf[ ProcFactory ]) else None
+//println( "AQUI : " + e.getFirstIndex() + " / "  + e.getLastIndex() + " / " + pf )
             ggPanel.factory = pf
          }
       })
@@ -116,20 +128,27 @@ class NuagesFrame( server: Server ) extends JFrame {
             val index0 = indices.min
             val index1 = indices.max
 //            fireIntervalRemoved( model, index0, index1 )
+//            println( "removed( " + index0 + ", " + index1 + " ) --> " + coll )
             removed( index0, index1 ) // WARNING: IllegalAccessError with fireIntervalRemoved
          }
          case Wolkenpumpe.GensAdded( pfs @ _* ) => defer {
-            val indices = pfs.map( pf => {
+            var index0 = Int.MaxValue
+            var index1 = Int.MinValue
+            pfs.foreach( pf => {
                val idx  = Util.binarySearch( coll, pf )( GensModel )
                val idx0 = if( idx < 0) (-idx - 1) else idx
                coll     = coll.patch( idx0, Vector( pf ), 0 )
-               idx0
+               // goddamnit
+//               if( index0 != Int.MaxValue && idx0 <= index0 ) index0 += 1
+               if( idx0 <= index1 ) index1 += 1
+               index0   = math.min( index0, idx0 )
+               index1   = math.max( index1, idx0 )
+//println( "--> idx0 " + idx0 + " / min " + index0 + " / max " + index1 )
             })
-            val index0 = indices.min
-            val index1 = indices.max
 //println( "fireIntervalAdded( " + model + ", " + index0 + ", " + index1 +" )" )
 //            fireIntervalAdded( model, index0, index1 )
-            added( index0, index1 ) // WARNING: IllegalAccessError with fireIntervalAdded
+//            println( "added( " + index0 + ", " + index1 + " ) --> " + coll )
+            if( index0 <= index1 ) added( index0, index1 ) // WARNING: IllegalAccessError with fireIntervalAdded
          }
       }
 
