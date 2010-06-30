@@ -38,7 +38,7 @@ object Test {
 
       val p1 = g1.make
 
-      p1.setFloat( "freq", 441 )
+      p1.control( "freq" ).value = 441
       p1.play
 
       val g2 = gen( "process2" ) {

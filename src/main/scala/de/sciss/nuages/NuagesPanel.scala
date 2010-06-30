@@ -29,6 +29,7 @@
 package de.sciss.nuages
 
 import javax.swing.JPanel
+import collection.breakOut
 import collection.immutable.{ IndexedSeq => IIdxSeq, IntMap }
 import prefuse.{Constants, Display, Visualization}
 import prefuse.action.{RepaintAction, ActionList}
@@ -110,27 +111,31 @@ object NuagesPanel {
       def itemReleased( vi: VisualItem, e: MouseEvent, pt: Point2D ) {}
       def itemDragged( vi: VisualItem, e: MouseEvent, pt: Point2D ) {}
 
-      protected def drawName( g: Graphics2D, vi: VisualItem, font: Font, name: String ) {
+      protected def drawName( g: Graphics2D, vi: VisualItem, font: Font ) {
          val cx   = r.getWidth() / 2
          val cy   = r.getHeight() / 2
          g.setFont( font )
          val fm   = g.getFontMetrics()
          g.setColor( ColorLib.getColor( vi.getTextColor() ))
-         g.drawString( name, (cx - (fm.stringWidth( name ) * 0.5)).toFloat,
-                             (cy + ((fm.getAscent() - fm.getLeading()) * 0.5)).toFloat )
+         val n    = name
+         g.drawString( n, (cx - (fm.stringWidth( n ) * 0.5)).toFloat,
+                          (cy + ((fm.getAscent() - fm.getLeading()) * 0.5)).toFloat )
       }
 
+      def name : String
       protected def boundsResized : Unit
       protected def renderDetail( g: Graphics2D, vi: VisualItem )
    }
 
    private[nuages] case class VisualProc( proc: Proc, pNode: PNode, aggr: AggregateItem,
-                                          params: IndexedSeq[ VisualParam ]) extends VisualData {
+                                          params: Map[ String, VisualParam ]) extends VisualData {
       import VisualData._
 
       var playing = false
 
       private val playArea = new Area()
+
+      def name : String = proc.name
 
       override def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = {
          if( super.itemPressed( vi, e, pt )) return true
@@ -156,12 +161,12 @@ object NuagesPanel {
          g.draw( gp )
 
          val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.33333f )
-         drawName( g, vi, font, proc.name )
+         drawName( g, vi, font )
       }
    }
 
    private[nuages] trait VisualParam extends VisualData {
-      def param: ProcParam[ _ ]
+//      def param: ProcParam[ _ ]
       def pNode: PNode
       def pEdge: Edge
    }
@@ -169,16 +174,18 @@ object NuagesPanel {
    private[nuages] case class VisualBus( param: ProcParamAudioBus, pNode: PNode, pEdge: Edge )
    extends VisualParam {
       import VisualData._
-      
+
+      def name : String = param.name
+
       protected def boundsResized {}
       
       protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
          val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.5f )
-         drawName( g, vi, font, param.name )
+         drawName( g, vi, font )
       }
    }
 
-   private[nuages] case class VisualFloat( proc: Proc, param: ProcParamFloat, pNode: PNode, pEdge: Edge )
+   private[nuages] case class VisualFloat( control: ProcControl, pNode: PNode, pEdge: Edge )
    extends VisualParam {
       import VisualData._
       
@@ -189,22 +196,47 @@ object NuagesPanel {
       private val containerArea  = new Area()
       private val valueArea      = new Area()
 
+      def name : String = control.name
+
+      private var drag : Option[ Drag ] = None
+
       override def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = {
-         if( super.itemPressed( vi, e, pt )) return true
+//         if( super.itemPressed( vi, e, pt )) return true
 
          if( containerArea.contains( pt.getX() - r.getX(), pt.getY() - r.getY() )) {
             val dy   = r.getCenterY() - pt.getY()
             val dx   = pt.getX() - r.getCenterX()
-//            if( e.isAltDown() ) {
-               val v    = math.min( 1.0, ((-math.atan2( dy, dx ) / math.Pi + 3.25) % 2.0) / 1.5 ).toFloat
-               val m    = param.spec.map( v )
-   //            println( m )
-               ProcTxn.atomic { implicit t => proc.setFloat( param.name, m )}
-//            } else {
-//
-//            }
+            val ang  = math.max( 0.0f, math.min( 1.0f, ((((-math.atan2( dy, dx ) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5).toFloat ))
+            val vStart = if( e.isAltDown() ) {
+//               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
+//               if( ang != value ) {
+                  val m    = control.spec.map( ang )
+                  ProcTxn.atomic { implicit t => control.value = m }
+//               }
+               ang
+            } else value
+            val dr = Drag( ang, vStart )
+            drag = Some( dr )
             true
          } else false
+      }
+
+      override def itemDragged( vi: VisualItem, e: MouseEvent, pt: Point2D ) {
+         drag.foreach( dr => {
+            val dy   = r.getCenterY() - pt.getY()
+            val dx   = pt.getX() - r.getCenterX()
+//            val ang  = -math.atan2( dy, dx )
+            val ang  = ((((-math.atan2( dy, dx ) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5).toFloat
+            val vEff = math.max( 0f, math.min( 1f, dr.valueStart + (ang - dr.angStart) ))
+//            if( vEff != value ) {
+               val m    = control.spec.map( vEff )
+               ProcTxn.atomic { implicit t => control.value = m }
+//            }
+         })
+      }
+
+      override def itemReleased( vi: VisualItem, e: MouseEvent, pt: Point2D ) {
+         drag = None
       }
 
       protected def boundsResized {
@@ -217,10 +249,10 @@ object NuagesPanel {
       }
 
       private def updateRenderValue {
-         renderedValue = value
-         val angExtent = (renderedValue * 270).toInt
-         val angStart  = 225 - angExtent
-         val pValArc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), angStart, angExtent, Arc2D.PIE )
+         renderedValue  = value
+         val angExtent  = (renderedValue * 270).toInt
+         val angStart   = 225 - angExtent
+         val pValArc    = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), angStart, angExtent, Arc2D.PIE )
          valueArea.reset()
          valueArea.add( new Area( pValArc ))
          valueArea.subtract( new Area( innerE ))
@@ -236,8 +268,10 @@ object NuagesPanel {
          g.draw( gp )
 
          val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.33333f )
-         drawName( g, vi, font, param.name )
+         drawName( g, vi, font )
       }
+
+      private case class Drag( angStart: Float, valueStart: Float )
    }
 
    private[nuages] val COL_NUAGES = "nuages"
@@ -298,7 +332,8 @@ class NuagesPanel( server: Server ) extends JPanel {
    }
 
    private val procListener : Model.Listener = {
-      case PlayingChanged( proc, state ) => defer( topProcPlaying( proc, state ))
+      case PlayingChanged( proc, state )     => defer( topProcPlaying( proc, state ))
+      case ControlsChanged( controls @ _* )  => defer( topControlsChanged( controls: _* ))
    }
    
    // ---- constructor ----
@@ -467,18 +502,19 @@ class NuagesPanel( server: Server ) extends JPanel {
       val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
       aggr.addItem( vi )
       val vProc = ProcTxn.atomic { implicit t =>
-         val vParams = p.params.collect {
+         val vParams: Map[ String, VisualParam ] = p.params.collect({
             case pFloat: ProcParamFloat => {
                val pParamNode = g.addNode()
                val pParamEdge = g.addEdge( pNode, pParamNode )
-               val vi = vis.getVisualItem( GROUP_GRAPH, pParamNode )
+               val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
                aggr.addItem( vi )
-               val vFloat = VisualFloat( p, pFloat, pParamNode, pParamEdge )
-               val mVal = p.getFloat( pFloat.name )
-               vFloat.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
+               val pControl   = p.control( pFloat.name )
+               val vFloat     = VisualFloat( pControl, pParamNode, pParamEdge )
+               val mVal       = pControl.value
+               vFloat.value   = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
    //            vFloat.mapped = ...
                vi.set( COL_NUAGES, vFloat )
-               vFloat
+               pFloat.name -> vFloat
             }
             case pBus: ProcParamAudioBus => {
                val pParamNode = g.addNode()
@@ -488,9 +524,9 @@ class NuagesPanel( server: Server ) extends JPanel {
                aggr.addItem( vi )
                val vBus = VisualBus( pBus, pParamNode, pParamEdge )
                vi.set( COL_NUAGES, vBus )
-               vBus
+               pBus.name -> vBus
             }
-         }
+         })( breakOut )
          val res = VisualProc( p, pNode, aggr, vParams )
          res.playing = p.isPlaying
          res
@@ -511,10 +547,10 @@ class NuagesPanel( server: Server ) extends JPanel {
                procMap.get( e.targetVertex ).foreach( vProcTgt => {
                   val outName = e.out.name
                   val inName  = e.in.name
-                  val pSrc= vProcSrc.params.find( _.param.name == outName ).map( _.pNode ).getOrElse( vProcSrc.pNode )
-                  val pTgt= vProcTgt.params.find( _.param.name == inName  ).map( _.pNode ).getOrElse( vProcTgt.pNode )
-                  val pEdge = g.addEdge( pSrc, pTgt )
-                  edgeMap += e -> pEdge
+                  val pSrc    = vProcSrc.params.get( outName ).map( _.pNode ).getOrElse( vProcSrc.pNode )
+                  val pTgt    = vProcTgt.params.get( inName  ).map( _.pNode ).getOrElse( vProcTgt.pNode )
+                  val pEdge   = g.addEdge( pSrc, pTgt )
+                  edgeMap    += e -> pEdge
                })
             })
          })
@@ -539,7 +575,7 @@ class NuagesPanel( server: Server ) extends JPanel {
 //      procG.removeTuple( vi )
 //      aggrTable.removeItem( vProc.aggr )
       aggrTable.removeTuple( vProc.aggr ) // XXX OK???
-      vProc.params.foreach( vParam => {
+      vProc.params.values.foreach( vParam => {
          g.removeEdge( vParam.pEdge )
          g.removeNode( vParam.pNode )
       })
@@ -564,6 +600,26 @@ class NuagesPanel( server: Server ) extends JPanel {
       procMap.get( p ).foreach( vProc => {
          vProc.playing = state
          // damageReport XXX
+      })
+   }
+
+   private def topControlsChanged( controls: (ProcControl, Float)* ) {
+      val byProc = controls.groupBy( _._1.proc )
+      byProc.foreach( tup => {
+         val (proc, seq) = tup
+         procMap.get( proc ).foreach( vProc => {
+            seq.foreach( tup2 => {
+               val (ctrl, value) = tup2
+               vProc.params.get( ctrl.name ) match {
+                  case Some( vFloat: VisualFloat ) => vFloat.value = {
+                     val spec = ctrl.spec
+                     spec.unmap( spec.clip( value ))
+                  }
+                  case _ =>
+               }
+            })
+            // damageReport XXX
+         })
       })
    }
 }

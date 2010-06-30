@@ -46,7 +46,7 @@ val g1 = ngen( "Sine" ) {
 
 val p1 = g1.make
 
-p1.setFloat( "freq", 441 )
+p1.control( "freq" ).value = 441
 p1.play
 
 val g2 = ngen( "Mod" ) {
@@ -91,7 +91,7 @@ f.setVisible( true )
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
 val h = gen( "process2" ) {
-    val p1  = pFloat( "speed", ParamSpec(), Some( 1 ))
+    val p1  = pControl( "speed", ParamSpec( 0.1f, 10, ExpWarp ), 1 )
     val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
     val b   = bufCue( "disk", p2 )
 
@@ -104,11 +104,11 @@ val p = h.make
 
 // ProcTxn.atomic { implicit t =>
     p.setString( "path", audioDir + "ZahnradGong1 den-L.aif" )
-    p.setFloat( "speed", 4 )
+    p.control( "speed" ).value = 4
     p.play
 // }
 
-p.setFloat( "speed", 0.25f )
+p.control( "speed" ).value = 0.25f
 p.stop
 p.play; p.stop    // this has problems again ...
 

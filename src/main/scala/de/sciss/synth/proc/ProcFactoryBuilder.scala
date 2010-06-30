@@ -28,7 +28,7 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth._
+import de.sciss.synth.{ audio => arate, control => krate, _ }
 import de.sciss.synth.io.AudioFile
 import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
 import de.sciss.synth.osc.{ OSCSyncedMessage, OSCSynthNewMessage }
@@ -36,7 +36,7 @@ import actors.{ DaemonActor, Future, TIMEOUT }
 import collection.breakOut
 import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq }
 import ProcTransport._
-import ugen.{In, Out}
+import de.sciss.synth.ugen.{In, Out}
 
 /**
  *    @version 0.12, 24-Jun-10
@@ -133,7 +133,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       }
 
       def graph( fun: GE => GE ) : ProcGraph = {
-         val res = graph( fun( Proc.local.getParam( "in" ).asInstanceOf[ ProcParamAudioInput ].ar ))
+         val res = graph( fun( Proc.local.param( "in" ).asInstanceOf[ ProcParamAudioInput ].ar ))
          implicitAudioIn = true
          res
       }
@@ -248,25 +248,32 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          }
       }
       private val groupVar          = Ref[ Option[ RichGroup ]]( None )
-      private val pFloatValues      = Ref( Map.empty[ ProcParamFloat, Float ])
+//      private val pFloatValues      = Ref( Map.empty[ ProcParamFloat, Float ])
       private val pStringValues     = Ref( Map.empty[ ProcParamString, String ])
       private val pAudioBusValues   = Ref( Map.empty[ ProcParamAudioBus, RichBus ])
 
       lazy val audioInputs          = fact.pAudioIns.map( new AudioInputImpl( this, _ ))
       lazy val audioOutputs         = fact.pAudioOuts.map( new AudioOutputImpl( this, _ ))
+      lazy val controls             = fact.paramSeq.collect {
+         case pControl: ProcParamControl  => new ControlImpl( proc, pControl, krate )
+         case pAudio: ProcParamAudio      => new ControlImpl( proc, pAudio, arate )
+      }
+      private lazy val controlMap: Map[ String, ProcControl ] = controls.map( c => (c.name -> c) )( breakOut )
 
       def audioInput( name: String ) : ProcAudioInput    = audioInputs.find(  _.param.name == name ).get
       def audioOutput( name: String ) : ProcAudioOutput  = audioOutputs.find( _.param.name == name ).get
 
-      def getParam( name: String ) : ProcParam[ _ ] = fact.paramMap( name )
+      def param( name: String ) : ProcParam[ _ ] = fact.paramMap( name )
       def params : IIdxSeq[ ProcParam[ _ ]] = fact.paramSeq
 
-      def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc = {
-         val p = fact.paramMap( name ).asInstanceOf[ ProcParamFloat ]
-         pFloatValues.transform( _ + (p -> value) )
-         running().foreach( _.setFloat( name, value ))
-         this
-      }
+      def control( name: String ) : ProcControl = controlMap( name )
+
+//      def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc = {
+//         val p = fact.paramMap( name ).asInstanceOf[ ProcParamFloat ]
+//         pFloatValues.transform( _ + (p -> value) )
+//         running().foreach( _.setFloat( name, value ))
+//         this
+//      }
 
       def setString( name: String, value: String )( implicit tx: ProcTxn ) : Proc = {
          val p = fact.paramMap( name ).asInstanceOf[ ProcParamString ]
@@ -284,10 +291,10 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          this
       }
 
-      def getFloat( name: String )( implicit tx: ProcTxn ) : Float = {
-         val p = fact.paramMap( name ).asInstanceOf[ ProcParamFloat ]
-         pFloatValues().get( p ).getOrElse( p.default.getOrElse( pError( name )))
-      }
+//      def getFloat( name: String )( implicit tx: ProcTxn ) : Float = {
+//         val p = fact.paramMap( name ).asInstanceOf[ ProcParamFloat ]
+//         pFloatValues().get( p ).getOrElse( p.default.getOrElse( pError( name )))
+//      }
 
        def getString( name: String )( implicit tx: ProcTxn ) : String = {
           val p = fact.paramMap( name ).asInstanceOf[ ProcParamString ]
@@ -377,6 +384,14 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       def isPlaying( implicit tx: ProcTxn ) : Boolean = running().isDefined
 
+      private[proc] def dispatchControlChange( ctrl: ProcControl, newValue: Float ) {
+         dispatch( ControlsChanged( ctrl -> newValue ))
+      }
+
+      private[proc] def controlChange( ctrl: ProcControl, newValue: Float )( implicit tx: ProcTxn ) {
+         running().foreach( _.setFloat( ctrl.name, newValue ))
+      }
+
       override def toString = "proc(" + name + ")"
    }
 
@@ -399,7 +414,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          param match {
 //            case pFloat: ProcParamFloat => controls += SingleControlSetMap( pFloat.name, Proc.local.getFloat( pFloat.name ))
             case pFloat: ProcParamFloat => controls += SingleControlSetMap( pFloat.name,
-               p.getFloat( pFloat.name )( tx ))
+               p.control( pFloat.name ).value( tx ))
             case pString: ProcParamString =>
             case pAudioBus: ProcParamAudioInput => controls += SingleControlSetMap( pAudioBus.name,
                p.audioInput( pAudioBus.name ).index( tx ))
@@ -422,7 +437,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             val g = SynthGraph {
                val res1 = graph.fun
                val rate = Rate.highest( res1.outputs.map( _.rate ): _* )
-               if( (rate == audio) || (rate == control) ) {
+               if( (rate == arate) || (rate == krate) ) {
 //                  val res2 = fadeTime.map( fdt => makeFadeEnv( fdt ) * res1 ) getOrElse res1
 //                  val out = "out".kr
 //                  if( rate == audio ) {
@@ -430,7 +445,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //                  } else {
 //                     Out.kr( out, res2 )
 //                  }
-                  (Proc.local.getParam( "out" ).asInstanceOf[ ProcParamAudioOutput ]).ar( res1 )
+                  (Proc.local.param( "out" ).asInstanceOf[ ProcParamAudioOutput ]).ar( res1 )
                } else res1
             }
 
@@ -664,6 +679,25 @@ check ain
    private class ParamControlImpl( val name: String, val spec: ParamSpec, val _default: Float )
    extends ProcParamControl with ProcParamAudio {
       def default = Some( _default )
+   }
+
+   private class ControlImpl( val _proc: Impl, param: ProcParamFloat, _rate: Rate )
+   extends ProcControl {
+      ctrl =>
+
+      private var valueRef = Ref.withObserver( default ) { (oldV, newV) =>
+         if( oldV != newV ) _proc.dispatchControlChange( ctrl, newV )
+      }
+      def proc : Proc = _proc
+      def rate = Some( _rate )
+      def default : Float = param.default.getOrElse( 0f )
+      def spec : ParamSpec = param.spec
+      def name : String = param.name
+      def value( implicit tx: ProcTxn ) : Float = valueRef()
+      def value_=( newValue: Float )( implicit tx: ProcTxn ) {
+         val oldValue = valueRef.swap( newValue )
+         if( oldValue != newValue ) _proc.controlChange( this, newValue )
+      }
    }
 
    private class ParamStringImpl( val name: String, val default: Option[ String ])

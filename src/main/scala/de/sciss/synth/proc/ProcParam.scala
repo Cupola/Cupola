@@ -38,10 +38,6 @@ sealed trait ProcParam[ T ] {
 //   type t = T
    def name : String
    def default : Option[ T ]
-
-//   // ---- scope : Proc ----
-//
-//   def get : T = Proc.local.getParam[ T ]( name )
 }
 
 class ProcParamUnspecifiedException( name: String )

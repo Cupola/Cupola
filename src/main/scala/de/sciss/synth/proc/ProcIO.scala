@@ -28,8 +28,10 @@
 
 package de.sciss.synth.proc
 
+import de.sciss.synth.Rate
+
 /**
- *    @version 0.12, 25-Jun-10
+ *    @version 0.12, 29-Jun-10
  */
 sealed trait ProcAudioBus {
    def proc : Proc
@@ -53,4 +55,15 @@ trait ProcAudioInput extends ProcAudioBus {
 
 trait ProcAudioInsertion {
    def |> ( in: ProcAudioInput ) : ProcAudioInput
+}
+
+trait ProcControl {
+   def proc : Proc
+   def name : String
+   def rate : Option[ Rate ]
+   def spec : ParamSpec
+   def default : Float
+//   def mapped( implicit tx: ProcTxn ): Option[ RichBus ]
+   def value( implicit tx: ProcTxn ): Float
+   def value_=( newValue: Float )( implicit tx: ProcTxn ): Unit
 }

@@ -42,6 +42,7 @@ import de.sciss.synth.{Model, AudioBus, Group, Server}
  */
 object Proc extends ThreadLocalObject[ Proc ] {
    case class PlayingChanged( proc: Proc, playing: Boolean )
+   case class ControlsChanged( controls: (ProcControl, Float)* )
 }
 
 trait Proc extends Model {
@@ -51,20 +52,22 @@ trait Proc extends Model {
    def isPlaying( implicit tx: ProcTxn ) : Boolean
    def server : Server
 
-   def getFloat( name: String )( implicit tx: ProcTxn ) : Float
-   def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc
+//   def getFloat( name: String )( implicit tx: ProcTxn ) : Float
+//   def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc
    def getString( name: String )( implicit tx: ProcTxn ) : String
    def setString( name: String, value: String )( implicit tx: ProcTxn ) : Proc
    def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichBus
    def setAudioBus( name: String, value: RichBus )( implicit tx: ProcTxn ) : Proc
 
-   def getParam( name: String ) : ProcParam[ _ ]
    def params : IIdxSeq[ ProcParam[ _ ]]
+   def param( name: String ) : ProcParam[ _ ]
+   def controls : IIdxSeq[ ProcControl ]
+   def control( name: String ) : ProcControl
 
+   def audioInputs : IIdxSeq[ ProcAudioInput ]
    def audioInput( name: String ) : ProcAudioInput
+   def audioOutputs : IIdxSeq[ ProcAudioOutput ]
    def audioOutput( name: String ) : ProcAudioOutput
-   def audioInputs : ISeq[ ProcAudioInput ]
-   def audioOutputs : ISeq[ ProcAudioOutput ]
 
    def group( implicit tx: ProcTxn ) : Option[ RichGroup ]
    private[proc] def setGroup( g: RichGroup )( implicit tx: ProcTxn ) : Unit
