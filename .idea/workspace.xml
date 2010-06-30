@@ -138,19 +138,19 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="NuagesPanel.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="NuagesPanel.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesPanel.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="273" column="46" selection-start="9988" selection-end="9988" vertical-scroll-proportion="0.831068">
+            <state line="273" column="46" selection-start="9988" selection-end="9988" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="110" column="34" selection-start="2806" selection-end="2806" vertical-scroll-proportion="0.0">
+            <state line="167" column="0" selection-start="4115" selection-end="4115" vertical-scroll-proportion="0.9433962">
               <folding />
             </state>
           </provider>
@@ -189,8 +189,8 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Test.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesPanel.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala" />
       </list>
     </option>
   </component>
@@ -1362,16 +1362,16 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesPanel.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="110" column="34" selection-start="2806" selection-end="2806" vertical-scroll-proportion="0.0">
+        <state line="273" column="46" selection-start="9988" selection-end="9988" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesPanel.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="273" column="46" selection-start="9988" selection-end="9988" vertical-scroll-proportion="0.831068">
+        <state line="167" column="0" selection-start="4115" selection-end="4115" vertical-scroll-proportion="0.9433962">
           <folding />
         </state>
       </provider>

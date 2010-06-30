@@ -149,6 +149,22 @@ p1 ~> p2; p2 ~> p3
 p1.play; p2.play; p3.play
 
 p2.setFloat( "freq", -200 )
+
+/////
+
+val pBub = gen( "bubbles" ) {
+   val f1  = pControl( "f1", ParamSpec( 0.1f, 10, ExpWarp ), 0.4f )
+   val f2  = pControl( "f2", ParamSpec( 0.1f, 100, ExpWarp ), 8 )
+   val det = pControl( "det", ParamSpec( 0.1f, 10, ExpWarp ), 0.90375f )
+   graph {
+      val freq2 = f2.kr
+      val f = LFSaw.kr( f1.kr ).madd(24, LFSaw.kr(List( freq2, freq2 * det.kr))
+         .madd(3, 80)).midicps
+      CombN.ar(SinOsc.ar(f)*0.04, 0.2, 0.2, 4)
+   }
+}
+
+val procBub = pBub.make
 """
 
       pane.initialCode = Some(
