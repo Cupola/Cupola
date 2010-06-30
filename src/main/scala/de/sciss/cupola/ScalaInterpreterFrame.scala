@@ -90,7 +90,7 @@ f.setVisible( true )
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
-val h = gen( "process2" ) {
+val h = ngen( "process2" ) {
     val p1  = pControl( "speed", ParamSpec( 0.1f, 10, ExpWarp ), 1 )
     val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
     val b   = bufCue( "disk", p2 )
@@ -115,7 +115,7 @@ p.play; p.stop    // this has problems again ...
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
-val h = gen( "disk" ) {
+val h = ngen( "disk" ) {
     val p1  = pFloat( "speed", ParamSpec(), Some( 1 ))
     val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
     val b   = bufCue( "disk", p2 )
@@ -125,7 +125,7 @@ val h = gen( "disk" ) {
     }
 }
 
-val i = gen( "freqshift" ) {
+val i = ngen( "freqshift" ) {
     val p1 = pFloat( "freq", ParamSpec(), Some( 100 ))
 
     graph { in =>
@@ -133,7 +133,7 @@ val i = gen( "freqshift" ) {
     }
 }
 
-val j = gen( "pan" ) {
+val j = ngen( "pan" ) {
     val p1 = pFloat( "pan", ParamSpec(), Some( 0.0 ))
 
     graph { in =>
@@ -152,7 +152,7 @@ p2.setFloat( "freq", -200 )
 
 /////
 
-val pBub = gen( "bubbles" ) {
+val pBub = ngen( "bubbles" ) {
    val f1  = pControl( "f1", ParamSpec( 0.1f, 10, ExpWarp ), 0.4f )
    val f2  = pControl( "f2", ParamSpec( 0.1f, 100, ExpWarp ), 8 )
    val det = pControl( "det", ParamSpec( 0.1f, 10, ExpWarp ), 0.90375f )
@@ -165,7 +165,7 @@ val pBub = gen( "bubbles" ) {
 }
 
 val procBub = pBub.make
-"""
+   """
 
       pane.initialCode = Some(
 """

@@ -1,0 +1,149 @@
+xfading (30-jun-10)
+
+three possible approaches
+A - duplicate methods, e.g. play / xplay, stop / xstop / value_= xvalue_= etc.
+  ; straight forward,  but not too elegant
+B - global/per-proc state (aka JITlib) : fadeTime = xyz ; less typing in live-coding,
+  but rather clumsy / unelegant ?
+C - context, e.g. fade( 13 ) { x.controls( "freq" ).value = 345 }
+  ; fade-types could be distinguished, e.g. fade(...) {} versus ramp(...) {}
+  ; could encapsulate the txn, e.g. instead of atomic {} we would have
+  ; fade {} versus instant {} ... --> disadvantage: you wouldn't be
+  ; able to mix faded and instantaneous things inside one txn
+--> from Nuages' perspective irrelevant; relevant is the implementation (below)
+--> we could still switch approach / naming later
+
+   /// OK:
+   why not a TxnLocal? that could allow both B and C
+   xfade( 13 )
+   xfade( 13 ) { }
+   // possible to overload unambiguiously this way? NOT POSSIBLE
+   // but with a trick:
+
+	trait FadeType
+	object nofade extends FadeType
+	var fade: FadeType = nof // TxnLocal
+	case class xfade( time: Float ) extends Fade {
+	    def apply( thunk: => Unit ) {
+	        val old = fade.swap( this )
+	        thunk
+	        fade.set( old )
+	    }
+	}
+
+    maybe use a more general term for the variable and trait,
+    e.g. transition
+
+    transit = xfade( 33 )
+    blabla
+    transit = none
+    fade( 33 ) { ... }
+    ramp( 33 ) { ... }
+
+    // although we wouldn't win much, since transit = fade( 33 ) would
+    // be (should be) txn local, so must be executed along with the
+    // actions to fade, and then the thunk style is even more clear
+
+two technically different things:
+- fading (e.g. duplication of process)	
+- glissandierend (e.g. mapped to one ramping synth)
+- ngen should provide hints for the GUI preference regarding these two types?
+
+implementation:
+- client versus server
+  ; server would be nicer as we wouldn't introduce ramping granularity and jitter
+  ; but then how do we get back current values to the client?
+
+//////////////
+
+server-side gliss
+
+two candidates
+- pControl
+	--> Out.kr / n_map
+	--> graph order doesn't matter
+	--> last state could be queried via c_get
+- pAudio
+	--> Out.ar / n_mapa
+	--> graph order does matter
+	--> last state could be sent via SendTrig / SendReply
+	    or synchronously written to a small Buffer and
+	    queried via b_get (this would be more simliar to
+	    pControl ; disadvantage: another asynchronous
+	    command b_alloc) ; even easier: since we cannot
+	    have audio resolution anyways back to the client,
+	    we could also write to an auxiliary control-bus
+	    and hence use c_get, too
+
+arguably, the jitter sending sampled values back is more significant
+for <1 min fades than calculating the values directly on the client side
+using system-clock.
+
+fades completing normally are not really an interesting case, as we already
+now the target fade value. what happens if a fade is aborted?
+- we could tentatively internally set the value to the one calculated
+  according to system-clock, plus query the bus. unfortunately we cannot
+  have the synth send the last value upon dying itself.
+
+////////
+
+so we'd have
+  mapped: Ref[ Option[ Mapping ]] where
+	case class Mapping( synth, bus, startTime, startValue, duration, targetValue )
+
+then: value_=( newValue ) = mapped() match {
+	case None => go straight ahead
+	case Some( mapping ) =>
+		bundle(
+			mapping.synth.freeMsg
+//			mapping.bus.getMsg
+			synth.mapMsg( controlName -> -1 )
+			synth.setMsg( controlName -> newValue )
+		)
+
+and: gliss( newValue, duration ) = mapped() match {
+	case None => go straight ahead
+	case Some( mapping ) =>
+		bundle( 
+			mapping.synth.freeMsg
+//			mapping.bus.getMsg
+			newMappingSynth.newMsg
+		)
+
+i.e. try *first without smoothening things* on the server-side, see
+if discontinuities are maybe neglictable. otherwise one approach could be:
+- mapped -> value_= : add a small lag time
+- mapped -> gliss : add a small xfade using In.kr from previous bus value
+	like:
+
+	LinXFade2.kr( Latch.kr( In.kr( bus ), Impulse.kr( 0 ) ... )
+	actually: Line.kr reads start value at scalar rate, hence
+	we can feed In.kr directly and don't need to add In.ir (which works)
+
+{
+	var l1  = Line.kr( In.kr( c.index ), 1000, 20 );
+	var l2  = Line.kr( 400, 1000, 20, doneAction: 2 );
+	var res = LinXFade2.kr( l1, l2, Line.kr( -1, 1, 0.2 ));
+	Out.kr( c.index, res );
+	SinOsc.ar( res ) * 0.2;
+}.play
+
+or even splitted into two
+
+bundle(
+  synth.re-map( -> c2 )
+
+  x1 = {
+	var l2 = Line.kr( 400, 1000, 20, doneAction: 2 );
+	Out.kr( c2.index, l2 );
+  }.play
+
+  x2 = {
+	var l1 = Line.kr( In.kr( c1.index ), 1000, 20 );
+	var l2 = In.kr( c2 )
+	var res = LinXFade2.kr( l1, l2, Line.kr( -1, 1, 0.2 ));
+	Out.kr( c2.index, res );
+  }.play( after: x1 )
+
+  c1.freeWhen( x2.dies )
+)

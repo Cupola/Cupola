@@ -277,13 +277,15 @@ object NuagesPanel {
    private[nuages] val COL_NUAGES = "nuages"
 }
 
-class NuagesPanel( server: Server ) extends JPanel {
+class NuagesPanel( server: Server ) extends JPanel
+with ProcFactoryProvider {
    import NuagesPanel._
    import ProcWorld._
    import Proc._
 
    val vis     = new Visualization()
    val world   = ProcDemiurg.worlds( server )
+   val display = new Display( vis )
 
    private val AGGR_PROC            = "aggr"
    private val GROUP_GRAPH          = "graph"
@@ -338,9 +340,6 @@ class NuagesPanel( server: Server ) extends JPanel {
    
    // ---- constructor ----
    {
-      val font    = Wolkenpumpe.condensedFont.deriveFont( 10 )
-      val display = new Display( vis )
-
 //      vis.setValue( GROUP_NODES, null, VisualItem.SHAPE, new java.lang.Integer( Constants.SHAPE_ELLIPSE ))
 //      vis.add( GROUP_GRAPH, g )
 //      vis.addFocusGroup( GROUP_PAUSED, setPaused )
@@ -377,13 +376,13 @@ class NuagesPanel( server: Server ) extends JPanel {
       val actionEdgeColor  = new ColorAction( GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb( 255, 255, 255 ))
       val actionAggrFill   = new ColorAction( AGGR_PROC, VisualItem.FILLCOLOR, ColorLib.rgb( 127, 127, 127 ))
       val actionAggrStroke = new ColorAction( AGGR_PROC, VisualItem.STROKECOLOR, ColorLib.rgb( 255, 255, 255 ))
-      val fontAction       = new FontAction( GROUP_NODES, font )
+//      val fontAction       = new FontAction( GROUP_NODES, font )
 
       val lay = new ForceDirectedLayout( GROUP_GRAPH )
 
       // quick repaint
       val actionColor = new ActionList()
-      actionColor.add( fontAction )
+//      actionColor.add( fontAction )
       actionColor.add( actionTextColor )
       actionColor.add( actionNodeStroke )
       actionColor.add( actionNodeFill )
@@ -412,6 +411,7 @@ class NuagesPanel( server: Server ) extends JPanel {
       display.addControlListener( new WheelZoomControl() )
       display.addControlListener( new PanControl() )
       display.addControlListener( new DragControl( vis ))
+      display.addControlListener( new ClickControl( this ))
       display.setHighQuality( true )
 
       // ------------------------------------------------
@@ -431,6 +431,14 @@ class NuagesPanel( server: Server ) extends JPanel {
       vis.run( ACTION_COLOR )
 
       world.addListener( topoListener )
+   }
+
+   // ---- ProcFactoryProvider ----
+   var factory: Option[ ProcFactory ] = None
+   private var locHintMap = Map.empty[ Proc, Point2D ]
+   def setLocationHint( p: Proc, loc: Point2D ) {
+//      println( "loc for " + p + " is " + loc )
+      locHintMap += p -> loc
    }
 
    private def defer( code: => Unit ) {
@@ -496,7 +504,18 @@ class NuagesPanel( server: Server ) extends JPanel {
 
    private def topAddProc( p: Proc ) {
       val pNode   = g.addNode()
-      val vi = vis.getVisualItem( GROUP_GRAPH, pNode )
+      val vi      = vis.getVisualItem( GROUP_GRAPH, pNode )
+      val locO    = locHintMap.get( p )
+//println( "Lookup for " + p + " yields " + locO )
+      locO.foreach( loc => {
+         locHintMap -= p
+//         vi.setStartX( loc.getX() )
+//         vi.setStartY( loc.getY() )
+//         vi.setX( loc.getX() )
+//         vi.setY( loc.getY() )
+         vi.setEndX( loc.getX() )
+         vi.setEndY( loc.getY() )
+      })
 //      procG.addTuple( vi )
 //      vi.set( VisualItem.SHAPE, Constants.SHAPE_ELLIPSE )
       val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
@@ -507,6 +526,14 @@ class NuagesPanel( server: Server ) extends JPanel {
                val pParamNode = g.addNode()
                val pParamEdge = g.addEdge( pNode, pParamNode )
                val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
+               locO.foreach( loc => {
+//                  vi.setStartX( loc.getX() )
+//                  vi.setStartY( loc.getY() )
+//                  vi.setX( loc.getX() )
+//                  vi.setY( loc.getY() )
+                  vi.setEndX( loc.getX() )
+                  vi.setEndY( loc.getY() )
+               })
                aggr.addItem( vi )
                val pControl   = p.control( pFloat.name )
                val vFloat     = VisualFloat( pControl, pParamNode, pParamEdge )
@@ -520,6 +547,14 @@ class NuagesPanel( server: Server ) extends JPanel {
                val pParamNode = g.addNode()
                val pParamEdge = g.addEdge( pNode, pParamNode )
                val vi = vis.getVisualItem( GROUP_GRAPH, pParamNode )
+               locO.foreach( loc => {
+//                  vi.setStartX( loc.getX() )
+//                  vi.setStartY( loc.getY() )
+//                  vi.setX( loc.getX() )
+//                  vi.setY( loc.getY() )
+                  vi.setEndX( loc.getX() )
+                  vi.setEndY( loc.getY() )
+               })
                vi.set( VisualItem.SIZE, 0.33333f )
                aggr.addItem( vi )
                val vBus = VisualBus( pBus, pParamNode, pParamEdge )

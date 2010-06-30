@@ -28,28 +28,46 @@
 
 package de.sciss.nuages
 
-import de.sciss.synth.proc.ProcFactory
 import java.awt.{Color, Component, EventQueue, BorderLayout}
 import javax.swing._
 import de.sciss.synth.{Server, Model}
+import event.{ListSelectionListener, ListSelectionEvent}
+import java.awt.geom.Point2D
+import de.sciss.synth.proc.{Proc, ProcFactory}
 
 class NuagesFrame( server: Server ) extends JFrame {
-   private val ggPanel = new NuagesPanel( server )
+   private val ggPanel  = new NuagesPanel( server )
+   private val ggGens   = new JList( GensModel )
 
    // ---- constructor ----
    {
       // XXX should query current gen list
       // but then we need to figure out
       // a proper synchronization
-      val font = Wolkenpumpe.condensedFont.deriveFont( 10 )
+      val font = Wolkenpumpe.condensedFont.deriveFont( 12 )
       Wolkenpumpe.addListener( GensModel.nuagesListener )
+
+//      ggGens.setFont( font ) // doesn't do anything, porque?
 
       val cp = getContentPane
       cp.setBackground( Color.black )
-      val ggGens = new JList( GensModel )
       ggGens.setBackground( Color.black )
+      GensRenderer.setFont( font )
       ggGens.setCellRenderer( GensRenderer )
       ggGens.setFixedCellWidth( 64 )
+      ggGens.setSelectionMode( ListSelectionModel.SINGLE_SELECTION )
+      ggGens.addListSelectionListener( new ListSelectionListener {
+         def valueChanged( e: ListSelectionEvent ) {
+            val idx = e.getFirstIndex()
+            val pf = if( idx >= 0 && idx < GensModel.getSize() ) {
+               Some( GensModel.getElementAt( idx ))
+            } else {
+               None
+            }
+            ggPanel.factory = pf
+         }
+      })
+
       val ggGensScroll = new JScrollPane( ggGens, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
          ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER )
       cp.add( BorderLayout.EAST, ggGensScroll )
@@ -128,6 +146,6 @@ class NuagesFrame( server: Server ) extends JFrame {
 
       // AbstractListModel
       def getSize : Int = coll.size
-      def getElementAt( idx: Int ) : AnyRef = coll( idx )
+      def getElementAt( idx: Int ) : ProcFactory = coll( idx )
    }
 }

@@ -46,6 +46,9 @@ trait ProcTxn {
    def add( msg: OSCMessage with OSCSend, change: Option[ (FilterMode, RichState, Boolean) ], audible: Boolean,
             dependancies: Map[ RichState, Boolean ] = Map.empty ) : Unit
 
+   def beforeCommit( callback: ProcTxn => Unit ) : Unit
+   def beforeCommit( callback: ProcTxn => Unit, prio: Int ) : Unit
+
    private[ proc ] def ccstm : Txn
 }
 
@@ -181,6 +184,14 @@ val server = Server.default // XXX vergación
                if( changed ) state.set( value )( tx )
             }
          }).getOrElse( processDeps )
+      }
+
+      def beforeCommit( callback: ProcTxn => Unit ) {
+         txn.beforeCommit( _ => callback( tx ))
+      }
+
+      def beforeCommit( callback: ProcTxn => Unit, prio: Int ) {
+         txn.beforeCommit( _ => callback( tx ), prio )
       }
 
       // XXX IntMap lost. might eventually implement the workaround
