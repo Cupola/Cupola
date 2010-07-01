@@ -58,6 +58,10 @@ trait ProcParamFloat extends ProcParam[ Float ] {
    def spec : ParamSpec
 }
 
+//trait ProcParamMappableFloat extends ProcParamFloat {
+//   def rate : Rate
+//}
+
 trait ProcParamControl extends ProcParamFloat {
    def kr : GE = {
       ProcGraphBuilder.local.includeParam( this )

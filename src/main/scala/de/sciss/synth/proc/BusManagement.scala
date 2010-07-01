@@ -28,8 +28,8 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{Server, Bus}
 import collection.immutable.{ SortedMap => ISortedMap, SortedSet => ISortedSet }
+import de.sciss.synth.{AudioBus, Server, Bus}
 
 /**
  *    @version 0.10, 25-Jun-10
@@ -51,20 +51,21 @@ object RichBus {
    def soundIn( server: Server, numChannels: Int ) : RichBus = {
       val o = server.options
       require( numChannels <= o.inputBusChannels )
-      HardwareImpl( server, o.outputBusChannels, numChannels )
+      HardwareImpl( new AudioBus( server, o.outputBusChannels, numChannels ))
    }
 
    def soundOut( server: Server, numChannels: Int ) : RichBus = {
       val o = server.options
       require( numChannels <= o.outputBusChannels )
-      HardwareImpl( server, 0, numChannels )
+      HardwareImpl( new AudioBus( server, 0, numChannels ))
    }
 
    trait User {
-      def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) : Unit
+//      def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) : Unit
+      def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) : Unit
    }
 
-   private class BusHolder( bus: Bus ) {
+   private class BusHolder( bus: AudioBus ) {
       private val useCount = Ref.withCheck( 0 ) { case 0 => bus.free }
 
       def alloc( implicit tx: ProcTxn ) { useCount += 1 }
@@ -87,7 +88,7 @@ object RichBus {
 
    private type BusHolderMap = Map[ Server, ISortedMap[ Int, BusHolder ]]
 
-   private class RichBusHolder( _bus: Bus, mapRef: Ref[ BusHolderMap ])
+   private class RichBusHolder( _bus: AudioBus, mapRef: Ref[ BusHolderMap ])
    extends BusHolder( _bus ) {
       def add( implicit tx: ProcTxn ) {
          mapRef.transform( map => map +
@@ -133,16 +134,19 @@ object RichBus {
       bus
    }
 
-   private case class HardwareImpl( server: Server, index: Int, numChannels: Int )
+   private case class HardwareImpl( bus: AudioBus )
    extends RichBus {
+      def server        = bus.server
+      def numChannels   = bus.numChannels
+
       def addReader( u: User )( implicit tx: ProcTxn ) {
-         u.busChanged( index, numChannels  )
+         u.busChanged( bus  )
       }
 
       def removeReader( u: User )( implicit tx: ProcTxn ) {}
 
       def addWriter( u: User )( implicit tx: ProcTxn ) {
-         u.busChanged( index, numChannels )
+         u.busChanged( bus )
       }
 
       def removeWriter( u: User )( implicit tx: ProcTxn ) {}
@@ -162,27 +166,30 @@ object RichBus {
          val newBus  = if( r.isEmpty ) {
             val w = writers()
             if( w.isEmpty ) { // no bus yet, create an empty shared one
-               val res = allocReadOnlyBus( server, numChannels )
-               bus.set( res )
-               res
+               val bh = allocReadOnlyBus( server, numChannels )
+               bus.set( bh )
+               new AudioBus( server, bh.index, numChannels )
             } else { // dispose old dummy bus, create new bus
-               val res     = allocBus( server, numChannels )
-               val idx     = res.index
-               r.foreach( _.busChanged( idx, numChannels ))
-               w.foreach( _.busChanged( idx, numChannels ))
-               val oldBus  = bus.swap( res )
+               val bh     = allocBus( server, numChannels )
+//               val idx     = bh.index
+//               r.foreach( _.busChanged( idx, numChannels ))
+//               w.foreach( _.busChanged( idx, numChannels ))
+               val res     = new AudioBus( server, bh.index, numChannels )
+               r.foreach( _.busChanged( res ))
+               w.foreach( _.busChanged( res ))
+               val oldBus  = bus.swap( bh )
                oldBus.free
                res
             }
          } else { // re-use existing bus
-            val res = bus()
-            res.alloc
-            res
+            val bh = bus()
+            bh.alloc
+            new AudioBus( server, bh.index, numChannels )
          }
          readers.transform( _ + u )
          // always perform this on the newly added
          // reader no matter if the bus is new:
-         u.busChanged( newBus.index, numChannels )
+         u.busChanged( newBus )
       }
 
       def addWriter( u: User )( implicit tx: ProcTxn ) {
@@ -190,27 +197,30 @@ object RichBus {
          val newBus  = if( w.isEmpty ) {
             val r = readers()
             if( r.isEmpty ) { // no bus yet, create an empty shared one
-               val res = allocWriteOnlyBus( server, numChannels )
-               bus.set( res )
-               res
+               val bh = allocWriteOnlyBus( server, numChannels )
+               bus.set( bh )
+               new AudioBus( server, bh.index, numChannels )
             } else { // dispose old dummy bus, create new bus
-               val res     = allocBus( server, numChannels )
-               val idx     = res.index
-               val oldBus  = bus.swap( res )
-               r.foreach( _.busChanged( idx, numChannels ))
-               w.foreach( _.busChanged( idx, numChannels ))
+               val bh      = allocBus( server, numChannels )
+//               val idx     = bh.index
+               val oldBus  = bus.swap( bh )
+//               r.foreach( _.busChanged( idx, numChannels ))
+               val res = new AudioBus( server, bh.index, numChannels )
+//               w.foreach( _.busChanged( idx, numChannels ))
+               r.foreach( _.busChanged( res ))
+               w.foreach( _.busChanged( res ))
                oldBus.free
                res
             }
          } else { // re-use existing bus
-            val res = bus()
-            res.alloc
-            res
+            val bh = bus()
+            bh.alloc
+            new AudioBus( server, bh.index, numChannels )
          }
          writers.transform( _ + u )
          // always perform this on the newly added
          // reader no matter if the bus is new:
-         u.busChanged( newBus.index, numChannels )
+         u.busChanged( newBus )
       }
 
       def removeReader( u: User )( implicit tx: ProcTxn ) {
@@ -220,10 +230,12 @@ object RichBus {
          if( r.isEmpty ) {
             val w = writers()
             if( w.nonEmpty ) { // they can all go to write only
-               val res  = allocWriteOnlyBus( server, numChannels )
-               val idx  = res.index
-               bus.set( res )
-               w.foreach( _.busChanged( idx, numChannels ))
+               val bh = allocWriteOnlyBus( server, numChannels )
+//               val idx  = bh.index
+               bus.set( bh )
+               val res = new AudioBus( server, bh.index, numChannels )
+//               w.foreach( _.busChanged( idx, numChannels ))
+               w.foreach( _.busChanged( res ))
             }
          }
          oldBus.free
@@ -236,10 +248,11 @@ object RichBus {
          if( w.isEmpty ) {
             val r = readers()
             if( r.nonEmpty ) { // they can all go to write only
-               val res  = allocReadOnlyBus( server, numChannels )
-               val idx  = res.index
-               bus.set( res )
-               r.foreach( _.busChanged( idx, numChannels ))
+               val bh = allocReadOnlyBus( server, numChannels )
+//               val idx  = bh.index
+               bus.set( bh )
+               val res = new AudioBus( server, bh.index, numChannels )
+               r.foreach( _.busChanged( res ))
             }
          }
          oldBus.free

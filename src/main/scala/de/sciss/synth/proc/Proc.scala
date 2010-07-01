@@ -69,8 +69,23 @@ trait Proc extends Model {
    def audioOutputs : IIdxSeq[ ProcAudioOutput ]
    def audioOutput( name: String ) : ProcAudioOutput
 
-   def group( implicit tx: ProcTxn ) : Option[ RichGroup ]
-   private[proc] def setGroup( g: RichGroup )( implicit tx: ProcTxn ) : Unit
+   /**
+    *    Retrieves the main group of the Proc, or
+    *    returns None if a group has not yet been assigned.
+    */
+   def groupOption( implicit tx: ProcTxn ) : Option[ RichGroup ]
+
+   /**
+    *    Retrieves the main group of the Proc. If this
+    *    group has not been assigned yet, this method will
+    *    create a new group.
+    */
+   def group( implicit tx: ProcTxn ) : RichGroup
+
+   /**
+    *    Assigns a group to the Proc.
+    */
+   def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) : Unit
 
 //   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
 //   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit

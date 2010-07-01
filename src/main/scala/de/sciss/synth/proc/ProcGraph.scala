@@ -28,8 +28,10 @@
 
 package de.sciss.synth.proc
 
+import de.sciss.synth.AddAction
+
 /**
- *    @version 0.12, 21-Jun-10
+ *    @version 0.12, 01-Jul-10
  */
 trait ProcEntry {
    def play( target: RichGroup )( implicit tx: ProcTxn ) : ProcRunning

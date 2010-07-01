@@ -97,8 +97,8 @@ object ProcDemiurg { // ( val server: Server )
          return
       }
 
-      val srcGroup     = source.group
-      val tgtGroups    = affected.map( p => (p, p.group) )
+      val srcGroup     = source.groupOption
+      val tgtGroups    = affected.map( p => (p, p.groupOption) )
 
       def startMoving( g: RichGroup ) {
          var succ                = g
@@ -117,7 +117,7 @@ object ProcDemiurg { // ( val server: Server )
                   val g = RichGroup( Group( target.server ))
 //                  tx.addFirst( g.server, g.newMsg( pred, addAfter ))
                   g.play( pred, addAfter )
-                  target.setGroup( g )
+                  target.group = g
                   succ = g
                }
             }
@@ -129,7 +129,7 @@ object ProcDemiurg { // ( val server: Server )
             val g = RichGroup( Group( source.server ))
 //            tx.addFirst( g.server, g.newMsg( g.server.defaultGroup, addToHead ))
             g.play( RichGroup.default( g.server ))
-            source.setGroup( g )
+            source.group = g
             startMoving( g )
          }
          case Some( g ) => startMoving( g )

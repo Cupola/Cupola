@@ -1,0 +1,23 @@
+==== control mapping ==== 01-jul-10
+
+TYPE       EDGE?  POSSIBLE SYNTH POS       DECIDED SYNTH POS
+
+kr -> kr   (-)*   (irrelevant)             head(tgt)
+kr -> ar   (-)*   before tgt               head(tgt)
+ar -> kr   (-)*   after src                tail(src)
+ar -> ar   +      before tgt && after src  tail(src)
+
+* : if we do not enforce an edge, we could experience
+    an extra latency of control-bus period
+--> AT THE MOMENT, FORGET ABOUT IT (we don't care for this latency)
+
+
+Effect on Proc group
+
+--> enforce play-group
+---> i.e. if play-group does not exist :
+	--> enforce proc-group
+	--> create play-group in proc-group
+--> head(tgt) then means: before(play-group(tgt))
+--> tail(src) then means: after(play-group(src))
+

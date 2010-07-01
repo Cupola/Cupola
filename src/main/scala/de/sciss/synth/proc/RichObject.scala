@@ -66,6 +66,14 @@ abstract class RichNode( val initOnline : Boolean ) extends RichObject {
       tx.add( node.setMsg( pairs: _* ), None, audible, Map( isOnline -> true ))
    }
 
+   def mapn( audible: Boolean, pairs: ControlKBusMap* )( implicit tx: ProcTxn ) {
+      tx.add( node.mapnMsg( pairs: _* ), None, audible, Map( isOnline -> true ))
+   }
+
+   def mapan( audible: Boolean, pairs: ControlABusMap* )( implicit tx: ProcTxn ) {
+      tx.add( node.mapanMsg( pairs: _* ), None, audible, Map( isOnline -> true ))
+   }
+
    def moveToHead( audible: Boolean, group: RichGroup )( implicit tx: ProcTxn ) {
       tx.add( node.moveToHeadMsg( group.group ), None, audible, Map( isOnline -> true )) // XXX no entry?
    }

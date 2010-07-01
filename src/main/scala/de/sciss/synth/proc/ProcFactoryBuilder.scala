@@ -36,7 +36,7 @@ import actors.{ DaemonActor, Future, TIMEOUT }
 import collection.breakOut
 import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq }
 import ProcTransport._
-import de.sciss.synth.ugen.{In, Out}
+import ugen._
 
 /**
  *    @version 0.12, 24-Jun-10
@@ -248,20 +248,22 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          }
       }
       private val groupVar          = Ref[ Option[ RichGroup ]]( None )
-//      private val pFloatValues      = Ref( Map.empty[ ProcParamFloat, Float ])
+      private val playGroupVar      = Ref[ Option[ RichGroup ]]( None )
+//      private val pFloatValues    = Ref( Map.empty[ ProcParamFloat, Float ])
       private val pStringValues     = Ref( Map.empty[ ProcParamString, String ])
       private val pAudioBusValues   = Ref( Map.empty[ ProcParamAudioBus, RichBus ])
+//      private val controlMapMap   = Ref( Map.empty[ ProcControl, ControlMapping ])
 
-      lazy val audioInputs          = fact.pAudioIns.map( new AudioInputImpl( this, _ ))
-      lazy val audioOutputs         = fact.pAudioOuts.map( new AudioOutputImpl( this, _ ))
+      lazy val audioInputs          = fact.pAudioIns.map(  p => new AudioInputImpl(  this, p.name ))
+      lazy val audioOutputs         = fact.pAudioOuts.map( p => new AudioOutputImpl( this, p.name ))
       lazy val controls             = fact.paramSeq.collect {
          case pControl: ProcParamControl  => new ControlImpl( proc, pControl, krate )
          case pAudio: ProcParamAudio      => new ControlImpl( proc, pAudio, arate )
       }
       private lazy val controlMap: Map[ String, ProcControl ] = controls.map( c => (c.name -> c) )( breakOut )
 
-      def audioInput( name: String ) : ProcAudioInput    = audioInputs.find(  _.param.name == name ).get
-      def audioOutput( name: String ) : ProcAudioOutput  = audioOutputs.find( _.param.name == name ).get
+      def audioInput( name: String ) : ProcAudioInput    = audioInputs.find(  _.name == name ).get
+      def audioOutput( name: String ) : ProcAudioOutput  = audioOutputs.find( _.name == name ).get
 
       def param( name: String ) : ProcParam[ _ ] = fact.paramMap( name )
       def params : IIdxSeq[ ProcParam[ _ ]] = fact.paramSeq
@@ -308,11 +310,57 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       private def pError( name: String ) = throw new ProcParamUnspecifiedException( name )
 
-      def group( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupVar()
+      def groupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupVar()
+//      def groupOption_=( newGroup: Option[ RichGroup ])( implicit tx: ProcTxn ) {
+//         val oldGroup = groupVar.swap( newGroup )
+//         // XXX what should we do, free it?
+//         oldGroup.foreach( _.free )
+//         running().foreach( _.setGroup( newGroup ))
+//      }
 
-      private[proc] def setGroup( g: RichGroup )( implicit tx: ProcTxn ) {
-         groupVar.set( Some( g ))
-         running().foreach( _.setGroup( g ))
+      def group( implicit tx: ProcTxn ) : RichGroup = {
+         groupOption.getOrElse({
+            val g    = Group( server )
+            val res  = RichGroup( g )
+            res.play( RichGroup.default( server ))
+            group    = res
+            res
+         })
+      }
+      def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+//         groupOption = Some( newGroup )
+         val newGroupO  = Some( newGroup )
+         val oldGroupO  = groupVar.swap( newGroupO )
+         val pgo = playGroupOption
+         pgo.foreach( _.moveToHead( true, newGroup ))
+         // XXX also move the mapping synths!
+         if( pgo.isEmpty ) { // we are still playing in the main group, hence update that
+            running().foreach( _.setGroup( newGroup ))
+         }
+         // XXX what should we do, free it?
+         oldGroupO.foreach( _.free( true ))
+      }
+
+      private def playGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = playGroupVar()
+
+      private def playGroup( implicit tx: ProcTxn ) : RichGroup = {
+         playGroupOption.getOrElse({
+            val g       = Group( server )
+            val res     = RichGroup( g )
+            res.play( group ) // creates group if necessary
+            playGroup   = res
+            res
+         })
+      }
+
+      def playGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+         val newGroupO  = Some( newGroup )
+         val oldGroupO  = playGroupVar.swap( newGroupO )
+         // XXX what should we do, free it?
+         oldGroupO.foreach( rg => {
+            running().foreach( _.setGroup( newGroup ))
+            rg.free( true ) // after running.setGroup !
+         })
       }
 
       private def await[ A ]( timeOut: Long, fut: Future[ A ])( handler: Function1[ Option[ A ], Unit ]) : Nothing = {
@@ -347,9 +395,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //         running().foreach( _.busChanged( name, index, numChannels ))
 //      }
 
-      private[proc] def busChanged( bus: ProcAudioBus, index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
-         if( verbose ) println( "PROC BUSCHANGED " + name + " / " + bus.name + " / " + index + " / " + running() )
-         running().foreach( _.busChanged( bus.name, index, numChannels ))
+      private[proc] def busChanged( bus: ProcAudioBus, abus: AudioBus )( implicit tx: ProcTxn ) {
+         if( verbose ) println( "PROC BUSCHANGED " + name + " / " + bus.name + " / " + abus + " / " + running() )
+         running().foreach( _.busChanged( bus.name, abus ))
       }
 
       def play( implicit tx: ProcTxn ) : Proc = {
@@ -357,7 +405,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             println( "WARNING: Proc.play - '" + this + "' already playing")
          } else {
             val run = Proc.use( proc ) {
-               fact.entry.play( groupVar().getOrElse( RichGroup.default( server )))
+               val target = playGroupOption.getOrElse( groupOption.getOrElse( RichGroup.default( server )))
+               fact.entry.play( target )
             }
             lazy val l: Model.Listener = {
                case ProcRunning.Stopped => {
@@ -388,12 +437,100 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          dispatch( ControlsChanged( ctrl -> newValue ))
       }
 
-      private[proc] def controlChange( ctrl: ProcControl, newValue: Float )( implicit tx: ProcTxn ) {
+      private[proc] def controlChanged( ctrl: ProcControl, newValue: Float )( implicit tx: ProcTxn ) {
          running().foreach( _.setFloat( ctrl.name, newValue ))
       }
 
+//      // XXX should be unified with controlChange such that we look up if the
+//      // control is currently mapped or not?
+//      private[proc] def controlMapChanged( ctrl: ProcControl, rate: Rate, index: Int, numChannels: Int )
+//                                         ( implicit tx: ProcTxn ) {
+//         group.foreach( rg => rate match {
+//            case arate => rg.mapan( true, (ctrl.name, index, numChannels) )
+//            case krate => rg.mapn(  true, (ctrl.name, index, numChannels) )
+//         })
+//      }
+
+//      private[proc] def controlAudioMap( ctrl: ProcControl )( implicit tx: ProcTxn ) : ProcAudioInput = {
+//         val mapMap  = controlMapMap()
+//         val oldMap  = mapMap.get( ctrl )
+//require( oldMap == None )  // for the moment XXX
+////         oldMap.foreach( _.free )
+//         val rate    = ctrl.rate.get
+//         val newMap  = new ControlMapping( proc, ctrl, rate )
+//         newMap.init
+//         controlMapMap.transform( _ + (ctrl -> newMap) )
+//         newMap.extInput
+//      }
+
       override def toString = "proc(" + name + ")"
    }
+
+//   private class ControlMapping( proc: Impl, val control: ProcControl, val rate: Rate ) {
+//      val extInput = new AudioInputImpl( proc, control.name + "#in" ) {
+//         override def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
+//            if( verbose ) println( "EXT IN INDEX " + name + " / " + index )
+//            indexRef.set( index )
+//
+//            // XXX check numChannels change
+//            synth().map( rs => {
+//               rs.set( true, "in" -> index )
+//
+//            }).getOrElse( if( proc.isPlaying ) {
+//               val g          = SynthGraph {
+//                  val spec = control.spec
+//                  val in   = In.ar( "in".kr, numChannels )
+//                  rate match {
+//                     // XXX eventually should support expansion?
+//                     case arate => Out.ar( "out".kr, spec.map( Clip.ar( Mix( in ), -1, 1 ).madd( 0.5f, 0.5f )))
+//                     case krate => Out.kr( "out".kr, spec.map( Clip.kr( Mix( A2K.kr( in )), -1, 1 ).madd( 0.5f, 0.5f )))
+//                  }
+//               }
+//               val rsd        = RichSynthDef( proc.server, g )
+//val target: RichGroup = null // XXX
+//               val rs         = rsd.play( target, List( "in" -> index, "out" -> intOutput.index ), addToHead )
+//
+////               outBus.addWriter( new RichBus.User {
+////                  // XXX rs.set( "out" -> index )
+////               })
+//
+//               synth.set( Some( rs ))
+//            })
+//
+////            output().foreach( outBus => {
+////               proc.running.foreach( _.map( control.name -> outBus.index ))
+////            })
+//         }
+//      }
+//
+//      val synth   = Ref[ Option[ RichSynth ]]( None )
+//
+////      val output  = Ref[ Option[ RichBus ]]( None )
+//      val intOutput  = new AudioOutputImpl( proc, control.name + "#out" ) {
+//         override def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
+//            if( verbose ) println( "INT OUT INDEX " + name + " / " + index )
+//            indexRef.set( index )
+//            // XXX check numChannels change
+//         }
+//      }
+//
+//      val intInput   = new AudioInputImpl( proc, control.name + "#map" ) {
+//         override def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
+//            if( verbose ) println( "INT IN INDEX " + name + " / " + index )
+//            indexRef.set( index )
+//            // XXX check numChannels change
+//            proc.controlMapChanged( control, rate, index, numChannels )
+//         }
+//      }
+//
+//      def init( implicit tx: ProcTxn ) {
+//         intOutput ~> intInput
+//      }
+//
+////      def free( implicit tx: ProcTxn ) {
+////
+////      }
+//   }
 
    // ---------------------------- ProcGraph implementation ----------------------------
 
@@ -490,10 +627,10 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          rs.set( true, name -> value )
       }
 
-      def busChanged( name: String, index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
+      def busChanged( name: String, bus: AudioBus )( implicit tx: ProcTxn ) {
 //         error( "not yet supported" )
          // XXX check numChannels
-         rs.set( true, name -> index )
+         rs.set( true, name -> bus.index )
       }
 
       def setGroup( g: RichGroup )( implicit tx: ProcTxn ) {
@@ -515,13 +652,13 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def synthetic( implicit tx: ProcTxn ) = syntheticRef()
    }
 
-   private class AudioInputImpl( val proc: Impl, val param: ProcParamAudioInput )
+   private class AudioInputImpl( val proc: Impl, val name: String )
    extends AudioBusImpl with ProcAudioInput {
       in => 
 
-      def name = param.name
+//      def name = param.name
 
-      override def toString = "aIn(" + proc.name + " @ " + param.name + ")"
+      override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
       def bus_=( newBus: Option[ RichBus ])( implicit tx: ProcTxn ) {
          if( verbose ) println( "IN BUS " + proc.name + " / " + newBus )
@@ -540,10 +677,10 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          }
       }
 
-      def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
-         if( verbose ) println( "IN INDEX " + proc.name + " / " + index )
-         indexRef.set( index )
-         proc.busChanged( this, index, numChannels )
+      def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
+         if( verbose ) println( "IN INDEX " + proc.name + " / " + bus )
+         indexRef.set( bus.index )
+         proc.busChanged( this, bus )
       }
 
       private[proc] def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) {
@@ -551,13 +688,13 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       }
    }
 
-   private class AudioOutputImpl( val proc: Impl, val param: ProcParamAudioOutput )
+   private class AudioOutputImpl( val proc: Impl, val name: String )
    extends AudioBusImpl with ProcAudioOutput {
       out =>
 
-      def name = param.name
+//      def name = param.name
 
-      override def toString = "aOut(" + proc.name + " @ " + param.name + ")"
+      override def toString = "aOut(" + proc.name + " @ " + name + ")"
 
       def bus_=( newBus: Option[ RichBus ])( implicit tx: ProcTxn ) {
          if( verbose ) println( "OUT BUS " + proc.name + " / " + newBus )
@@ -576,52 +713,50 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          }
       }
 
-      def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) {
-         if( verbose ) println( "OUT INDEX " + proc.name + " / " + index )
-         indexRef.set( index )
-         proc.busChanged( this, index, numChannels )
+      def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
+         if( verbose ) println( "OUT INDEX " + proc.name + " / " + bus )
+         indexRef.set( bus.index )
+         proc.busChanged( this, bus )
       }
 
-      def ~>( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioInput = {
-//         proc.connect( this, in )  // establishes the edge
-
+      def ~>( in: ProcAudioInput )( implicit tx: ProcTxn ) : Proc = {
          // handle edge
          val e = ProcEdge( out, in )
          require( !edges().contains( e ))
          edges.transform( _ + e )
          ProcDemiurg.addEdge( e )
-         
-/*
-create + set output bus if necessary
-was silent-bus ? : after-commit : free silent-bus
-: after-rollback --> free bus
-// --> future refinement: re-use buses if possible
-
-check ain
-- was patched --> disconnect
-// --> future enhancement : special multi-in-bus (for summing)
-- numChannels changed && p2 playing --> stop p2
-- set input bus
-- numChannels changed && p2 was playing?
-  [ALGO1]( proc = p2 ) :=
-    - start proc
-    - for each pAudioOutBus if numChannels changes:
-	- each target vertex playing --> stop proc
-	- free old synthetic bus
-	- create + assign new bus
-	- stopped procs : start [ALGO1]( _ )
-// note: (23-jun-10) : ProcParamAudioOutput:ar needs change
- */
          val oldSyn  = synthetic
          if( !oldSyn ) {
             synthetic = true
             bus.foreach( oldBus => {
                bus = Some( RichBus.alloc( proc.server, oldBus.numChannels ))
             })
+         } else {
+            // XXX correct???
+            in.synthetic   = true
+            in.bus         = bus
          }
          in.addEdge( e )
+         in.proc
+      }
 
-         in
+      def ~>( control: ProcControl )( implicit tx: ProcTxn ) : Proc = {
+//         val in = control.audioMap()   // XXX eventually map() and handle control-rate case
+//         // handle edge
+//         val e = ProcEdge( out, in )
+//         require( !edges().contains( e ))
+//         edges.transform( _ + e )
+//         ProcDemiurg.addEdge( e )
+//         val oldSyn  = synthetic
+//         if( !oldSyn ) {
+//            synthetic = true
+//            bus.foreach( oldBus => {
+//               bus = Some( RichBus.alloc( proc.server, oldBus.numChannels ))
+//            })
+//         }
+//         in.addEdge( e )
+//         in.proc
+         error( "NOT YET IMPLEMENTED" )
       }
 
       def ~/>( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioOutput = {
@@ -688,6 +823,10 @@ check ain
       private var valueRef = Ref.withObserver( default ) { (oldV, newV) =>
          if( oldV != newV ) _proc.dispatchControlChange( ctrl, newV )
       }
+//      private var mappedRef = Ref.withObserver( default ) { (oldV, newV) =>
+//         if( oldV != newV ) _proc.dispatchControlChange( ctrl, newV )
+//      }
+
       def proc : Proc = _proc
       def rate = Some( _rate )
       def default : Float = param.default.getOrElse( 0f )
@@ -696,8 +835,13 @@ check ain
       def value( implicit tx: ProcTxn ) : Float = valueRef()
       def value_=( newValue: Float )( implicit tx: ProcTxn ) {
          val oldValue = valueRef.swap( newValue )
-         if( oldValue != newValue ) _proc.controlChange( this, newValue )
+         if( oldValue != newValue ) _proc.controlChanged( ctrl, newValue )
       }
+
+//      private[proc] def audioMap( implicit tx: ProcTxn ) : ProcAudioInput = {
+//         require( rate.isDefined )  // XXX currently always true
+//         _proc.controlAudioMap( ctrl )
+//      }
    }
 
    private class ParamStringImpl( val name: String, val default: Option[ String ])

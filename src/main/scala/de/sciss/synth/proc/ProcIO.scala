@@ -31,7 +31,7 @@ package de.sciss.synth.proc
 import de.sciss.synth.Rate
 
 /**
- *    @version 0.12, 29-Jun-10
+ *    @version 0.12, 01-Jul-10
  */
 sealed trait ProcAudioBus {
    def proc : Proc
@@ -44,7 +44,17 @@ sealed trait ProcAudioBus {
 }
 
 trait ProcAudioOutput extends ProcAudioBus {
-   def ~>  ( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioInput
+   /**
+    *    Tries to map the audio output to a control.
+    *    Throws an error if the control is not mappable.
+    *    If the control is mappable but runs at control-rate,
+    *    an A->K downsampler is automatically inserted.
+    *
+    *    @return  the target's proc, so that ~> can be chained
+    *             using the implicit conversion from Proc to ProcAudioOutput
+    */
+   def ~>  ( control: ProcControl )( implicit tx: ProcTxn ) : Proc // = ~>( control.audioMap )
+   def ~>  ( in: ProcAudioInput )( implicit tx: ProcTxn ) : Proc
    def ~/> ( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioOutput
    def ~|  ( insert: (ProcAudioInput, ProcAudioOutput) )( implicit tx: ProcTxn ) : ProcAudioInsertion
 }
@@ -64,6 +74,8 @@ trait ProcControl {
    def spec : ParamSpec
    def default : Float
 //   def mapped( implicit tx: ProcTxn ): Option[ RichBus ]
-   def value( implicit tx: ProcTxn ): Float
-   def value_=( newValue: Float )( implicit tx: ProcTxn ): Unit
+   def value( implicit tx: ProcTxn ) : Float
+   def value_=( newValue: Float )( implicit tx: ProcTxn ) : Unit
+
+//   private[proc] def audioMap( implicit tx: ProcTxn ) : ProcAudioInput 
 }
