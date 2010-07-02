@@ -1,0 +1,11 @@
+==== Thoughts on CCSTM ==== (02-jul-10)
+
+we could maybe use dedicated roll-backs to modify behaviour lazily.
+for instance, imagine a mapping action that includes a veto if
+running processes need to be stopped and restarted, such that
+the veto's effect is that the plain txn is roll-back and
+_instead retried with a crossfade_!
+
+gracefull rollbacks will also allow us to easily create
+generative structures that just "try" if connections are possible
+(topology-wise).

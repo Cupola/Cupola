@@ -1,0 +1,10 @@
+===== long-term =====
+
+-> don't forget about the idea of audio-views.
+-> make the system robust such that it can
+   completely recover from a server shutdown
+-> ...as an anticipation of random-access
+
+this means, drawing a clear line of separation
+between structurally formal components and
+underlying implementational details

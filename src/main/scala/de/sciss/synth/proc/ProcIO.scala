@@ -31,7 +31,7 @@ package de.sciss.synth.proc
 import de.sciss.synth.{Bus, Rate}
 
 /**
- *    @version 0.12, 01-Jul-10
+ *    @version 0.12, 02-Jul-10
  */
 sealed trait ProcAudioBus {
    def proc : Proc
@@ -77,7 +77,7 @@ trait ProcControl {
    def value( implicit tx: ProcTxn ) : Float
    def value_=( newValue: Float )( implicit tx: ProcTxn ) : Unit
 
-   def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControl
+   def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControlAMapping
    def isMapped( implicit tx: ProcTxn ) : Boolean = mapping.isDefined
 //   def mappedInput( implicit tx: ProcTxn ) : Option[ ProcAudioInput ]
 
@@ -95,7 +95,13 @@ trait ProcControl {
 }
 
 trait ProcControlMapping {
+//   def outputRate
    def output( implicit tx: ProcTxn ) : RichBus
    def play( implicit tx: ProcTxn )
    def stop( implicit tx: ProcTxn )
+}
+
+trait ProcControlAMapping  // XXX not very elegant name
+extends ProcControlMapping {
+   def input : ProcAudioInput // ( implicit tx: ProcTxn )
 }
