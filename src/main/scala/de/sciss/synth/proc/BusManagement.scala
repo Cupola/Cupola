@@ -29,16 +29,53 @@
 package de.sciss.synth.proc
 
 import collection.immutable.{ SortedMap => ISortedMap, SortedSet => ISortedSet }
-import de.sciss.synth.{AudioBus, Server, Bus}
+import de.sciss.synth._
 
 /**
- *    @version 0.10, 25-Jun-10
+ *    @version 0.10, 01-Jul-10
  */
-trait RichBus {
+sealed trait RichBus {
    import RichBus._
 
    def server : Server
    def numChannels : Int
+//   def addReader( u: User )( implicit tx: ProcTxn ) : Unit
+//   def addWriter( u: User )( implicit tx: ProcTxn ) : Unit
+//   def removeReader( u: User )( implicit tx: ProcTxn ) : Unit
+//   def removeWriter( u: User )( implicit tx: ProcTxn ) : Unit
+
+   def busOption( implicit tx: ProcTxn ): Option[ Bus ]
+   def rate : Rate
+}
+
+object RichAudioBus {
+   trait User {
+      def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) : Unit
+   }
+}
+
+trait RichAudioBus extends RichBus with AudioRated {
+   import RichAudioBus._
+
+   def busOption( implicit tx: ProcTxn ): Option[ AudioBus ]
+
+   def addReader( u: User )( implicit tx: ProcTxn ) : Unit
+   def addWriter( u: User )( implicit tx: ProcTxn ) : Unit
+   def removeReader( u: User )( implicit tx: ProcTxn ) : Unit
+   def removeWriter( u: User )( implicit tx: ProcTxn ) : Unit
+}
+
+object RichControlBus {
+   trait User {
+      def busChanged( bus: ControlBus )( implicit tx: ProcTxn ) : Unit
+   }
+}
+
+trait RichControlBus extends RichBus with ControlRated {
+   import RichControlBus._
+
+   def busOption( implicit tx: ProcTxn ): Option[ ControlBus ]
+
    def addReader( u: User )( implicit tx: ProcTxn ) : Unit
    def addWriter( u: User )( implicit tx: ProcTxn ) : Unit
    def removeReader( u: User )( implicit tx: ProcTxn ) : Unit
@@ -46,26 +83,26 @@ trait RichBus {
 }
 
 object RichBus {
-   def alloc( server: Server, numChannels: Int ) : RichBus = Impl( server, numChannels )
+   def audio( server: Server, numChannels: Int ) : RichAudioBus = AudioImpl( server, numChannels )
+   def control( server: Server, numChannels: Int ) : RichControlBus = ControlImpl( server, numChannels )
 
-   def soundIn( server: Server, numChannels: Int ) : RichBus = {
+   def soundIn( server: Server, numChannels: Int ) : RichAudioBus = {
       val o = server.options
       require( numChannels <= o.inputBusChannels )
       HardwareImpl( new AudioBus( server, o.outputBusChannels, numChannels ))
    }
 
-   def soundOut( server: Server, numChannels: Int ) : RichBus = {
+   def soundOut( server: Server, numChannels: Int ) : RichAudioBus = {
       val o = server.options
       require( numChannels <= o.outputBusChannels )
       HardwareImpl( new AudioBus( server, 0, numChannels ))
    }
 
-   trait User {
-//      def busChanged( index: Int, numChannels: Int )( implicit tx: ProcTxn ) : Unit
-      def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) : Unit
-   }
+//   trait User {
+//      def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) : Unit
+//   }
 
-   private class BusHolder( bus: AudioBus ) {
+   private class BusHolder[ T <: Bus ]( val bus: T ) {
       private val useCount = Ref.withCheck( 0 ) { case 0 => bus.free }
 
       def alloc( implicit tx: ProcTxn ) { useCount += 1 }
@@ -82,17 +119,21 @@ object RichBus {
       protected def remove( implicit tx: ProcTxn ) {}
    }
 
+   private type AudioBusHolder   = BusHolder[ AudioBus ]
+   private type ControlBusHolder = BusHolder[ ControlBus ]
+
 //   private object BusHolderOrdering extends Ordering[ BusHolder ] {
 //
 //   }
 
-   private type BusHolderMap = Map[ Server, ISortedMap[ Int, BusHolder ]]
+   private type ABusHolderMap = Map[ Server, ISortedMap[ Int, AudioBusHolder ]]
+//   private type KBusHolderMap = Map[ Server, ISortedMap[ Int, ControlBusHolder ]]
 
-   private class RichBusHolder( _bus: AudioBus, mapRef: Ref[ BusHolderMap ])
-   extends BusHolder( _bus ) {
+   private class RichAudioBusHolder( _bus: AudioBus, mapRef: Ref[ ABusHolderMap ])
+   extends AudioBusHolder( _bus ) {
       def add( implicit tx: ProcTxn ) {
          mapRef.transform( map => map +
-            (_bus.server -> (map.getOrElse( _bus.server, ISortedMap.empty[ Int, BusHolder ]) + (_bus.numChannels -> this))) )
+            (_bus.server -> (map.getOrElse( _bus.server, ISortedMap.empty[ Int, AudioBusHolder ]) + (_bus.numChannels -> this))) )
       }
 
       override protected def remove( implicit tx: ProcTxn ) {
@@ -107,20 +148,20 @@ object RichBus {
       }
    }
 
-   private val readOnlyBuses  = Ref( Map.empty[ Server, ISortedMap[ Int, BusHolder ]])
-   private val writeOnlyBuses = Ref( Map.empty[ Server, ISortedMap[ Int, BusHolder ]])
+   private val readOnlyBuses  = Ref( Map.empty[ Server, ISortedMap[ Int, AudioBusHolder ]])
+   private val writeOnlyBuses = Ref( Map.empty[ Server, ISortedMap[ Int, AudioBusHolder ]])
 
-   private def allocReadOnlyBus( server: Server, numChannels: Int )( implicit tx: ProcTxn ) : BusHolder =
-      allocRichBus( server, numChannels, readOnlyBuses )
+   private def allocReadOnlyBus( server: Server, numChannels: Int )( implicit tx: ProcTxn ) : AudioBusHolder =
+      allocRichAudioBus( server, numChannels, readOnlyBuses )
 
-   private def allocWriteOnlyBus( server: Server, numChannels: Int )( implicit tx: ProcTxn ) : BusHolder =
-      allocRichBus( server, numChannels, writeOnlyBuses )
+   private def allocWriteOnlyBus( server: Server, numChannels: Int )( implicit tx: ProcTxn ) : AudioBusHolder =
+      allocRichAudioBus( server, numChannels, writeOnlyBuses )
 
-   private def allocRichBus( server: Server, numChannels: Int, mapRef: Ref[ BusHolderMap ])
-                             ( implicit tx: ProcTxn ) : BusHolder = {
+   private def allocRichAudioBus( server: Server, numChannels: Int, mapRef: Ref[ Map[ Server, ISortedMap[ Int, AudioBusHolder ]]])
+                             ( implicit tx: ProcTxn ) : AudioBusHolder = {
       val chanMapO = mapRef().get( server )
-      val bus: BusHolder = chanMapO.flatMap( _.from( numChannels ).headOption.map( _._2 )).getOrElse({
-         val res = new RichBusHolder( Bus.audio( server, numChannels ), mapRef )
+      val bus: AudioBusHolder = chanMapO.flatMap( _.from( numChannels ).headOption.map( _._2 )).getOrElse({
+         val res = new RichAudioBusHolder( Bus.audio( server, numChannels ), mapRef )
          res.add
          res
       })
@@ -128,16 +169,26 @@ object RichBus {
       bus
    }
 
-   private def allocBus( server: Server, numChannels: Int )( implicit tx: ProcTxn ) : BusHolder = {
+   private def allocAudioBus( server: Server, numChannels: Int )( implicit tx: ProcTxn ) : AudioBusHolder = {
       val bus = new BusHolder( Bus.audio( server, numChannels ))
       bus.alloc
       bus
    }
 
+   private def allocControlBus( server: Server, numChannels: Int )( implicit tx: ProcTxn ) : ControlBusHolder = {
+      val bus = new BusHolder( Bus.control( server, numChannels ))
+      bus.alloc
+      bus
+   }
+
    private case class HardwareImpl( bus: AudioBus )
-   extends RichBus {
+   extends RichAudioBus {
+      import RichAudioBus._
+
       def server        = bus.server
       def numChannels   = bus.numChannels
+
+      def busOption( implicit tx: ProcTxn ) = Some( bus )
 
       def addReader( u: User )( implicit tx: ProcTxn ) {
          u.busChanged( bus  )
@@ -152,14 +203,17 @@ object RichBus {
       def removeWriter( u: User )( implicit tx: ProcTxn ) {}
    }
 
-   private case class Impl( server: Server, numChannels: Int ) extends RichBus {
-//      private val bus: Ref[ Option[ Bus ]] = Ref( None )
-//      // read count is stored in lower, write count in higher bits
-//      // initRead | (initWrite << 16)
-//      private val useCount = Ref( 0 ) { case 0 => bus.free }
-      private val bus      = Ref.make[ BusHolder ]
+   private case class AudioImpl( server: Server, numChannels: Int ) extends RichAudioBus {
+      import RichAudioBus._
+
+      private val bus      = Ref.make[ AudioBusHolder ]
       private val readers  = Ref( Set.empty[ User ])
       private val writers  = Ref( Set.empty[ User ])
+
+      def busOption( implicit tx: ProcTxn ) = {
+         val bh = bus()
+         if( bh != null ) Some( bh.bus ) else None
+      }
 
       def addReader( u: User )( implicit tx: ProcTxn ) {
          val r       = readers()
@@ -170,7 +224,7 @@ object RichBus {
                bus.set( bh )
                new AudioBus( server, bh.index, numChannels )
             } else { // dispose old dummy bus, create new bus
-               val bh     = allocBus( server, numChannels )
+               val bh     = allocAudioBus( server, numChannels )
 //               val idx     = bh.index
 //               r.foreach( _.busChanged( idx, numChannels ))
 //               w.foreach( _.busChanged( idx, numChannels ))
@@ -201,7 +255,7 @@ object RichBus {
                bus.set( bh )
                new AudioBus( server, bh.index, numChannels )
             } else { // dispose old dummy bus, create new bus
-               val bh      = allocBus( server, numChannels )
+               val bh      = allocAudioBus( server, numChannels )
 //               val idx     = bh.index
                val oldBus  = bus.swap( bh )
 //               r.foreach( _.busChanged( idx, numChannels ))
@@ -259,26 +313,44 @@ object RichBus {
       }
    }
 
-//   private class Impl( bus: Bus ) extends RichBus {
-//      // read count is stored in lower, write count in higher bits
-//      // initRead | (initWrite << 16)
-//      private val useCount = Ref( 0 ) { case 0 => bus.free }
-//      def index            = bus.index          // XXX maybe check if still valid
-//      def numChannels      = bus.numChannels    // XXX maybe check if still valid
-//
-//      def removeReader( implicit tx: ProcTxn ) : RichBus = {
-//         useCount.transform( cnt => {
-//            val cnt        = useCount()
-//            val readCnt    = (cnt & 0xFFFF) - 1
-//            require( readCnt >= 0 )
-//            readCnt | (cnt & 0xFFFF0000)
-//         })
-//      }
-//
-//      def addReader( implicit tx: ProcTxn ) : RichBus = {
-//         val cnt = useCount()
-//         require( cnt > 0 )
-//         useCount += 1
-//      }
-//   }
+   private case class ControlImpl( server: Server, numChannels: Int ) extends RichControlBus {
+      import RichControlBus._
+
+      private val bus    = Ref.make[ ControlBusHolder ]
+      private val users  = Ref( Set.empty[ User ])
+
+      def busOption( implicit tx: ProcTxn ) = {
+         val bh = bus()
+         if( bh != null ) Some( bh.bus ) else None
+      }
+
+      def addReader( u: User )( implicit tx: ProcTxn ) { add( u )}
+      def addWriter( u: User )( implicit tx: ProcTxn ) { add( u )}
+
+      private def add( u: User )( implicit tx: ProcTxn ) {
+         val g = users()
+         val bh  = if( g.isEmpty ) {
+            val res = allocControlBus( server, numChannels )
+            bus.set( res )
+            res
+         } else { // re-use existing bus
+            val res = bus()
+            res.alloc
+            res
+         }
+         val newBus = new ControlBus( server, bh.index, numChannels )
+         users.transform( _ + u )
+         // always perform this on the newly added
+         // reader no matter if the bus is new:
+         u.busChanged( newBus )
+      }
+      
+      def removeReader( u: User )( implicit tx: ProcTxn ) { remove( u )}
+      def removeWriter( u: User )( implicit tx: ProcTxn ) { remove( u )}
+
+      private def remove( u: User )( implicit tx: ProcTxn ) {
+         users.transform( _ - u )
+         bus().free
+      }
+   }
 }

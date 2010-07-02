@@ -34,7 +34,8 @@ import de.sciss.synth.AddAction
  *    @version 0.12, 01-Jul-10
  */
 trait ProcEntry {
-   def play( target: RichGroup )( implicit tx: ProcTxn ) : ProcRunning
+//   def play( target: RichGroup )( implicit tx: ProcTxn ) : ProcRunning
+   def play( implicit tx: ProcTxn ) : ProcRunning
 }
 
 trait ProcGraph extends ProcEntry {
@@ -45,6 +46,6 @@ object ProcGraphBuilder extends ThreadLocalObject[ ProcGraphBuilder ] {
 
 trait ProcGraphBuilder {
    def tx: ProcTxn
-   def includeParam( p: ProcParam[ _ ]) : Unit
+   def includeParam( p: ProcParam ) : Unit
    def includeBuffer( b: ProcBuffer ) : Unit
 }

@@ -32,7 +32,7 @@ import de.sciss.synth._
 import de.sciss.scalaosc.OSCBundle
 
 /**
- *    @version 0.12, 03-Jun-10
+ *    @version 0.12, 01-Jul-10
  */
 object DSL {
    // ---- scope : outside ----
@@ -51,9 +51,9 @@ object DSL {
       ProcFactoryBuilder.local.pAudio( name, spec, default )
    def pString( name: String, default: Option[ String ] = None ) : ProcParamString =
       ProcFactoryBuilder.local.pString( name, default )
-   def pAudioIn( name: String, default: Option[ RichBus ] = None ) : ProcParamAudioInput =
+   def pAudioIn( name: String, default: Option[ RichAudioBus ] = None ) : ProcParamAudioInput =
       ProcFactoryBuilder.local.pAudioIn( name, default )
-   def pAudioOut( name: String, default: Option[ RichBus ] = None ) : ProcParamAudioOutput =
+   def pAudioOut( name: String, default: Option[ RichAudioBus ] = None ) : ProcParamAudioOutput =
       ProcFactoryBuilder.local.pAudioOut( name, default )
 
    def graph( thunk: => GE ) : ProcGraph = ProcFactoryBuilder.local.graph( thunk )

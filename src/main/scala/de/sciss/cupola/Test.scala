@@ -28,6 +28,8 @@ object Test {
       val (p1, p2, p3) =
     ProcTxn.atomic { implicit t =>
 
+//       println( "FUCK YOU" ) // this breakpoint _does_ work
+
       val g1 = gen( "process1" ) {
           val p1 = pControl( "freq", ParamSpec(), 882 )
 
@@ -50,6 +52,7 @@ object Test {
       }
 
       val p2 = g2.make
+//Debug.breakpoint
       p1 ~> p2
       p2.play
 

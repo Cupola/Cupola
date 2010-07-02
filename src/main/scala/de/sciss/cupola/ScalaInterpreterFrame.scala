@@ -71,6 +71,9 @@ val p3 = g3.make
 p2 ~> p3
 p3.play
 
+p3.stop; p2 ~> p3.control( "freq" ) // the funky shit
+p3.play // cannot perform p3.stop and p3.play in one tx at the moment....
+
 ///////
 
 val f = new javax.swing.JFrame( "Freq" )

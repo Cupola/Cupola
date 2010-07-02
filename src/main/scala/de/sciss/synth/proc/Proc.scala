@@ -56,11 +56,13 @@ trait Proc extends Model {
 //   def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc
    def getString( name: String )( implicit tx: ProcTxn ) : String
    def setString( name: String, value: String )( implicit tx: ProcTxn ) : Proc
-   def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichBus
-   def setAudioBus( name: String, value: RichBus )( implicit tx: ProcTxn ) : Proc
 
-   def params : IIdxSeq[ ProcParam[ _ ]]
-   def param( name: String ) : ProcParam[ _ ]
+// for now disabled:
+//   def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichAudioBus
+//   def setAudioBus( name: String, value: RichAudioBus )( implicit tx: ProcTxn ) : Proc
+
+   def params : IIdxSeq[ ProcParam ]
+   def param( name: String ) : ProcParam
    def controls : IIdxSeq[ ProcControl ]
    def control( name: String ) : ProcControl
 
@@ -86,6 +88,10 @@ trait Proc extends Model {
     *    Assigns a group to the Proc.
     */
    def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) : Unit
+
+   def playGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ]
+   def playGroup( implicit tx: ProcTxn ) : RichGroup
+   def playGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn )
 
 //   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
 //   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit

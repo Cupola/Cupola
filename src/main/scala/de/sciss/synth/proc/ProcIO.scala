@@ -28,18 +28,18 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.Rate
+import de.sciss.synth.{Bus, Rate}
 
 /**
  *    @version 0.12, 01-Jul-10
  */
 sealed trait ProcAudioBus {
    def proc : Proc
-   def bus( implicit tx: ProcTxn ): Option[ RichBus ]
-   def bus_=( newBus: Option[ RichBus ])( implicit tx: ProcTxn ): Unit
+   def bus( implicit tx: ProcTxn ): Option[ RichAudioBus ]
+   def bus_=( newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ): Unit
    def synthetic( implicit tx: ProcTxn ): Boolean
    def synthetic_=( onOff: Boolean )( implicit tx: ProcTxn ): Unit
-   def index( implicit tx: ProcTxn ) : Int // -1 : not specified
+//   def index( implicit tx: ProcTxn ) : Int // -1 : not specified
    def name : String
 }
 
@@ -77,5 +77,25 @@ trait ProcControl {
    def value( implicit tx: ProcTxn ) : Float
    def value_=( newValue: Float )( implicit tx: ProcTxn ) : Unit
 
-//   private[proc] def audioMap( implicit tx: ProcTxn ) : ProcAudioInput 
+   def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControl
+   def isMapped( implicit tx: ProcTxn ) : Boolean = mapping.isDefined
+//   def mappedInput( implicit tx: ProcTxn ) : Option[ ProcAudioInput ]
+
+//   /**
+//    *    Queries the underlying internal bus onto which the control
+//    *    is currently mapped. If the control is not mapped, returns
+//    *    None. Otherwise it is expected to return the underlying bus,
+//    *    and if such bus does not yet exist, to hereby create it!
+//    *    That is, if isMapped returns true, mappedOutput is expected
+//    *    to return Some( bus ).
+//    */
+//   private[proc] def mappedOutput( implicit tx: ProcTxn ) : Option[ RichBus ]
+
+   def mapping( implicit tx: ProcTxn ) : Option[ ProcControlMapping ]
+}
+
+trait ProcControlMapping {
+   def output( implicit tx: ProcTxn ) : RichBus
+   def play( implicit tx: ProcTxn )
+   def stop( implicit tx: ProcTxn )
 }

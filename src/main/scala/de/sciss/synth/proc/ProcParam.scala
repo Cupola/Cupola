@@ -32,18 +32,18 @@ import de.sciss.synth._
 import ugen.{Out, In}
 
 /**
- *    @version 0.12, 24-Jun-10
+ *    @version 0.12, 01-Jul-10
  */
-sealed trait ProcParam[ T ] {
+sealed trait ProcParam {
 //   type t = T
    def name : String
-   def default : Option[ T ]
+//   def default : Option[ T ]
 }
 
 class ProcParamUnspecifiedException( name: String )
 extends RuntimeException( "Proc parameter unspecified: "  + name )
                                                                                                              
-trait ProcParamFloat extends ProcParam[ Float ] {
+trait ProcParamFloat extends ProcParam {
 //   def kr      : GE = name.kr( default.getOrElse( spec.lo ))
 //   def mapKr   : GE = spec.map( name.kr( spec.unmap( default.getOrElse( spec.lo ))))
 
@@ -56,6 +56,7 @@ trait ProcParamFloat extends ProcParam[ Float ] {
 //   }
 
    def spec : ParamSpec
+   def default : Float
 }
 
 //trait ProcParamMappableFloat extends ProcParamFloat {
@@ -63,23 +64,26 @@ trait ProcParamFloat extends ProcParam[ Float ] {
 //}
 
 trait ProcParamControl extends ProcParamFloat {
-   def kr : GE = {
-      ProcGraphBuilder.local.includeParam( this )
-      name.kr( default.getOrElse( 0f ))
-   }
+   def kr : GE
+//   = {
+//      ProcGraphBuilder.local.includeParam( this )
+//      name.kr( default.getOrElse( 0f ))
+//   }
 }
 
 trait ProcParamAudio extends ProcParamFloat {
-   def ar : GE = {
-      ProcGraphBuilder.local.includeParam( this )
-      name.ar( default.getOrElse( 0f ))
-   }
+   def ar : GE
+//   = {
+//      ProcGraphBuilder.local.includeParam( this )
+//      name.ar( default.getOrElse( 0f ))
+//   }
 }
 
-trait ProcParamString extends ProcParam[ String ] {
+trait ProcParamString extends ProcParam {
+// XXX defaults???
 }
 
-sealed trait ProcParamAudioBus extends ProcParam[ RichBus ] {
+sealed trait ProcParamAudioBus extends ProcParam {
 //   def index : GE = {
 //      ProcGraphBuilder.local.includeParam( this )
 //      name.kr( 0 ) // default.map( _._1 ).getOrElse( 0 )) // XXX
@@ -87,7 +91,8 @@ sealed trait ProcParamAudioBus extends ProcParam[ RichBus ] {
 //
 
    // ---- scope: graph ----
-   def numChannels : Int
+// currently disabled:
+//   def numChannels : Int
 }
 
 trait ProcParamAudioInput extends ProcParamAudioBus {
