@@ -437,6 +437,18 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          dispatch( ControlsChanged( ctrl -> newValue ))
       }
 
+      private[proc] def dispatchMappingChange( ctrl: ProcControl, newValue: Option[ ProcControlMapping ]) {
+         dispatch( MappingsChanged( ctrl -> newValue ))
+      }
+
+      private[proc] def dispatchAudioBusesConnected( edges: ProcEdge* ) {
+         dispatch( AudioBusesConnected( edges: _* ))
+      }
+
+      private[proc] def dispatchAudioBusesDisconnected( edges: ProcEdge* ) {
+         dispatch( AudioBusesDisconnected( edges: _* ))
+      }
+
       private[proc] def controlChanged( ctrl: ProcControl, newValue: Float )( implicit tx: ProcTxn ) {
          running().foreach( _.setFloat( ctrl.name, newValue ))
       }
@@ -615,7 +627,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       protected val busRef : Ref[ Option[ RichAudioBus ]] = Ref( None )
       protected val syntheticRef = Ref( false )
 //      protected val indexRef  = Ref( -1 )
-      protected val edges     = Ref( Set.empty[ ProcEdge ])
+//      protected val edges     = Ref( Set.empty[ ProcEdge ])
+      protected def edges : Ref[ Set[ ProcEdge ]] //     = Ref( Set.empty[ ProcEdge ])
 
       def bus( implicit tx: ProcTxn ) : Option[ RichAudioBus ] = busRef()
 //      def index( implicit tx: ProcTxn ) = indexRef()
@@ -660,6 +673,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
    extends AbstractAudioInputImpl {
       override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
+      protected val edges = Ref( Set.empty[ ProcEdge ])
+
       def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
          if( verbose ) println( "IN INDEX " + proc.name + " / " + bus )
 //         indexRef.set( bus.index )
@@ -674,6 +689,13 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      def name = param.name
 
       override def toString = "aOut(" + proc.name + " @ " + name + ")"
+
+      protected val edges     = Ref.withObserver( Set.empty[ ProcEdge ]) { (oldSet, newSet) =>
+         val edgesRemoved     = oldSet.diff( newSet )
+         val edgesAdded       = newSet.diff( oldSet )
+         if( edgesRemoved.nonEmpty ) proc.dispatchAudioBusesDisconnected( edgesRemoved.toSeq: _* )
+         if( edgesAdded.nonEmpty )   proc.dispatchAudioBusesConnected(    edgesAdded.toSeq:   _* )
+      }
 
       def bus_=( newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ) {
          if( verbose ) println( "OUT BUS " + proc.name + " / " + newBus )
@@ -833,11 +855,10 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       private var valueRef = Ref.withObserver( default ) { (oldV, newV) =>
          if( oldV != newV ) proc.dispatchControlChange( ctrl, newV )
       }
-//      private var mappedRef = Ref.withObserver( default ) { (oldV, newV) =>
-//         if( oldV != newV ) _proc.dispatchControlChange( ctrl, newV )
-//      }
+      private val mappingRef = Ref.withObserver[ Option[ ProcControlMapping ]]( None ) { (oldM, newM) =>
+         if( oldM != newM ) proc.dispatchMappingChange( ctrl, newM )
+      }
 
-//      def proc : Proc = _proc
       def rate = Some( _rate )
       def default : Float = param.default // .getOrElse( 0f )
       def spec : ParamSpec = param.spec
@@ -848,11 +869,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          if( oldValue != newValue ) proc.controlChanged( ctrl, newValue )
       }
 
-      private val mappingRef = Ref[ Option[ ProcControlMapping ]]( None )
       def mapping( implicit tx: ProcTxn ) : Option[ ProcControlMapping ] = mappingRef()
-
-//      def mappedInput( implicit tx: ProcTxn ) : Option[ ProcAudioInput ] = mapping()
-//      private[proc] def mappedOutput( implicit tx: ProcTxn ) : Option[ RichBus ] = mapping().flatMap( _.outBus )
 
       def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControlAMapping = {
 //         require( aout.proc.server == proc.server ) // that should be in ~> hopefully
@@ -867,6 +884,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //         this
          m
       }
+
+      def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean = !isMapped
    }
 
    private abstract class ControlBusMapping extends AbstractAudioInputImpl with ProcControlAMapping {
@@ -878,6 +897,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       val synth   = Ref[ Option[ RichSynth ]]( None )
 
+      protected val edges = Ref( Set.empty[ ProcEdge ])
+      
       def input : ProcAudioInput = this
 
       /**

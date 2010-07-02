@@ -77,6 +77,7 @@ trait ProcControl {
    def value( implicit tx: ProcTxn ) : Float
    def value_=( newValue: Float )( implicit tx: ProcTxn ) : Unit
 
+   def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean
    def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControlAMapping
    def isMapped( implicit tx: ProcTxn ) : Boolean = mapping.isDefined
 //   def mappedInput( implicit tx: ProcTxn ) : Option[ ProcAudioInput ]

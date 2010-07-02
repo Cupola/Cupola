@@ -34,13 +34,13 @@ import de.sciss.scalaosc.OSCMessage
 import actors.{Future, Actor, DaemonActor, TIMEOUT}
 
 /**
- *    @version 0.12, 28-Jun-10
+ *    @version 0.12, 02-Jul-10
  */
 object ProcWorld {
-   case class VerticesRemoved( procs: Proc* )
-   case class VerticesAdded( procs: Proc* )
-   case class EdgesRemoved( edges: ProcEdge* )
-   case class EdgesAdded( edges: ProcEdge* )
+   case class ProcsRemoved( procs: Proc* )
+   case class ProcsAdded( procs: Proc* )
+//   case class EdgesRemoved( edges: ProcEdge* )
+//   case class EdgesAdded( edges: ProcEdge* )
 }
 class ProcWorld extends Model {
    import ProcWorld._
@@ -51,14 +51,14 @@ class ProcWorld extends Model {
       // inside a customized Ref object XXX
       val verticesRemoved  = oldTop.vertices.diff( newTop.vertices )
       val verticesAdded    = newTop.vertices.diff( oldTop.vertices )
-      val oldEdges         = oldTop.edgeMap.values.flatten.toSeq // ayayay
-      val newEdges         = newTop.edgeMap.values.flatten.toSeq
-      val edgesRemoved     = oldEdges.diff( newEdges )
-      val edgesAdded       = newEdges.diff( oldEdges )
-      if( edgesRemoved.nonEmpty )      dispatch( EdgesRemoved( edgesRemoved: _* ))
-      if( verticesRemoved.nonEmpty )   dispatch( VerticesRemoved( verticesRemoved: _* ))
-      if( verticesAdded.nonEmpty )     dispatch( VerticesAdded( verticesAdded: _* ))
-      if( edgesAdded.nonEmpty )        dispatch( EdgesAdded( edgesAdded: _* ))
+//      val oldEdges         = oldTop.edgeMap.values.flatten.toSeq // ayayay
+//      val newEdges         = newTop.edgeMap.values.flatten.toSeq
+//      val edgesRemoved     = oldEdges.diff( newEdges )
+//      val edgesAdded       = newEdges.diff( oldEdges )
+//      if( edgesRemoved.nonEmpty )      dispatch( EdgesRemoved( edgesRemoved: _* ))
+      if( verticesRemoved.nonEmpty )   dispatch( ProcsRemoved( verticesRemoved: _* ))
+      if( verticesAdded.nonEmpty )     dispatch( ProcsAdded( verticesAdded: _* ))
+//      if( edgesAdded.nonEmpty )        dispatch( EdgesAdded( edgesAdded: _* ))
    }
 }
 

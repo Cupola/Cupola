@@ -200,12 +200,15 @@ object NuagesPanel {
       }
    }
 
+   private[nuages] case class VisualMapping( mapping: ProcControlMapping, pEdge: Edge )
+
    private[nuages] case class VisualControl( control: ProcControl, pNode: PNode, pEdge: Edge )
    extends VisualParam {
       import VisualData._
       
       var value   = 0f 
-      var mapped  = false
+//      var mapped  = false
+      var mapping : Option[ VisualMapping ] = None
 
       private var renderedValue  = Float.NaN
       private val containerArea  = new Area()
@@ -277,7 +280,7 @@ object NuagesPanel {
          if( renderedValue != value ) {
             updateRenderValue
          }
-         g.setColor( if( mapped ) colrMapped else colrManual )
+         g.setColor( if( mapping.isDefined ) colrMapped else colrManual )
          g.fill( valueArea )
          g.setColor( ColorLib.getColor( vi.getStrokeColor ))
          g.draw( gp )
@@ -343,15 +346,18 @@ with ProcFactoryProvider {
    private var edgeMap              = Map.empty[ ProcEdge, Edge ]
 
    private val topoListener : Model.Listener = {
-      case VerticesRemoved( procs @ _* )  => defer( topRemoveProcs( procs: _* ))
-      case VerticesAdded( procs @ _* )    => defer( topAddProcs( procs: _* ))
-      case EdgesRemoved( edges @ _* )     => defer( topRemoveEdges( edges: _* ))
-      case EdgesAdded( edges @ _* )       => defer( topAddEdges( edges: _* ))
+      case ProcsRemoved( procs @ _* )  => defer( topRemoveProcs( procs: _* ))
+      case ProcsAdded( procs @ _* )    => defer( topAddProcs( procs: _* ))
+//      case EdgesRemoved( edges @ _* )     => defer( topRemoveEdges( edges: _* ))
+//      case EdgesAdded( edges @ _* )       => defer( topAddEdges( edges: _* ))
    }
 
    private val procListener : Model.Listener = {
-      case PlayingChanged( proc, state )     => defer( topProcPlaying( proc, state ))
-      case ControlsChanged( controls @ _* )  => defer( topControlsChanged( controls: _* ))
+      case PlayingChanged( proc, state )        => defer( topProcPlaying( proc, state ))
+      case ControlsChanged( controls @ _* )     => defer( topControlsChanged( controls: _* ))
+      case AudioBusesConnected( edges @ _* )    => defer( topAddEdges( edges: _* ))
+      case AudioBusesDisconnected( edges @ _* ) => defer( topRemoveEdges( edges: _* ))
+      case MappingsChanged( controls @ _* )     => defer( topMappingsChanged( controls: _* ))
    }
    
    // ---- constructor ----
@@ -609,11 +615,55 @@ with ProcFactoryProvider {
                procMap.get( e.targetVertex ).foreach( vProcTgt => {
                   val outName = e.out.name
                   val inName  = e.in.name
-                  val pSrc    = vProcSrc.params.get( outName ).map( _.pNode ).getOrElse( vProcSrc.pNode )
-                  val pTgt    = vProcTgt.params.get( inName  ).map( _.pNode ).getOrElse( vProcTgt.pNode )
-                  val pEdge   = g.addEdge( pSrc, pTgt )
-                  edgeMap    += e -> pEdge
+                  vProcSrc.params.get( outName ).map( _.pNode ).foreach( pSrc => {
+                     vProcTgt.params.get( inName  ).map( _.pNode ).foreach( pTgt => {
+                        val pEdge   = g.addEdge( pSrc, pTgt )
+                        edgeMap    += e -> pEdge
+                     })
+                  })
                })
+            })
+         })
+         startAnimation
+      }
+   }
+
+   private def topMappingsChanged( controls: (ProcControl, Option[ ProcControlMapping ])* ) {
+      if( verbose ) println( "topMappingsChanged : " + controls )
+      val byProc = controls.groupBy( _._1.proc )
+      vis.synchronized {
+         stopAnimation
+         byProc.foreach( tup => {
+            val (proc, seq) = tup
+            procMap.get( proc ).foreach( vProc => {
+               seq.foreach( tup2 => {
+                  val (ctrl, mo) = tup2
+                  vProc.params.get( ctrl.name ) match {
+                     case Some( vControl: VisualControl ) => {
+                        vControl.mapping.foreach( vMap => {
+                           g.removeEdge( vMap.pEdge )
+                           vControl.mapping = None
+                        })
+                        vControl.mapping = mo.flatMap({
+                           case ma: ProcControlAMapping => {
+                              val ain = ma.input
+                              procMap.get( ain.proc ).flatMap( vProc2 => {
+                                 vProc2.params.get( ain.name ) match {
+                                    case Some( vBus: VisualAudioOutput ) => {
+                                       val pEdge = g.addEdge( vBus.pNode, vControl.pNode )
+                                       Some( VisualMapping( ma, pEdge ))
+                                    }
+                                    case _ => None
+                                 }
+                              })
+                           }
+                           case _ => None
+                        })
+                     }
+                     case _ =>
+                  }
+               })
+               // damageReport XXX
             })
          })
          startAnimation

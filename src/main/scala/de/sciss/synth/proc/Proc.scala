@@ -43,6 +43,9 @@ import de.sciss.synth.{Model, AudioBus, Group, Server}
 object Proc extends ThreadLocalObject[ Proc ] {
    case class PlayingChanged( proc: Proc, playing: Boolean )
    case class ControlsChanged( controls: (ProcControl, Float)* )
+   case class MappingsChanged( controls: (ProcControl, Option[ ProcControlMapping ])* )
+   case class AudioBusesConnected( edges: ProcEdge* )
+   case class AudioBusesDisconnected( edges: ProcEdge* )
 }
 
 trait Proc extends Model {
