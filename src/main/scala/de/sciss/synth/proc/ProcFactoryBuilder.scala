@@ -608,7 +608,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             val bufSeq     = buffers.toSeq
             val bufs       = bufSeq.map( _.create( server ))
 
-            var setMaps    = IQueue.empty[ ControlSetMap ]  // warning: rs.newMsg doesn't support setn style! XXX
+            var setMaps    = Vector.empty[ ControlSetMap ]  // warning: rs.newMsg doesn't support setn style! XXX
 //            var kbusMaps   = IQueue.empty[ ControlKBusMap ]
 //            var abusMaps   = IQueue.empty[ ControlABusMap ]
             var mappings   = IQueue.empty[ ProcControlMapping ]
@@ -618,16 +618,16 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
                   val name = pFloat.name
                   val ctrl = p.control( name )
                   ctrl.mapping.map( m => mappings = mappings.enqueue( m )).getOrElse({
-                     setMaps = setMaps.enqueue( name -> ctrl.value )
+                     setMaps :+= SingleControlSetMap( name, ctrl.value )
                   })
                }
                case pAudioBus: ProcParamAudioInput => {
-                  setMaps = setMaps.enqueue(
-                     pAudioBus.name -> p.audioInput( pAudioBus.name ).bus.get.busOption.get.index )
+                  setMaps :+= SingleControlSetMap(
+                     pAudioBus.name, p.audioInput( pAudioBus.name ).bus.get.busOption.get.index )
                }
                case pAudioBus: ProcParamAudioOutput => {
-                  setMaps = setMaps.enqueue(
-                     pAudioBus.name -> p.audioOutput( pAudioBus.name ).bus.get.busOption.get.index )
+                  setMaps :+= SingleControlSetMap(
+                     pAudioBus.name, p.audioOutput( pAudioBus.name ).bus.get.busOption.get.index )
                }
                case x => println( "Ooops. what parameter is this? " + x ) // scalac doesn't check exhaustion...
             })
@@ -638,11 +638,13 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             } else {
                p.playGroupOption.getOrElse( p.groupOption.getOrElse( RichGroup.default( server )))
             }
+            val bufsZipped = bufSeq.zip( bufs )
+            setMaps ++= bufsZipped.map( tup => SingleControlSetMap( tup._1.controlName, tup._2.buf.id ))
             val rs = rsd.play( target, setMaps, addToHead, bufs )
 //            if( kbusMaps.nonEmpty ) rs.mapn(  true, kbusMaps: _* )
 //            if( abusMaps.nonEmpty ) rs.mapan( true, abusMaps: _* )
             mappings.foreach( _.play ) // XXX where's the stop??
-            bufSeq.zip( bufs ).foreach( tup => {
+            bufsZipped.foreach( tup => {
                val (b, rb) = tup
                b.disposeWith( rb, rs )
             })
@@ -855,7 +857,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       }
 
       def numChannels : Int = {
-         try {
+         try { // XXX should call includeBuffer ?
             val spec = AudioFile.readSpec( path( ProcGraphBuilder.local.tx ))
             spec.numChannels
          } catch {

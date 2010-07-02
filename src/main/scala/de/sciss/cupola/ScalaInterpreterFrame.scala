@@ -35,7 +35,7 @@ extends JFrame( "Scala Interpreter" ) {
 s.dumpOSC(1)
 
 val f = new de.sciss.nuages.NuagesFrame( s )
-f.setSize( 200, 200 )
+f.setSize( 640, 480 )
 f.setVisible( true )
 
 val g1 = ngen( "Sine" ) {
@@ -131,17 +131,13 @@ val h = ngen( "disk" ) {
 val i = ngen( "freqshift" ) {
     val p1 = pControl( "freq", ParamSpec( -2000, 2000 ), 100 )
 
-    graph { in =>
-        FreqShift.ar( in, p1.kr )
-    }
+    graph { in => FreqShift.ar( in, p1.kr )}
 }
 
 val j = ngen( "pan" ) {
-    val p1 = pFloat( "pan", ParamSpec(), Some( 0.0 ))
+    val p1 = pControl( "pan", ParamSpec( -1, 1 ), 0 )
 
-    graph { in =>
-        Pan2.ar( Mix( in ), p1.kr )
-    }
+    graph { in => Pan2.ar( Mix( in ), p1.kr )}
 }
 
 val p1 = h.make
@@ -149,6 +145,7 @@ val p2 = i.make
 val p3 = j.make
 p1 ~> p2; p2 ~> p3
 
+p1.setString( "path", audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ) // XXX defaults currenty not working 
 p1.play; p2.play; p3.play
 
 p2.setFloat( "freq", -200 )
