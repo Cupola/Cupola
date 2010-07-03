@@ -28,7 +28,7 @@
 
 package de.sciss.synth.proc
 
-import edu.stanford.ppl.ccstm.{TxnLocal, Txn, Ref => CRef}
+import edu.stanford.ppl.ccstm.{ TxnLocal => CTxnLocal, Txn, Ref => CRef}
 
 /**
  *    ScalaCollider-Proc's Ref wraps CCSTM's in order to isolate the rest of the
@@ -104,14 +104,10 @@ object Ref {
    private abstract class TouchImpl[ T ]( _c: CRef[ T ]) extends Impl[ T ]( _c ) {
       me: Impl[ T ] =>
 
-      private val touchedRef = new TxnLocal[ Boolean ] {
-         override def initialValue( t: Txn ) = false
-      }
+      private val touchedRef = TxnLocal( false )
 
       private def touch( tx: ProcTxn ) {
-         implicit val t = tx.ccstm
-         if( !touchedRef.get ) {
-            touchedRef.set( true )
+         if( !touchedRef.swap( true )( tx )) {
             touched( tx )
          }
       }
@@ -150,25 +146,30 @@ object Ref {
    }
 }
 
-//trait TxnLocal[ @specialized T ] {
-//   def get( implicit tx: ProcTxn ) : T
-//   def set( v: T )( implicit tx: ProcTxn ) : Unit
-//}
-//
-//object TxnLocal {
-//   def apply[ @specialized T ] : TxnLocal = new Impl[ T ]( new CTxnLocal[ T ])
-//   def apply[ @specialized T ]( initValue: T ) : TxnLocal = new Impl[ T ]( new CTxnLocal[ T ] {
-//      override def initialValue( tx: Txn ): T = initValue
-//   })
-//
-//   private class Impl[ T ]( c: CTxnLocal[ T ]) extends TxnLocal[ T ] {
-//      def apply( implicit tx: ProcTxn ) : T = c.get( tx.ccstm )
-//      def set( v: T )( implicit tx: ProcTxn ) : Unit = c.set( v )( tx.ccstm )
-//      def swap( v: T )( implicit tx: ProcTxn ) : T = {
-//         // currently not implemented in CTxnLocal
-//         val oldV = apply()
-//         set( v )
-//         oldV
-//      }
-//   }
-//}
+trait TxnLocal[ @specialized T ] {
+   def apply()( implicit tx: ProcTxn ) : T
+   def set( v: T )( implicit tx: ProcTxn ) : Unit
+   def swap( v: T )( implicit tx: ProcTxn ) : T
+   def transform( f: T => T )( implicit tx: ProcTxn ) : Unit
+}
+
+object TxnLocal {
+   def apply[ @specialized T ] : TxnLocal[ T ] = new Impl( new CTxnLocal[ T ])
+   def apply[ @specialized T ]( initValue: => T ) : TxnLocal[ T ] = new Impl( new CTxnLocal[ T ] {
+      override def initialValue( tx: Txn ): T = initValue
+   })
+
+   private class Impl[ T ]( c: CTxnLocal[ T ]) extends TxnLocal[ T ] {
+      def apply()( implicit tx: ProcTxn ) : T = c.get( tx.ccstm )
+      def set( v: T )( implicit tx: ProcTxn ) : Unit = c.set( v )( tx.ccstm )
+      def swap( v: T )( implicit tx: ProcTxn ) : T = {
+         // currently not implemented in CTxnLocal
+         val oldV = apply
+         set( v )
+         oldV
+      }
+      def transform( f: T => T )( implicit tx: ProcTxn ) {
+         set( f( apply ))
+      }
+   }
+}

@@ -28,7 +28,8 @@
 
 package de.sciss.synth.proc
 
-import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq }
+import collection.breakOut
+import collection.immutable.{ IndexedSeq => IIdxSeq, Map => IMap, Seq => ISeq, Set => ISet }
 import de.sciss.scalaosc.OSCMessage
 import de.sciss.synth.{Model, AudioBus, Group, Server}
 
@@ -41,24 +42,45 @@ import de.sciss.synth.{Model, AudioBus, Group, Server}
  *          occurences of Proc.local with Actor.self 
  */
 object Proc extends ThreadLocalObject[ Proc ] {
-   case class PlayingChanged( proc: Proc, playing: Boolean )
-   case class ControlsChanged( controls: (ProcControl, Float)* )
-   case class MappingsChanged( controls: (ProcControl, Option[ ProcControlMapping ])* )
-   case class AudioBusesConnected( edges: ProcEdge* )
-   case class AudioBusesDisconnected( edges: ProcEdge* )
+//   case class PlayingChanged( proc: Proc, playing: Boolean )
+//   case class ControlsChanged( controls: (ProcControl, Float)* )
+//   case class MappingsChanged( controls: (ProcControl, Option[ ProcControlMapping ])* )
+//   case class AudioBusesConnected( edges: ProcEdge* )
+//   case class AudioBusesDisconnected( edges: ProcEdge* )
+
+   case class Update( proc: Proc, playing: Option[ Boolean ],
+                      controls: IMap[ ProcControl, Float ],
+                      mappings: IMap[ ProcControl, Option[ ProcControlMapping ]],
+                      audioBusesConnected: ISet[ ProcEdge ],
+                      audioBusesDisconnected: ISet[ ProcEdge ])
+   type Listener = TxnModel.Listener[ Update ]
 }
 
-trait Proc extends Model {
+trait Proc extends TxnModel[ Proc.Update ] {
+   import Proc._
+   
    def name : String
    def play( implicit tx: ProcTxn ) : Proc
    def stop( implicit tx: ProcTxn ) : Proc
    def isPlaying( implicit tx: ProcTxn ) : Boolean
    def server : Server
 
+   protected def emptyUpdate = Update( this, None, Map.empty, Map.empty, Set.empty, Set.empty )
+   protected def fullUpdate( implicit tx: ProcTxn ) : Update = {
+      val ctl = controls
+      val ctlVals: IMap[ ProcControl, Float ] = controls.map( c => c -> c.value )( breakOut )
+      val ctlMaps: IMap[ ProcControl, Option[ ProcControlMapping ]] = controls.filter( _.isMapped )
+         .map( c => c -> c.mapping )( breakOut )
+      val busConns: ISet[ ProcEdge ] = outEdges 
+      Update( this, Some( isPlaying ), ctlVals, ctlMaps, busConns, Set.empty )
+   }
+
 //   def getFloat( name: String )( implicit tx: ProcTxn ) : Float
 //   def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Proc
    def getString( name: String )( implicit tx: ProcTxn ) : String
    def setString( name: String, value: String )( implicit tx: ProcTxn ) : Proc
+
+   def outEdges( implicit tx: ProcTxn ) : ISet[ ProcEdge ]
 
 // for now disabled:
 //   def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichAudioBus

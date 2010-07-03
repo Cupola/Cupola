@@ -31,34 +31,61 @@ package de.sciss.synth.proc
 import de.sciss.synth.osc.{ OSCSyncedMessage, OSCResponder }
 import de.sciss.synth._
 import de.sciss.scalaosc.OSCMessage
-import actors.{Future, Actor, DaemonActor, TIMEOUT}
+import actors.{ Actor, DaemonActor, Future, TIMEOUT }
+import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq, Set => ISet }
 
 /**
  *    @version 0.12, 02-Jul-10
  */
 object ProcWorld {
-   case class ProcsRemoved( procs: Proc* )
-   case class ProcsAdded( procs: Proc* )
-//   case class EdgesRemoved( edges: ProcEdge* )
-//   case class EdgesAdded( edges: ProcEdge* )
+//   case class ProcsRemoved( procs: Proc* )
+//   case class ProcsAdded( procs: Proc* )
+////   case class EdgesRemoved( edges: ProcEdge* )
+////   case class EdgesAdded( edges: ProcEdge* )
+
+   case class Update( procsAdded: ISet[ Proc ], procsRemoved: ISet[ Proc ])
+   type Listener = TxnModel.Listener[ Update ]
 }
-class ProcWorld extends Model {
+
+class ProcWorld extends TxnModel[ ProcWorld.Update ] {
    import ProcWorld._
-   
+
+   private type Topo = Topology[ Proc, ProcEdge ] 
    val synthGraphs = Ref( Map.empty[ SynthGraph, RichSynthDef ])
-   val topology    = Ref.withObserver( Topology.empty[ Proc, ProcEdge ]) { (oldTop, newTop) =>
-      // getting nasty... we should track the changes eventually
-      // inside a customized Ref object XXX
-      val verticesRemoved  = oldTop.vertices.diff( newTop.vertices )
-      val verticesAdded    = newTop.vertices.diff( oldTop.vertices )
-//      val oldEdges         = oldTop.edgeMap.values.flatten.toSeq // ayayay
-//      val newEdges         = newTop.edgeMap.values.flatten.toSeq
-//      val edgesRemoved     = oldEdges.diff( newEdges )
-//      val edgesAdded       = newEdges.diff( oldEdges )
-//      if( edgesRemoved.nonEmpty )      dispatch( EdgesRemoved( edgesRemoved: _* ))
-      if( verticesRemoved.nonEmpty )   dispatch( ProcsRemoved( verticesRemoved: _* ))
-      if( verticesAdded.nonEmpty )     dispatch( ProcsAdded( verticesAdded: _* ))
-//      if( edgesAdded.nonEmpty )        dispatch( EdgesAdded( edgesAdded: _* ))
+   private val topologyRef = Ref[ Topo ]( Topology.empty )
+//   val topology    = Ref.withObserver( Topology.empty[ Proc, ProcEdge ]) { (oldTop, newTop) =>
+//      // getting nasty... we should track the changes eventually
+//      // inside a customized Ref object XXX
+//      val verticesRemoved  = oldTop.vertices.diff( newTop.vertices )
+//      val verticesAdded    = newTop.vertices.diff( oldTop.vertices )
+////      val oldEdges         = oldTop.edgeMap.values.flatten.toSeq // ayayay
+////      val newEdges         = newTop.edgeMap.values.flatten.toSeq
+////      val edgesRemoved     = oldEdges.diff( newEdges )
+////      val edgesAdded       = newEdges.diff( oldEdges )
+////      if( edgesRemoved.nonEmpty )      dispatch( EdgesRemoved( edgesRemoved: _* ))
+//      if( verticesRemoved.nonEmpty )   dispatch( ProcsRemoved( verticesRemoved: _* ))
+//      if( verticesAdded.nonEmpty )     dispatch( ProcsAdded( verticesAdded: _* ))
+////      if( edgesAdded.nonEmpty )        dispatch( EdgesAdded( edgesAdded: _* ))
+//   }
+
+   protected def fullUpdate( implicit tx: ProcTxn ) = Update( topologyRef().vertices.toSet, Set.empty )
+   protected def emptyUpdate = Update( Set.empty, Set.empty )
+
+   def topology( implicit tx: ProcTxn ) = topologyRef()
+   def addProc( p: Proc )( implicit tx: ProcTxn ) {
+      touch
+      topologyRef.transform( _ addVertex p )
+      update.transform( u => if( u.procsRemoved.contains( p )) {
+          u.copy( procsRemoved = u.procsRemoved - p )
+      } else {
+          u.copy( procsAdded   = u.procsAdded   + p )
+      })
+   }
+
+   def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) : Option[ (Topo, Proc, IIdxSeq[ Proc ])] = {
+      val res = topologyRef().addEdge( e )
+      res.foreach( tup => topologyRef.set( tup._1 ))
+      res
    }
 }
 
@@ -82,17 +109,17 @@ object ProcDemiurg { // ( val server: Server )
 
    def addVertex( e: Proc )( implicit tx: ProcTxn ) : Unit = syn.synchronized {
       val world = worlds( e.server )
-      world.topology.transform( _.addVertex( e ))
+//      world.topology.transform( _.addVertex( e ))
+      world.addProc( e )
    }
 
    def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) : Unit = syn.synchronized {
 //      val world = worlds( e._1.proc.server )
       val world = worlds( e.sourceVertex.server )
-      val res = world.topology().addEdge( e )
+      val res = world.addEdge( e )
       if( res.isEmpty ) error( "Could not add edge" )
 
       val Some( (newTopo, source, affected) ) = res
-      world.topology.set( newTopo )
       if( affected.isEmpty ) {
          return
       }

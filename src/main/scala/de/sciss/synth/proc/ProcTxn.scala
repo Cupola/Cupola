@@ -48,6 +48,8 @@ trait ProcTxn {
 
    def beforeCommit( callback: ProcTxn => Unit ) : Unit
    def beforeCommit( callback: ProcTxn => Unit, prio: Int ) : Unit
+   def afterCommit( callback: ProcTxn => Unit ) : Unit
+   def afterCommit( callback: ProcTxn => Unit, prio: Int ) : Unit
 
    private[ proc ] def ccstm : Txn
 }
@@ -192,6 +194,14 @@ val server = Server.default // XXX vergación
 
       def beforeCommit( callback: ProcTxn => Unit, prio: Int ) {
          txn.beforeCommit( _ => callback( tx ), prio )
+      }
+
+      def afterCommit( callback: ProcTxn => Unit ) {
+         txn.afterCommit( _ => callback( tx ))
+      }
+
+      def afterCommit( callback: ProcTxn => Unit, prio: Int ) {
+         txn.afterCommit( _ => callback( tx ), prio )
       }
 
       // XXX IntMap lost. might eventually implement the workaround

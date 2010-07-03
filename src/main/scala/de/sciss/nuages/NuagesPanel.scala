@@ -52,7 +52,7 @@ import geom._
 import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
 
 /**
- *    @version 0.11, 29-Jun-10
+ *    @version 0.11, 02-Jul-10
  */
 object NuagesPanel {
    var verbose = false
@@ -344,21 +344,30 @@ with ProcFactoryProvider {
 //   }
    private var procMap              = Map.empty[ Proc, VisualProc ]
    private var edgeMap              = Map.empty[ ProcEdge, Edge ]
+   private var pendingProcs         = Set.empty[ Proc ]
 
-   private val topoListener : Model.Listener = {
-      case ProcsRemoved( procs @ _* )  => defer( topRemoveProcs( procs: _* ))
-      case ProcsAdded( procs @ _* )    => defer( topAddProcs( procs: _* ))
-//      case EdgesRemoved( edges @ _* )     => defer( topRemoveEdges( edges: _* ))
-//      case EdgesAdded( edges @ _* )       => defer( topAddEdges( edges: _* ))
+//   private val topoListener : Model.Listener = {
+//      case ProcsRemoved( procs @ _* )  => defer( topRemoveProcs( procs: _* ))
+//      case ProcsAdded( procs @ _* )    => defer( topAddProcs( procs: _* ))
+////      case EdgesRemoved( edges @ _* )     => defer( topRemoveEdges( edges: _* ))
+////      case EdgesAdded( edges @ _* )       => defer( topAddEdges( edges: _* ))
+//   }
+
+   private object topoListener extends ProcWorld.Listener {
+      def update( u: ProcWorld.Update ) { defer( topoUpdate( u ))}
    }
 
-   private val procListener : Model.Listener = {
-      case PlayingChanged( proc, state )        => defer( topProcPlaying( proc, state ))
-      case ControlsChanged( controls @ _* )     => defer( topControlsChanged( controls: _* ))
-      case AudioBusesConnected( edges @ _* )    => defer( topAddEdges( edges: _* ))
-      case AudioBusesDisconnected( edges @ _* ) => defer( topRemoveEdges( edges: _* ))
-      case MappingsChanged( controls @ _* )     => defer( topMappingsChanged( controls: _* ))
+   private object procListener extends Proc.Listener {
+      def update( u: Proc.Update ) { defer( procUpdate( u ))}
    }
+
+//   private val procListener : Model.Listener = {
+//      case PlayingChanged( proc, state )        => defer( topProcPlaying( proc, state ))
+//      case ControlsChanged( controls @ _* )     => defer( topControlsChanged( controls: _* ))
+//      case AudioBusesConnected( edges @ _* )    => defer( topAddEdges( edges: _* ))
+//      case AudioBusesDisconnected( edges @ _* ) => defer( topRemoveEdges( edges: _* ))
+//      case MappingsChanged( controls @ _* )     => defer( topMappingsChanged( controls: _* ))
+//   }
    
    // ---- constructor ----
    {
@@ -464,7 +473,7 @@ with ProcFactoryProvider {
 
       vis.run( ACTION_COLOR )
 
-      world.addListener( topoListener )
+      ProcTxn.atomic { implicit t => world.addListener( topoListener )}
    }
 
    // ---- ProcFactoryProvider ----
@@ -480,7 +489,7 @@ with ProcFactoryProvider {
    }
    
    def dispose {
-      world.removeListener( topoListener )
+      ProcTxn.atomic { implicit t => world.removeListener( topoListener )}
       stopAnimation
    }
 
@@ -529,153 +538,189 @@ with ProcFactoryProvider {
 
    private def topAddProcs( procs: Proc* ) {
       if( verbose ) println( "topAddProcs : " + procs )
+      pendingProcs ++= procs
+      // observer
+      ProcTxn.atomic { implicit t => procs.foreach( _.addListener( procListener ))}
+//      vis.synchronized {
+//         stopAnimation
+//         procs.foreach( topAddProc( _ ))
+//         startAnimation
+//      }
+   }
+
+   private def topAddProc( u: Proc.Update ) {
       vis.synchronized {
          stopAnimation
-         procs.foreach( topAddProc( _ ))
+         val pNode   = g.addNode()
+         val vi      = vis.getVisualItem( GROUP_GRAPH, pNode )
+         val p       = u.proc
+         val locO    = locHintMap.get( p )
+         locO.foreach( loc => {
+            locHintMap -= p
+            vi.setEndX( loc.getX() )
+            vi.setEndY( loc.getY() )
+         })
+         val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
+         aggr.addItem( vi )
+
+         def createNode = {
+            val pParamNode = g.addNode()
+            val pParamEdge = g.addEdge( pNode, pParamNode )
+            val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
+            locO.foreach( loc => {
+               vi.setEndX( loc.getX() )
+               vi.setEndY( loc.getY() )
+            })
+            aggr.addItem( vi )
+            (pParamNode, pParamEdge, vi)
+         }
+
+         val vProc = {
+            val vParams: Map[ String, VisualParam ] = p.params.collect({
+               case pFloat: ProcParamFloat => {
+                  val (pParamNode, pParamEdge, vi) = createNode
+                  val pControl   = p.control( pFloat.name )
+                  val vControl   = VisualControl( pControl, pParamNode, pParamEdge )
+                  val mVal       = u.controls( pControl )
+                  vControl.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
+                  vi.set( COL_NUAGES, vControl )
+                  vControl.name -> vControl
+               }
+               case pParamBus: ProcParamAudioInput => {
+                  val (pParamNode, pParamEdge, vi) = createNode
+                  vi.set( VisualItem.SIZE, 0.33333f )
+                  val pBus = p.audioInput( pParamBus.name )
+                  val vBus = VisualAudioInput( pBus, pParamNode, pParamEdge )
+                  vi.set( COL_NUAGES, vBus )
+                  vBus.name -> vBus
+               }
+               case pParamBus: ProcParamAudioOutput => {
+                  val (pParamNode, pParamEdge, vi) = createNode
+                  vi.set( VisualItem.SIZE, 0.33333f )
+                  val pBus = p.audioOutput( pParamBus.name )
+                  val vBus = VisualAudioOutput( pBus, pParamNode, pParamEdge )
+                  vi.set( COL_NUAGES, vBus )
+                  vBus.name -> vBus
+               }
+            })( breakOut )
+            val res = VisualProc( p, pNode, aggr, vParams )
+            res.playing = u.playing == Some( true )
+            res
+         }
+
+         vi.set( COL_NUAGES, vProc )
+         procMap += p -> vProc
+
+         if( u.mappings.nonEmpty ) topMappingsChangedI( u.mappings )
+         if( u.audioBusesConnected.nonEmpty ) topAddEdgesI( u.audioBusesConnected )
+
          startAnimation
       }
    }
 
-   private def topAddProc( p: Proc ) {
-      val pNode   = g.addNode()
-      val vi      = vis.getVisualItem( GROUP_GRAPH, pNode )
-      val locO    = locHintMap.get( p )
-//println( "Lookup for " + p + " yields " + locO )
-      locO.foreach( loc => {
-         locHintMap -= p
-//         vi.setStartX( loc.getX() )
-//         vi.setStartY( loc.getY() )
-//         vi.setX( loc.getX() )
-//         vi.setY( loc.getY() )
-         vi.setEndX( loc.getX() )
-         vi.setEndY( loc.getY() )
-      })
-//      procG.addTuple( vi )
-//      vi.set( VisualItem.SHAPE, Constants.SHAPE_ELLIPSE )
-      val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
-      aggr.addItem( vi )
-
-      def createNode = {
-         val pParamNode = g.addNode()
-         val pParamEdge = g.addEdge( pNode, pParamNode )
-         val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
-         locO.foreach( loc => {
-            vi.setEndX( loc.getX() )
-            vi.setEndY( loc.getY() )
-         })
-         aggr.addItem( vi )
-         (pParamNode, pParamEdge, vi)
-      }
-
-      val vProc = ProcTxn.atomic { implicit t =>
-         val vParams: Map[ String, VisualParam ] = p.params.collect({
-            case pFloat: ProcParamFloat => {
-               val (pParamNode, pParamEdge, vi) = createNode
-               val pControl   = p.control( pFloat.name )
-               val vControl   = VisualControl( pControl, pParamNode, pParamEdge )
-               val mVal       = pControl.value
-               vControl.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
-               vi.set( COL_NUAGES, vControl )
-               vControl.name -> vControl
-            }
-            case pParamBus: ProcParamAudioInput => {
-               val (pParamNode, pParamEdge, vi) = createNode
-               vi.set( VisualItem.SIZE, 0.33333f )
-               val pBus = p.audioInput( pParamBus.name )
-               val vBus = VisualAudioInput( pBus, pParamNode, pParamEdge )
-               vi.set( COL_NUAGES, vBus )
-               vBus.name -> vBus
-            }
-            case pParamBus: ProcParamAudioOutput => {
-               val (pParamNode, pParamEdge, vi) = createNode
-               vi.set( VisualItem.SIZE, 0.33333f )
-               val pBus = p.audioOutput( pParamBus.name )
-               val vBus = VisualAudioOutput( pBus, pParamNode, pParamEdge )
-               vi.set( COL_NUAGES, vBus )
-               vBus.name -> vBus
-            }
-         })( breakOut )
-         val res = VisualProc( p, pNode, aggr, vParams )
-         res.playing = p.isPlaying
-         res
-      }
-      vi.set( COL_NUAGES, vProc )
-      procMap  += p -> vProc
-
-      // observer
-      p.addListener( procListener )
-   }
-
-   private def topAddEdges( edges: ProcEdge* ) {
+   private def topAddEdges( edges: Set[ ProcEdge ]) {
       if( verbose ) println( "topAddEdges : " + edges )
       vis.synchronized {
          stopAnimation
-         edges.foreach( e => {
-            procMap.get( e.sourceVertex ).foreach( vProcSrc => {
-               procMap.get( e.targetVertex ).foreach( vProcTgt => {
-                  val outName = e.out.name
-                  val inName  = e.in.name
-                  vProcSrc.params.get( outName ).map( _.pNode ).foreach( pSrc => {
-                     vProcTgt.params.get( inName  ).map( _.pNode ).foreach( pTgt => {
-                        val pEdge   = g.addEdge( pSrc, pTgt )
-                        edgeMap    += e -> pEdge
-                     })
+         topAddEdgesI( edges )
+         startAnimation
+      }
+   }
+
+   private def topAddEdgesI( edges: Set[ ProcEdge ]) {
+      edges.foreach( e => {
+         procMap.get( e.sourceVertex ).foreach( vProcSrc => {
+            procMap.get( e.targetVertex ).foreach( vProcTgt => {
+               val outName = e.out.name
+               val inName  = e.in.name
+               vProcSrc.params.get( outName ).map( _.pNode ).foreach( pSrc => {
+                  vProcTgt.params.get( inName  ).map( _.pNode ).foreach( pTgt => {
+                     val pEdge   = g.addEdge( pSrc, pTgt )
+                     edgeMap    += e -> pEdge
                   })
                })
             })
          })
+      })
+   }
+
+   private def topMappingsChangedI( controls: Map[ ProcControl, Option[ ProcControlMapping ]]) {
+      val byProc = controls.groupBy( _._1.proc )
+      byProc.foreach( tup => {
+         val (proc, map) = tup
+         procMap.get( proc ).foreach( vProc => {
+            map.foreach( tup2 => {
+               val (ctrl, mo) = tup2
+               vProc.params.get( ctrl.name ) match {
+                  case Some( vControl: VisualControl ) => {
+                     vControl.mapping.foreach( vMap => {
+                        g.removeEdge( vMap.pEdge )
+                        vControl.mapping = None
+                     })
+                     vControl.mapping = mo.flatMap({
+                        case ma: ProcControlAMapping => {
+                           val ain = ma.input
+                           procMap.get( ain.proc ).flatMap( vProc2 => {
+                              vProc2.params.get( ain.name ) match {
+                                 case Some( vBus: VisualAudioOutput ) => {
+                                    val pEdge = g.addEdge( vBus.pNode, vControl.pNode )
+                                    Some( VisualMapping( ma, pEdge ))
+                                 }
+                                 case _ => None
+                              }
+                           })
+                        }
+                        case _ => None
+                     })
+                  }
+                  case _ =>
+               }
+            })
+            // damageReport XXX
+         })
+      })
+   }
+
+   private def topMappingsChanged( controls: Map[ ProcControl, Option[ ProcControlMapping ]]) {
+      if( verbose ) println( "topMappingsChanged : " + controls )
+      vis.synchronized {
+         stopAnimation
+         topMappingsChangedI( controls )
          startAnimation
       }
    }
 
-   private def topMappingsChanged( controls: (ProcControl, Option[ ProcControlMapping ])* ) {
-      if( verbose ) println( "topMappingsChanged : " + controls )
-      val byProc = controls.groupBy( _._1.proc )
-      vis.synchronized {
-         stopAnimation
-         byProc.foreach( tup => {
-            val (proc, seq) = tup
-            procMap.get( proc ).foreach( vProc => {
-               seq.foreach( tup2 => {
-                  val (ctrl, mo) = tup2
-                  vProc.params.get( ctrl.name ) match {
-                     case Some( vControl: VisualControl ) => {
-                        vControl.mapping.foreach( vMap => {
-                           g.removeEdge( vMap.pEdge )
-                           vControl.mapping = None
-                        })
-                        vControl.mapping = mo.flatMap({
-                           case ma: ProcControlAMapping => {
-                              val ain = ma.input
-                              procMap.get( ain.proc ).flatMap( vProc2 => {
-                                 vProc2.params.get( ain.name ) match {
-                                    case Some( vBus: VisualAudioOutput ) => {
-                                       val pEdge = g.addEdge( vBus.pNode, vControl.pNode )
-                                       Some( VisualMapping( ma, pEdge ))
-                                    }
-                                    case _ => None
-                                 }
-                              })
-                           }
-                           case _ => None
-                        })
-                     }
-                     case _ =>
-                  }
-               })
-               // damageReport XXX
-            })
-         })
-         startAnimation
+//   case class Update( playing: Option[ Boolean ],
+//                      controls: IMap[ ProcControl, Float ],
+//                      mappings: IMap[ ProcControl, Option[ ProcControlMapping ]],
+//                      audioBusesConnected: ISet[ ProcEdge ],
+//                      audioBusesDisconnected: ISet[ ProcEdge ])
+   private def procUpdate( u: Proc.Update ) {
+      val p = u.proc
+      if( procMap.contains( p )) {
+         u.playing.foreach( state => topProcPlaying( p, state ))
+         if( u.controls.nonEmpty )               topControlsChanged( u.controls )
+         if( u.mappings.nonEmpty )               topMappingsChanged( u.mappings )
+         if( u.audioBusesConnected.nonEmpty )    topAddEdges( u.audioBusesConnected )
+         if( u.audioBusesDisconnected.nonEmpty ) topRemoveEdges( u.audioBusesDisconnected )
+      } else if( pendingProcs.contains( p )) {
+         pendingProcs -= p
+         topAddProc( u )
       }
    }
-   
+
+   private def topoUpdate( u: ProcWorld.Update ) {
+      if( u.procsRemoved.nonEmpty ) topRemoveProcs( u.procsRemoved.toSeq: _* )
+      if( u.procsAdded.nonEmpty )   topAddProcs(    u.procsAdded.toSeq:   _* )
+   }
+
    private def topRemoveProcs( procs: Proc* ) {
       if( verbose ) println( "topRemoveProcs : " + procs )
       vis.synchronized {
          stopAnimation
+         ProcTxn.atomic { implicit t => procs.foreach( _.removeListener( procListener ))}
          procs.foreach( p => {
-            procMap.get( p ).foreach( topRemoveProc( _ ))
+            procMap.get( p ).map( topRemoveProc( _ )).getOrElse( pendingProcs -= p )
          })
          startAnimation
       }
@@ -694,7 +739,7 @@ with ProcFactoryProvider {
       procMap -= vProc.proc
    }
 
-   private def topRemoveEdges( edges: ProcEdge* ) {
+   private def topRemoveEdges( edges: Set[ ProcEdge ]) {
       if( verbose ) println( "topRemoveEdges : " + edges )
       vis.synchronized {
          stopAnimation
@@ -715,12 +760,12 @@ with ProcFactoryProvider {
       })
    }
 
-   private def topControlsChanged( controls: (ProcControl, Float)* ) {
+   private def topControlsChanged( controls: Map[ ProcControl, Float ]) {
       val byProc = controls.groupBy( _._1.proc )
       byProc.foreach( tup => {
-         val (proc, seq) = tup
+         val (proc, map) = tup
          procMap.get( proc ).foreach( vProc => {
-            seq.foreach( tup2 => {
+            map.foreach( tup2 => {
                val (ctrl, value) = tup2
                vProc.params.get( ctrl.name ) match {
                   case Some( vControl: VisualControl ) => vControl.value = {

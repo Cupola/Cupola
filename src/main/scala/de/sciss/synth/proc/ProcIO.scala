@@ -28,7 +28,8 @@
 
 package de.sciss.synth.proc
 
-import de.sciss.synth.{Bus, Rate}
+import de.sciss.synth.{ Bus, Rate }
+import collection.immutable.{ Set => ISet }
 
 /**
  *    @version 0.12, 02-Jul-10
@@ -41,6 +42,7 @@ sealed trait ProcAudioBus {
    def synthetic_=( onOff: Boolean )( implicit tx: ProcTxn ): Unit
 //   def index( implicit tx: ProcTxn ) : Int // -1 : not specified
    def name : String
+//   def edges( implicit tx: ProcTxn ) : ISet[ ProcEdge ]
 }
 
 trait ProcAudioOutput extends ProcAudioBus {

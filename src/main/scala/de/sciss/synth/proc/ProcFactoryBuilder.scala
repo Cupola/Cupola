@@ -34,12 +34,12 @@ import de.sciss.scalaosc.{ OSCBundle, OSCMessage }
 import de.sciss.synth.osc.{ OSCSyncedMessage, OSCSynthNewMessage }
 import actors.{ DaemonActor, Future, TIMEOUT }
 import collection.breakOut
-import collection.immutable.{ IndexedSeq => IIdxSeq, Queue => IQueue, Seq => ISeq }
+import collection.immutable.{ IndexedSeq => IIdxSeq, Queue => IQueue, Seq => ISeq, Set => ISet }
 import ProcTransport._
 import ugen._
 
 /**
- *    @version 0.12, 01-Jul-10
+ *    @version 0.12, 02-Jul-10
  */
 trait ProcFactoryBuilder {
    def name : String
@@ -245,11 +245,12 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      }
 
 //      private val sync           = new AnyRef
-      private val running           = Ref.withObserver[ Option[ ProcRunning ]]( None ) { (oldRun, newRun) =>
-         if( oldRun.isDefined != newRun.isDefined ) {
-            dispatch( PlayingChanged( proc, newRun.isDefined ))
-         }
-      }
+      private val runningRef        = Ref[ Option[ ProcRunning ]]( None )
+//      private val runningRef        = Ref.withObserver[ Option[ ProcRunning ]]( None ) { (oldRun, newRun) =>
+//         if( oldRun.isDefined != newRun.isDefined ) {
+//            dispatch( PlayingChanged( proc, newRun.isDefined ))
+//         }
+//      }
       private val groupVar          = Ref[ Option[ RichGroup ]]( None )
       private val playGroupVar      = Ref[ Option[ RichGroup ]]( None )
 //      private val pFloatValues    = Ref( Map.empty[ ProcParamFloat, Float ])
@@ -280,10 +281,16 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //         this
 //      }
 
+      // XXX should have the edgeMap directly here instead of spread
+      // across the buses!!
+      def outEdges( implicit tx: ProcTxn ) : ISet[ ProcEdge ] = {
+         audioOutputs.flatMap( _.edges )( breakOut )
+      }
+
       def setString( name: String, value: String )( implicit tx: ProcTxn ) : Proc = {
          val p = fact.paramMap( name ).asInstanceOf[ ProcParamString ]
          pStringValues.transform( _ + (p -> value) )
-         running().foreach( _.setString( name, value ))
+         runningRef().foreach( _.setString( name, value ))
          this
       }
 
@@ -338,7 +345,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          pgo.foreach( _.moveToHead( true, newGroup ))
          // XXX also move the mapping synths!
          if( pgo.isEmpty ) { // we are still playing in the main group, hence update that
-            running().foreach( _.setGroup( newGroup ))
+            runningRef().foreach( _.setGroup( newGroup ))
          }
          // XXX what should we do, free it?
          oldGroupO.foreach( _.free( true ))
@@ -361,7 +368,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //println( "playGroup_" )
          val newGroupO  = Some( newGroup )
          val oldGroupO  = playGroupVar.swap( newGroupO )
-         running().foreach( _.setGroup( newGroup ))
+         runningRef().foreach( _.setGroup( newGroup ))
          // XXX what should we do, free it?
          oldGroupO.foreach( rg => {
             rg.free( true ) // after running.setGroup !
@@ -401,7 +408,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      }
 
       def play( implicit tx: ProcTxn ) : Proc = {
-         if( running().isDefined ) {
+         if( isPlaying ) {
             println( "WARNING: Proc.play - '" + this + "' already playing")
          } else {
             val run = Proc.use( proc ) {
@@ -412,45 +419,72 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
                case ProcRunning.Stopped => {
                   run.removeListener( l )
 //                     exec( if( running == Some( run )) running = None ) // XXX propagate stop?
-                  ProcTxn.atomic { t2 =>
-                     running.transformIfDefined({ case Some( run ) => None })( t2 )
-                  }
+                  ProcTxn.atomic { t2 => setRunning( None )( t2 )}
                }
                case m => println( "Ooooops : " + m )
             }
             run.addListener( l )
-            running.set( Some( run ))
+            setRunning( Some( run ))
          }
          this
       }
 
+      private def setRunning( run: Option[ ProcRunning ])( implicit tx: ProcTxn ) {
+         touch
+         val u    = update.apply
+         val flag = Some( run.isDefined )
+         if( u.playing != flag ) update.set( u.copy( playing = flag ))
+         runningRef.set( run )
+      }
+
       def stop( implicit tx: ProcTxn ) : Proc = {
-         running().foreach( r => {
+         runningRef().foreach( r => {
             try { r.stop } catch { case ex => ex.printStackTrace() }
+            setRunning( None )
          })
          this
       }
 
-      def isPlaying( implicit tx: ProcTxn ) : Boolean = running().isDefined
+      def isPlaying( implicit tx: ProcTxn ) : Boolean = runningRef().isDefined
 
-      private[proc] def dispatchControlChange( ctrl: ProcControl, newValue: Float ) {
-         dispatch( ControlsChanged( ctrl -> newValue ))
-      }
+//      private[proc] def dispatchControlChange( ctrl: ProcControl, newValue: Float )( implicit tx: ProcTxn ) {
+////         dispatch( ControlsChanged( ctrl -> newValue ))
+//         touch
+//         update.transform( u => u.copy( controls = u.controls + (ctrl -> newValue) ))
+//      }
 
-      private[proc] def dispatchMappingChange( ctrl: ProcControl, newValue: Option[ ProcControlMapping ]) {
-         dispatch( MappingsChanged( ctrl -> newValue ))
-      }
+//      private[proc] def dispatchMappingChange( ctrl: ProcControl, newValue: Option[ ProcControlMapping ])( implicit tx: ProcTxn ) {
+////         dispatch( MappingsChanged( ctrl -> newValue ))
+//         touch
+//         update.transform( u => u.copy( mappings = u.mappings + (ctrl -> newValue) ))
+//      }
 
-      private[proc] def dispatchAudioBusesConnected( edges: ProcEdge* ) {
-         dispatch( AudioBusesConnected( edges: _* ))
-      }
-
-      private[proc] def dispatchAudioBusesDisconnected( edges: ProcEdge* ) {
-         dispatch( AudioBusesDisconnected( edges: _* ))
-      }
+//      private[proc] def dispatchAudioBusesConnected( edges: ProcEdge* ) {
+//         dispatch( AudioBusesConnected( edges: _* ))
+//      }
+//
+//      private[proc] def dispatchAudioBusesDisconnected( edges: ProcEdge* ) {
+//         dispatch( AudioBusesDisconnected( edges: _* ))
+//      }
 
       private[proc] def controlChanged( ctrl: ProcControl, newValue: Float )( implicit tx: ProcTxn ) {
-         running().foreach( _.setFloat( ctrl.name, newValue ))
+         runningRef().foreach( _.setFloat( ctrl.name, newValue ))
+         touch
+         update.transform( u => u.copy( controls = u.controls + (ctrl -> newValue) ))
+      }
+
+      private[proc] def controlMapped( ctrl: ProcControl, newValue: Option[ ProcControlMapping ])( implicit tx: ProcTxn ) {
+         touch
+         update.transform( u => u.copy( mappings = u.mappings + (ctrl -> newValue) ))
+      }
+
+      private[proc] def audioBusConnected( e: ProcEdge )( implicit tx: ProcTxn ) {
+         touch
+         update.transform( u => if( u.audioBusesDisconnected.contains( e )) {
+            u.copy( audioBusesDisconnected = u.audioBusesDisconnected - e )
+         } else {
+            u.copy( audioBusesConnected = u.audioBusesConnected + e )
+         })
       }
 
 //      // XXX should be unified with controlChange such that we look up if the
@@ -464,8 +498,8 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      }
 
       private[proc] def busParamChanged( bus: ProcAudioBus, abus: AudioBus )( implicit tx: ProcTxn ) {
-         if( verbose ) println( "PROC BUS PARAM CHANGED " + name + " / " + bus.name + " / " + abus + " / " + running() )
-         running().foreach( _.busChanged( bus.name, abus ))
+         if( verbose ) println( "PROC BUS PARAM CHANGED " + name + " / " + bus.name + " / " + abus + " / " + runningRef() )
+         runningRef().foreach( _.busChanged( bus.name, abus ))
       }
 
 //      private[proc] def busMapChanged( bus: ControlAudioMapping, abus: AudioBus )( implicit tx: ProcTxn ) {
@@ -628,11 +662,18 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       protected val syntheticRef = Ref( false )
 //      protected val indexRef  = Ref( -1 )
 //      protected val edges     = Ref( Set.empty[ ProcEdge ])
-      protected def edges : Ref[ Set[ ProcEdge ]] //     = Ref( Set.empty[ ProcEdge ])
+      private val edgesRef = Ref( Set.empty[ ProcEdge ])
 
       def bus( implicit tx: ProcTxn ) : Option[ RichAudioBus ] = busRef()
 //      def index( implicit tx: ProcTxn ) = indexRef()
       def synthetic( implicit tx: ProcTxn ) = syntheticRef()
+
+      def edges( implicit tx: ProcTxn ) = edgesRef()
+      private[proc] def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) {
+         edgesRef.transform( _ + e )
+         edgeAdded( e )
+      }
+      protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) : Unit
    }
 
    private abstract class AbstractAudioInputImpl
@@ -647,14 +688,14 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          if( oldBus != newBus ) { // crucial to avoid infinite loops
             oldBus.foreach( _.removeReader( this ))
             newBus.foreach( _.addReader( this ))   // invokes busChanged
-            edges().foreach( _.out.bus_=( newBus ))
+            edges.foreach( _.out.bus_=( newBus ))
          }
       }
 
       def synthetic_=( newSyn: Boolean )( implicit tx: ProcTxn ) {
          val oldSyn = syntheticRef.swap( newSyn )
          if( oldSyn != newSyn ) {
-            edges().foreach( _.out.synthetic_=( newSyn ))
+            edges.foreach( _.out.synthetic_=( newSyn ))
          }
       }
 
@@ -664,16 +705,14 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //         proc.busChanged( this, bus )
 //      }
 
-      private[proc] def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) {
-         edges.transform( _ + e )
-      }
+      protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) {}
    }
 
    private class AudioInputImpl( val proc: Impl, val name: String )
    extends AbstractAudioInputImpl {
       override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
-      protected val edges = Ref( Set.empty[ ProcEdge ])
+//      protected val edges = Ref( Set.empty[ ProcEdge ])
 
       def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
          if( verbose ) println( "IN INDEX " + proc.name + " / " + bus )
@@ -690,11 +729,15 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       override def toString = "aOut(" + proc.name + " @ " + name + ")"
 
-      protected val edges     = Ref.withObserver( Set.empty[ ProcEdge ]) { (oldSet, newSet) =>
-         val edgesRemoved     = oldSet.diff( newSet )
-         val edgesAdded       = newSet.diff( oldSet )
-         if( edgesRemoved.nonEmpty ) proc.dispatchAudioBusesDisconnected( edgesRemoved.toSeq: _* )
-         if( edgesAdded.nonEmpty )   proc.dispatchAudioBusesConnected(    edgesAdded.toSeq:   _* )
+//      protected val edges     = Ref.withObserver( Set.empty[ ProcEdge ]) { (oldSet, newSet) =>
+//         val edgesRemoved     = oldSet.diff( newSet )
+//         val edgesAdded       = newSet.diff( oldSet )
+//         if( edgesRemoved.nonEmpty ) proc.dispatchAudioBusesDisconnected( edgesRemoved.toSeq: _* )
+//         if( edgesAdded.nonEmpty )   proc.dispatchAudioBusesConnected(    edgesAdded.toSeq:   _* )
+//      }
+
+      protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) {
+         proc.audioBusConnected( e )
       }
 
       def bus_=( newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ) {
@@ -703,14 +746,14 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          if( oldBus != newBus ) { // crucial to avoid infinite loops
             oldBus.foreach( _.removeWriter( this ))
             newBus.foreach( _.addWriter( this ))   // invokes busChanged
-            edges().foreach( _.in.bus_=( newBus ))
+            edges.foreach( _.in.bus_=( newBus ))
          }
       }
 
       def synthetic_=( newSyn: Boolean )( implicit tx: ProcTxn ) {
          val oldSyn = syntheticRef.swap( newSyn )
          if( oldSyn != newSyn ) {
-            edges().foreach( _.in.synthetic_=( newSyn ))
+            edges.foreach( _.in.synthetic_=( newSyn ))
          }
       }
 
@@ -723,8 +766,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def ~>( in: ProcAudioInput )( implicit tx: ProcTxn ) : Proc = {
          // handle edge
          val e = ProcEdge( out, in )
-         require( !edges().contains( e ))
-         edges.transform( _ + e )
+         require( !edges.contains( e ))
+//         edges.transform( _ + e )
+         addEdge( e )
          ProcDemiurg.addEdge( e )
          finishConnect( e )
          in.proc
@@ -748,8 +792,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def ~>( control: ProcControl )( implicit tx: ProcTxn ) : Proc = {
          val m = control.map( this )
          val e = ProcEdge( out, m.input )
-         require( !edges().contains( e ))
-         edges.transform( _ + e )
+         require( !edges.contains( e ))
+//         edges.transform( _ + e )
+         addEdge( e )
          if( control.rate == Some( arate )) { // in this case we need to enforce topology
             ProcDemiurg.addEdge( e )
          }
@@ -852,12 +897,15 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
    extends ProcControl {
       ctrl =>
 
-      private var valueRef = Ref.withObserver( default ) { (oldV, newV) =>
-         if( oldV != newV ) proc.dispatchControlChange( ctrl, newV )
-      }
-      private val mappingRef = Ref.withObserver[ Option[ ProcControlMapping ]]( None ) { (oldM, newM) =>
-         if( oldM != newM ) proc.dispatchMappingChange( ctrl, newM )
-      }
+      private var valueRef = Ref( default )
+
+//      private var valueRef = Ref.withObserver( default ) { (oldV, newV) =>
+//         if( oldV != newV ) proc.dispatchControlChange( ctrl, newV )
+//      }
+      private val mappingRef = Ref[ Option[ ProcControlMapping ]]( None )
+//      private val mappingRef = Ref.withObserver[ Option[ ProcControlMapping ]]( None ) { (oldM, newM) =>
+//         if( oldM != newM ) proc.dispatchMappingChange( ctrl, newM )
+//      }
 
       def rate = Some( _rate )
       def default : Float = param.default // .getOrElse( 0f )
@@ -879,7 +927,9 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             case `arate` => new ControlABusMapping( aout, ctrl )
             case _ => error( "Cannot map rate " + _rate )
          }
-         mappingRef.set( Some( m ))
+         val mo = Some( m )
+         mappingRef.set( mo )
+         proc.controlMapped( ctrl, mo )
 //         m.connect
 //         this
          m
@@ -897,7 +947,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       val synth   = Ref[ Option[ RichSynth ]]( None )
 
-      protected val edges = Ref( Set.empty[ ProcEdge ])
+//      protected val edges = Ref( Set.empty[ ProcEdge ])
       
       def input : ProcAudioInput = this
 

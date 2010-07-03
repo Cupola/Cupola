@@ -1,0 +1,123 @@
+import edu.stanford.ppl.ccstm._
+
+trait Obj
+
+case class Update( added: Set[ Obj ], removed: Set[ Obj ])
+
+trait Subscriber {
+    def update( u: Update )
+}
+
+class Publisher {
+    private val update = new TxnLocal[ Update ] {
+        override def initialValue( t: Txn ) = Update( Set.empty, Set.empty )
+    }
+    private val touched = new TxnLocal[ Boolean ] {
+        override def initialValue( t: Txn ) = false
+    }
+    private val newSubs = new TxnLocal[ Set[ Subscriber ]] {
+        override def initialValue( t: Txn ) = Set.empty
+    }
+    private val subs = Ref( Set.empty[ Subscriber ])
+    
+    val objects = Ref( Set.empty[ Obj ])
+    
+    def add( obj: Obj )( implicit t: Txn ) {
+        touch
+        val objs = objects()
+        if( objs.contains( obj )) return
+        objects.set( objs + obj )
+        val upd = update.get
+        update.set( if( upd.removed.contains( obj )) {
+            upd.copy( removed = upd.removed - obj )
+        } else {
+            upd.copy( added = upd.added + obj )
+        })
+    }
+    
+    def remove( obj: Obj )( implicit t: Txn ) {
+        touch
+        val objs = objects()
+        if( !objs.contains( obj )) return
+        objects.set( objs - obj )
+        val upd = update.get
+        update.set( upd.copy( upd.added - obj, upd.removed + obj ))
+        update.set( if( upd.added.contains( obj )) {
+            upd.copy( added = upd.added - obj )
+        } else {
+            upd.copy( removed = upd.removed + obj )
+        })
+    }
+    
+    def addSubscriber( s: Subscriber )( implicit t: Txn ) {
+        val old = newSubs.get
+        newSubs.set( old + s )
+        if( old.isEmpty ) { // e.g. touched
+            t.beforeCommit( tx0 => {
+                val these = newSubs.get( tx0 )
+                subs.transform( _ ++ these )( tx0 )
+                val upd = Update( objects.get( tx0 ), Set.empty ) // full update
+                tx0.afterCommit { tx1 =>
+                    these.foreach( _.update( upd ))
+                }
+            }, Int.MaxValue ) // e.g. after partial dispatch preparation
+        }
+    }
+    
+    private def touch( implicit t: Txn ) {
+        val old = touched.get
+        if( !old ) {
+            touched.set( true )
+            t.beforeCommit( tx0 => { // dispatch preparation
+                val these = subs.get( tx0 )
+                val upd   = update.get( tx0 )  // partial update
+                tx0.afterCommit { tx1 =>
+                    these.foreach( _.update( upd ))
+                }
+            }, Int.MaxValue - 1 )
+        }
+    }
+}
+
+val p = new Publisher
+
+case class Sub( name: String ) extends Subscriber {
+    def update( u: Update ) {
+        println( "----- " + name )
+        println( "ADDED:" )
+        u.added.foreach( o => println( "  " + o ))
+        println( "REMOVED:" )
+        u.removed.foreach( o => println( "  " + o ))
+    }
+}
+
+val s1 = Sub( "s1" )
+val s2 = Sub( "s2" )
+val s3 = Sub( "s3" )
+
+case class Ob( name: String ) extends Obj
+
+STM.atomic { implicit t =>
+    p.add( Ob( "1" ))
+    p.addSubscriber( s1 )
+    p.add( Ob( "2" ))
+    p.add( Ob( "3" ))
+    p.addSubscriber( s2 )
+}
+
+STM.atomic { implicit t =>
+    p.add( Ob( "4" ))
+    p.add( Ob( "5" ))
+    p.remove( Ob( "3" ))
+    p.remove( Ob( "4" ))
+}
+
+STM.atomic { implicit t =>
+    p.add( Ob( "4" ))
+    p.add( Ob( "5" ))
+    p.addSubscriber( s3 )
+    p.remove( Ob( "3" ))
+    p.remove( Ob( "4" ))
+}
+
+p.objects.single()
