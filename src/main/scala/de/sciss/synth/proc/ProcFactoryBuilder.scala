@@ -468,7 +468,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 //      }
 
       private[proc] def controlChanged( ctrl: ProcControl, newValue: Float )( implicit tx: ProcTxn ) {
-         runningRef().foreach( _.setFloat( ctrl.name, newValue ))
+         if( !ctrl.isMapped ) runningRef().foreach( _.setFloat( ctrl.name, newValue ))
          touch
          update.transform( u => u.copy( controls = u.controls + (ctrl -> newValue) ))
       }
@@ -791,7 +791,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
 
       def ~>( control: ProcControl )( implicit tx: ProcTxn ) : Proc = {
          val m = control.map( this )
-         val e = ProcEdge( out, m.input )
+         val e = m.edge // ProcEdge( out, m.input )
          require( !edges.contains( e ))
 //         edges.transform( _ + e )
          addEdge( e )
@@ -927,6 +927,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
             case `arate` => new ControlABusMapping( aout, ctrl )
             case _ => error( "Cannot map rate " + _rate )
          }
+         m.init
          val mo = Some( m )
          mappingRef.set( mo )
          proc.controlMapped( ctrl, mo )
@@ -935,6 +936,7 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
          m
       }
 
+      def isMapable = true
       def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean = !isMapped
    }
 
@@ -945,11 +947,17 @@ object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
       def proc    = target.proc
 //      def connect( implicit tx: ProcTxn ) { source ~> this } // XXX NO WE DON'T NEED TO ENFORCE TOPOLOGY !!!
 
+      lazy val edge = ProcEdge( source, this )
+
       val synth   = Ref[ Option[ RichSynth ]]( None )
 
 //      protected val edges = Ref( Set.empty[ ProcEdge ])
       
-      def input : ProcAudioInput = this
+//      def input : ProcAudioInput = this
+
+      def init( implicit tx: ProcTxn ) {
+         addEdge( edge )
+      }
 
       /**
        *    That means the mapping source bus changed.

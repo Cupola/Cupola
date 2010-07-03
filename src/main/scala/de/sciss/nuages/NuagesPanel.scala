@@ -70,6 +70,8 @@ object NuagesPanel {
    private[nuages] trait VisualData {
       import VisualData._
       
+      var valid   = false // needs validation first!
+
       protected val r: Rectangle2D    = new Rectangle2D.Double()
       protected var outline : Shape   = r
       protected val outerE   = new Ellipse2D.Double()
@@ -138,6 +140,7 @@ object NuagesPanel {
       def name : String = proc.name
 
       override def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = {
+         if( !valid ) return false
          if( super.itemPressed( vi, e, pt )) return true
 
          if( playArea.contains( pt.getX() - r.getX(), pt.getY() - r.getY() )) {
@@ -155,8 +158,10 @@ object NuagesPanel {
       }
 
       protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
-         g.setColor( if( playing ) colrPlaying else colrStopped )
-         g.fill( playArea )
+         if( valid ) {
+            g.setColor( if( playing ) colrPlaying else colrStopped )
+            g.fill( playArea )
+         }
          g.setColor( ColorLib.getColor( vi.getStrokeColor ))
          g.draw( gp )
 
@@ -205,8 +210,8 @@ object NuagesPanel {
    private[nuages] case class VisualControl( control: ProcControl, pNode: PNode, pEdge: Edge )
    extends VisualParam {
       import VisualData._
-      
-      var value   = 0f 
+
+      var value   = 0f
 //      var mapped  = false
       var mapping : Option[ VisualMapping ] = None
 
@@ -219,6 +224,7 @@ object NuagesPanel {
       private var drag : Option[ Drag ] = None
 
       override def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = {
+         if( !valid ) return false
 //         if( super.itemPressed( vi, e, pt )) return true
 
          if( containerArea.contains( pt.getX() - r.getX(), pt.getY() - r.getY() )) {
@@ -277,11 +283,13 @@ object NuagesPanel {
       }
 
       protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
-         if( renderedValue != value ) {
-            updateRenderValue
+         if( valid ) {
+            if( renderedValue != value ) {
+               updateRenderValue
+            }
+            g.setColor( if( mapping.isDefined ) colrMapped else colrManual )
+            g.fill( valueArea )
          }
-         g.setColor( if( mapping.isDefined ) colrMapped else colrManual )
-         g.fill( valueArea )
          g.setColor( ColorLib.getColor( vi.getStrokeColor ))
          g.draw( gp )
 
@@ -344,7 +352,7 @@ with ProcFactoryProvider {
 //   }
    private var procMap              = Map.empty[ Proc, VisualProc ]
    private var edgeMap              = Map.empty[ ProcEdge, Edge ]
-   private var pendingProcs         = Set.empty[ Proc ]
+//   private var pendingProcs         = Set.empty[ Proc ]
 
 //   private val topoListener : Model.Listener = {
 //      case ProcsRemoved( procs @ _* )  => defer( topRemoveProcs( procs: _* ))
@@ -454,7 +462,7 @@ with ProcFactoryProvider {
 ////      dragTgtHandle.setVisible( false )
 ////      display.addControlListener( new ConnectControl( vg, dragTgtHandle ))
 //      display.addControlListener( new ConnectControl( g, dummy, dragTgtHandle, vis, GROUP_GRAPH ))
-      display.addControlListener( new ConnectControl2 )
+      display.addControlListener( new ConnectControl )
       display.setHighQuality( true )
 
       // ------------------------------------------------
@@ -538,84 +546,78 @@ with ProcFactoryProvider {
 
    private def topAddProcs( procs: Proc* ) {
       if( verbose ) println( "topAddProcs : " + procs )
-      pendingProcs ++= procs
+//      pendingProcs ++= procs
       // observer
-      ProcTxn.atomic { implicit t => procs.foreach( _.addListener( procListener ))}
-//      vis.synchronized {
-//         stopAnimation
-//         procs.foreach( topAddProc( _ ))
-//         startAnimation
-//      }
-   }
-
-   private def topAddProc( u: Proc.Update ) {
       vis.synchronized {
          stopAnimation
-         val pNode   = g.addNode()
-         val vi      = vis.getVisualItem( GROUP_GRAPH, pNode )
-         val p       = u.proc
-         val locO    = locHintMap.get( p )
+         procs.foreach( topAddProc( _ ))
+         startAnimation
+      }
+      ProcTxn.atomic { implicit t => procs.foreach( _.addListener( procListener ))}
+   }
+
+   private def topAddProc( p: Proc ) {
+      val pNode   = g.addNode()
+      val vi      = vis.getVisualItem( GROUP_GRAPH, pNode )
+      val locO    = locHintMap.get( p )
+      locO.foreach( loc => {
+         locHintMap -= p
+         vi.setEndX( loc.getX() )
+         vi.setEndY( loc.getY() )
+      })
+      val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
+      aggr.addItem( vi )
+
+      def createNode = {
+         val pParamNode = g.addNode()
+         val pParamEdge = g.addEdge( pNode, pParamNode )
+         val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
          locO.foreach( loc => {
-            locHintMap -= p
             vi.setEndX( loc.getX() )
             vi.setEndY( loc.getY() )
          })
-         val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
          aggr.addItem( vi )
-
-         def createNode = {
-            val pParamNode = g.addNode()
-            val pParamEdge = g.addEdge( pNode, pParamNode )
-            val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
-            locO.foreach( loc => {
-               vi.setEndX( loc.getX() )
-               vi.setEndY( loc.getY() )
-            })
-            aggr.addItem( vi )
-            (pParamNode, pParamEdge, vi)
-         }
-
-         val vProc = {
-            val vParams: Map[ String, VisualParam ] = p.params.collect({
-               case pFloat: ProcParamFloat => {
-                  val (pParamNode, pParamEdge, vi) = createNode
-                  val pControl   = p.control( pFloat.name )
-                  val vControl   = VisualControl( pControl, pParamNode, pParamEdge )
-                  val mVal       = u.controls( pControl )
-                  vControl.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
-                  vi.set( COL_NUAGES, vControl )
-                  vControl.name -> vControl
-               }
-               case pParamBus: ProcParamAudioInput => {
-                  val (pParamNode, pParamEdge, vi) = createNode
-                  vi.set( VisualItem.SIZE, 0.33333f )
-                  val pBus = p.audioInput( pParamBus.name )
-                  val vBus = VisualAudioInput( pBus, pParamNode, pParamEdge )
-                  vi.set( COL_NUAGES, vBus )
-                  vBus.name -> vBus
-               }
-               case pParamBus: ProcParamAudioOutput => {
-                  val (pParamNode, pParamEdge, vi) = createNode
-                  vi.set( VisualItem.SIZE, 0.33333f )
-                  val pBus = p.audioOutput( pParamBus.name )
-                  val vBus = VisualAudioOutput( pBus, pParamNode, pParamEdge )
-                  vi.set( COL_NUAGES, vBus )
-                  vBus.name -> vBus
-               }
-            })( breakOut )
-            val res = VisualProc( p, pNode, aggr, vParams )
-            res.playing = u.playing == Some( true )
-            res
-         }
-
-         vi.set( COL_NUAGES, vProc )
-         procMap += p -> vProc
-
-         if( u.mappings.nonEmpty ) topMappingsChangedI( u.mappings )
-         if( u.audioBusesConnected.nonEmpty ) topAddEdgesI( u.audioBusesConnected )
-
-         startAnimation
+         (pParamNode, pParamEdge, vi)
       }
+
+      val vProc = {
+         val vParams: Map[ String, VisualParam ] = p.params.collect({
+            case pFloat: ProcParamFloat => {
+               val (pParamNode, pParamEdge, vi) = createNode
+               val pControl   = p.control( pFloat.name )
+               val vControl   = VisualControl( pControl, pParamNode, pParamEdge )
+//               val mVal       = u.controls( pControl )
+//               vControl.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
+               vi.set( COL_NUAGES, vControl )
+               vControl.name -> vControl
+            }
+            case pParamBus: ProcParamAudioInput => {
+               val (pParamNode, pParamEdge, vi) = createNode
+               vi.set( VisualItem.SIZE, 0.33333f )
+               val pBus = p.audioInput( pParamBus.name )
+               val vBus = VisualAudioInput( pBus, pParamNode, pParamEdge )
+               vi.set( COL_NUAGES, vBus )
+               vBus.name -> vBus
+            }
+            case pParamBus: ProcParamAudioOutput => {
+               val (pParamNode, pParamEdge, vi) = createNode
+               vi.set( VisualItem.SIZE, 0.33333f )
+               val pBus = p.audioOutput( pParamBus.name )
+               val vBus = VisualAudioOutput( pBus, pParamNode, pParamEdge )
+               vi.set( COL_NUAGES, vBus )
+               vBus.name -> vBus
+            }
+         })( breakOut )
+         val res = VisualProc( p, pNode, aggr, vParams )
+//         res.playing = u.playing == Some( true )
+         res
+      }
+
+      vi.set( COL_NUAGES, vProc )
+      procMap += p -> vProc
+
+//      if( u.mappings.nonEmpty ) topMappingsChangedI( u.mappings )
+//      if( u.audioBusesConnected.nonEmpty ) topAddEdgesI( u.audioBusesConnected )
    }
 
    private def topAddEdges( edges: Set[ ProcEdge ]) {
@@ -659,9 +661,9 @@ with ProcFactoryProvider {
                      })
                      vControl.mapping = mo.flatMap({
                         case ma: ProcControlAMapping => {
-                           val ain = ma.input
-                           procMap.get( ain.proc ).flatMap( vProc2 => {
-                              vProc2.params.get( ain.name ) match {
+                           val aout = ma.edge.out
+                           procMap.get( aout.proc ).flatMap( vProc2 => {
+                              vProc2.params.get( aout.name ) match {
                                  case Some( vBus: VisualAudioOutput ) => {
                                     val pEdge = g.addEdge( vBus.pNode, vControl.pNode )
                                     Some( VisualMapping( ma, pEdge ))
@@ -697,16 +699,17 @@ with ProcFactoryProvider {
 //                      audioBusesDisconnected: ISet[ ProcEdge ])
    private def procUpdate( u: Proc.Update ) {
       val p = u.proc
-      if( procMap.contains( p )) {
+      procMap.get( p ).foreach( vProc => {
          u.playing.foreach( state => topProcPlaying( p, state ))
          if( u.controls.nonEmpty )               topControlsChanged( u.controls )
          if( u.mappings.nonEmpty )               topMappingsChanged( u.mappings )
          if( u.audioBusesConnected.nonEmpty )    topAddEdges( u.audioBusesConnected )
          if( u.audioBusesDisconnected.nonEmpty ) topRemoveEdges( u.audioBusesDisconnected )
-      } else if( pendingProcs.contains( p )) {
-         pendingProcs -= p
-         topAddProc( u )
-      }
+         if( !vProc.valid ) {
+            vProc.valid = true
+            vProc.params.foreach( _._2.valid = true )
+         }
+      })
    }
 
    private def topoUpdate( u: ProcWorld.Update ) {
@@ -720,7 +723,7 @@ with ProcFactoryProvider {
          stopAnimation
          ProcTxn.atomic { implicit t => procs.foreach( _.removeListener( procListener ))}
          procs.foreach( p => {
-            procMap.get( p ).map( topRemoveProc( _ )).getOrElse( pendingProcs -= p )
+            procMap.get( p ).map( topRemoveProc( _ )) // .getOrElse( pendingProcs -= p )
          })
          startAnimation
       }

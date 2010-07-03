@@ -32,7 +32,7 @@ import de.sciss.synth.{ Bus, Rate }
 import collection.immutable.{ Set => ISet }
 
 /**
- *    @version 0.12, 02-Jul-10
+ *    @version 0.12, 03-Jul-10
  */
 sealed trait ProcAudioBus {
    def proc : Proc
@@ -82,6 +82,7 @@ trait ProcControl {
    def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean
    def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControlAMapping
    def isMapped( implicit tx: ProcTxn ) : Boolean = mapping.isDefined
+   def isMapable : Boolean
 //   def mappedInput( implicit tx: ProcTxn ) : Option[ ProcAudioInput ]
 
 //   /**
@@ -106,5 +107,6 @@ trait ProcControlMapping {
 
 trait ProcControlAMapping  // XXX not very elegant name
 extends ProcControlMapping {
-   def input : ProcAudioInput // ( implicit tx: ProcTxn )
+//   def input : ProcAudioInput // ( implicit tx: ProcTxn )
+   def edge : ProcEdge// ( implicit tx: ProcTxn )
 }
