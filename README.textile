@@ -1,0 +1,10 @@
+h2. README
+
+This project currently combines three different projects which will eventually go in separate repositories:
+
+* Sound Processes (aka ScalaCollider-Proc) : a system based on ScalaCollider to describe and control sound processes
+* Wolkenpumpe : the new scala'fied version of my live improvisation instrument becomes more light-weight, as the actual sound processes are just based on ScalaCollider-Proc ; that reduces Wolkenpumpe to the GUI which is currently done using Prefuse
+* Cupola : the actual sound composition for the Mind Cupola project (sources not of general interest). Sits on top of Wolkenpumpe
+
+(C)opyright by Hanns Holger Rutz. All rights reserved. Covered by the GNU General Public License v2+.
+See licenses folder.

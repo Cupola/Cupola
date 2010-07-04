@@ -23,6 +23,7 @@ disconnect bus : beide
 connect bus : nur current. !!!!achtung: wenn dadurch ein alter bus disconnected würde,
    muß der entsprechend für die legacy group auf einen dummy gesetzt werden
    (d.h. wir müssen noch einen read- bzw. write-access verwalten!!!!
+	// EINFACHER : vorher disconnect wie o.g. anwenden
 
 und das war's bereits. es fehlen noch:
 - glide (ramp)

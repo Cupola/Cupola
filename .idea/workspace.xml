@@ -101,10 +101,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ControlImpl.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="ControlImpl.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ControlImpl.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="73" column="46" selection-start="2523" selection-end="2523" vertical-scroll-proportion="0.0">
+            <state line="205" column="59" selection-start="7158" selection-end="7158" vertical-scroll-proportion="0.8419118">
               <folding />
             </state>
           </provider>
@@ -155,10 +155,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ProcParam.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="ProcParam.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcParam.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="98" column="23" selection-start="2686" selection-end="2686" vertical-scroll-proportion="1.9852941">
+            <state line="98" column="23" selection-start="2686" selection-end="2686" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -204,13 +204,13 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ProcImpl.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcIO.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ControlImpl.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcTxn.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphBuilderImpl.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesPanel.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryBuilderImpl.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ParamImpl.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcParam.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ControlImpl.scala" />
       </list>
     </option>
   </component>
@@ -1199,13 +1199,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ControlImpl.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="73" column="46" selection-start="2523" selection-end="2523" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Transition.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="16" column="0" selection-start="90" selection-end="452" vertical-scroll-proportion="0.0">
@@ -1250,7 +1243,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcParam.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="98" column="23" selection-start="2686" selection-end="2686" vertical-scroll-proportion="1.9852941">
+        <state line="98" column="23" selection-start="2686" selection-end="2686" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ControlImpl.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="205" column="59" selection-start="7158" selection-end="7158" vertical-scroll-proportion="0.8419118">
           <folding />
         </state>
       </provider>
