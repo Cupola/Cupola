@@ -56,7 +56,7 @@ trait ProcParamFloat extends ProcParam {
 //   }
 
    def spec : ParamSpec
-   def default : Float
+   def default : Double
 }
 
 //trait ProcParamMappableFloat extends ProcParamFloat {

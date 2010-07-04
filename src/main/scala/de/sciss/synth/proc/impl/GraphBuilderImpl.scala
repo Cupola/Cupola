@@ -64,7 +64,7 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
                val name = pFloat.name
                val ctrl = p.control( name )
                ctrl.mapping.map( m => mappings = mappings.enqueue( m )).getOrElse({
-                  setMaps :+= SingleControlSetMap( name, ctrl.value )
+                  setMaps :+= SingleControlSetMap( name, ctrl.value.toFloat )
                })
             }
             case pAudioBus: ProcParamAudioInput => {

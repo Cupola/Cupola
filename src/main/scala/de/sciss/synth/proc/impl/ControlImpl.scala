@@ -36,7 +36,8 @@ class ControlImpl( val proc: Impl, param: ProcParamFloat, val _rate: Rate )
 extends ProcControl {
    ctrl =>
 
-   private var valueRef = Ref( default )
+//   private var valueRef = Ref( default )
+   private var valueRef = Ref( ControlValue.instant( default ))
 
 //      private var valueRef = Ref.withObserver( default ) { (oldV, newV) =>
 //         if( oldV != newV ) proc.dispatchControlChange( ctrl, newV )
@@ -46,19 +47,80 @@ extends ProcControl {
 //         if( oldM != newM ) proc.dispatchMappingChange( ctrl, newM )
 //      }
 
-   def rate = Some( _rate )
-   def default : Float = param.default // .getOrElse( 0f )
-   def spec : ParamSpec = param.spec
-   def name : String = param.name
-   def value( implicit tx: ProcTxn ) : Float = valueRef()
-   def value_=( newValue: Float )( implicit tx: ProcTxn ) {
-      tx.transit match {
-         case `instant` =>
-         case xfade( secs ) => 
-         case glide( secs ) =>
+   // XXX this should eventually fuse with mappingRef !!!
+   private val glidingRef = Ref[ Option[ ControlGliding ]]( None )
+
+   def rate    = Some( _rate )
+   def default = param.default // .getOrElse( 0f )
+   def spec    = param.spec
+   def name    = param.name
+
+/*
+old trns new trns resolution
+------------------------------------------
+instant  instant  instant  if( oldValue != newValue)
+instant  glide    glide    if( oldValue != newValue)
+instant  xfade    xfade    if( oldValue != newValue)
+
+glide    instant  stop glide + instant
+glide    glide    stop glide + glide
+glide    xfade    xfade
+
+xfade    instant  instant  if( oldValue != newValue)
+xfade    glide    glide    if( oldValue != newValue)
+xfade    xfade    xfade
+ */
+
+   def cv( implicit tx: ProcTxn ) = valueRef()
+
+   def value( implicit tx: ProcTxn ) : Double = valueRef().current
+
+   def value_=( newValue: Double )( implicit tx: ProcTxn ) {
+      if( isMapped ) { // how to handle this the best? error?
+         valueRef.set( ControlValue.instant( newValue )) // we just ignore the transition and remember the value
+         return
       }
-      val oldValue = valueRef.swap( newValue )
-      if( oldValue != newValue ) proc.controlChanged( ctrl, newValue )
+
+      val oldCV   = valueRef()
+      val newCV   = ControlValue( value, newValue, tx.transit )
+      oldCV.transit match {
+         case Instant   => newCV.transit match {
+            case ot: Glide => { // stop glide + instant
+               val cg = glidingRef.swap( None )
+               cg.foreach( _.stop )
+               valueRef.set( newCV )
+               proc.controlChanged( ctrl, newCV )
+            }
+            case _ => { // instant if( oldValue != newValue)
+               if( oldCV.target != newCV.target ) {
+                  valueRef.set( oldCV.copy( target = newCV.target ))
+                  proc.controlChanged( ctrl, newCV )
+               }
+            }
+         }
+         case nt: Glide => newCV.transit match {
+            case Instant   => {
+               error( "NOT YET IMPLEMENTED" )
+            }
+            case ot: Glide => {
+               error( "NOT YET IMPLEMENTED" )
+            }
+            case ot: XFade => {
+               error( "NOT YET IMPLEMENTED" )
+            }
+         }
+         case nt: XFade => newCV.transit match {
+            case Instant   => {
+               error( "NOT YET IMPLEMENTED" )
+            }
+            case ot: Glide => {
+               error( "NOT YET IMPLEMENTED" )
+            }
+            case ot: XFade => {
+               error( "NOT YET IMPLEMENTED" )
+            }
+         }
+      }
    }
 
    def mapping( implicit tx: ProcTxn ) : Option[ ProcControlMapping ] = mappingRef()
@@ -82,6 +144,12 @@ extends ProcControl {
 
    def isMapable = true
    def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean = !isMapped
+
+   private class ControlGliding {
+      def stop( implicit tx: ProcTxn ) {
+
+      }
+   }
 }
 
 abstract class ControlBusMapping extends AbstractAudioInputImpl with ProcControlAMapping {

@@ -211,11 +211,11 @@ object NuagesPanel {
    extends VisualParam {
       import VisualData._
 
-      var value   = 0f
+      var value   = 0.0
 //      var mapped  = false
       var mapping : Option[ VisualMapping ] = None
 
-      private var renderedValue  = Float.NaN
+      private var renderedValue  = Double.NaN
       private val containerArea  = new Area()
       private val valueArea      = new Area()
 
@@ -230,7 +230,7 @@ object NuagesPanel {
          if( containerArea.contains( pt.getX() - r.getX(), pt.getY() - r.getY() )) {
             val dy   = r.getCenterY() - pt.getY()
             val dx   = pt.getX() - r.getCenterX()
-            val ang  = math.max( 0.0f, math.min( 1.0f, ((((-math.atan2( dy, dx ) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5).toFloat ))
+            val ang  = math.max( 0.0, math.min( 1.0, (((-math.atan2( dy, dx ) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5 ))
             val vStart = if( e.isAltDown() ) {
 //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
 //               if( ang != value ) {
@@ -250,8 +250,8 @@ object NuagesPanel {
             val dy   = r.getCenterY() - pt.getY()
             val dx   = pt.getX() - r.getCenterX()
 //            val ang  = -math.atan2( dy, dx )
-            val ang  = ((((-math.atan2( dy, dx ) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5).toFloat
-            val vEff = math.max( 0f, math.min( 1f, dr.valueStart + (ang - dr.angStart) ))
+            val ang  = (((-math.atan2( dy, dx ) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
+            val vEff = math.max( 0.0, math.min( 1.0, dr.valueStart + (ang - dr.angStart) ))
 //            if( vEff != value ) {
                val m    = control.spec.map( vEff )
                ProcTxn.atomic { implicit t => control.value = m }
@@ -269,7 +269,7 @@ object NuagesPanel {
          containerArea.add( new Area( pContArc ))
          containerArea.subtract( new Area( innerE ))
          gp.append( containerArea, false )
-         renderedValue = Float.NaN   // triggers updateRenderValue
+         renderedValue = Double.NaN   // triggers updateRenderValue
       }
 
       private def updateRenderValue {
@@ -297,7 +297,7 @@ object NuagesPanel {
          drawName( g, vi, font )
       }
 
-      private case class Drag( angStart: Float, valueStart: Float )
+      private case class Drag( angStart: Double, valueStart: Double )
    }
 
    private[nuages] val COL_NUAGES = "nuages"
@@ -763,17 +763,17 @@ with ProcFactoryProvider {
       })
    }
 
-   private def topControlsChanged( controls: Map[ ProcControl, Float ]) {
+   private def topControlsChanged( controls: Map[ ProcControl, ControlValue ]) {
       val byProc = controls.groupBy( _._1.proc )
       byProc.foreach( tup => {
          val (proc, map) = tup
          procMap.get( proc ).foreach( vProc => {
             map.foreach( tup2 => {
-               val (ctrl, value) = tup2
+               val (ctrl, cv) = tup2
                vProc.params.get( ctrl.name ) match {
                   case Some( vControl: VisualControl ) => vControl.value = {
                      val spec = ctrl.spec
-                     spec.unmap( spec.clip( value ))
+                     spec.unmap( spec.clip( cv.currentApprox ))
                   }
                   case _ =>
                }

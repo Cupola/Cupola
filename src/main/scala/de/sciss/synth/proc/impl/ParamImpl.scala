@@ -32,7 +32,10 @@ import de.sciss.synth._
 import de.sciss.synth.proc._
 import de.sciss.synth.ugen.{Out, In}
 
-class ParamControlImpl( val name: String, val spec: ParamSpec, val default: Float )
+/**
+ *    @version 0.11, 04-Jul-10
+ */
+class ParamControlImpl( val name: String, val spec: ParamSpec, val default: Double )
 extends ProcParamControl {
    def kr : GE = {
       val p             = Proc.local
@@ -49,7 +52,7 @@ extends ProcParamControl {
    }
 }
 
-class ParamAudioImpl( val name: String, val spec: ParamSpec, val default: Float )
+class ParamAudioImpl( val name: String, val spec: ParamSpec, val default: Double )
 extends ProcParamAudio {
    def ar : GE = {
       val p             = Proc.local

@@ -52,3 +52,8 @@ alte transition instant war und denselben targetWert besitzt
 ; allerdings kommen hier aufgrund der server/client latenz u.U. diskrepanzen zustande, so daß
 ; die neusetzung des wertes besser erzwungen wird. (siehe oben: instant könnte ggf. mit kleinem
 glide erzeugt werden)
+
+
+// 
+since a Transition is txn-local, and we switch to using DSL methods instead of classes directly,
+the transition object could carry its logical start time around!

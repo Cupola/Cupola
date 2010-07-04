@@ -190,8 +190,8 @@ extends Proc {
 
    def isPlaying( implicit tx: ProcTxn ) : Boolean = runningRef().isDefined
 
-   private[proc] def controlChanged( ctrl: ProcControl, newValue: Float )( implicit tx: ProcTxn ) {
-      if( !ctrl.isMapped ) runningRef().foreach( _.setFloat( ctrl.name, newValue ))
+   private[proc] def controlChanged( ctrl: ProcControl, newValue: ControlValue )( implicit tx: ProcTxn ) {
+      if( !ctrl.isMapped ) runningRef().foreach( _.setFloat( ctrl.name, newValue.current.toFloat ))
       touch
       update.transform( u => u.copy( controls = u.controls + (ctrl -> newValue) ))
    }

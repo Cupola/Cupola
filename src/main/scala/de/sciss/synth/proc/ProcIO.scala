@@ -74,7 +74,7 @@ trait ProcControl {
    def name : String
    def rate : Option[ Rate ]
    def spec : ParamSpec
-   def default : Float
+   def default : Double
 
    /**
     *    Queries the nominal value of the control.
@@ -90,7 +90,7 @@ trait ProcControl {
     *    ongoing transition of the current process, call
     *    mixedValue instead. NOT YET IMPLEMENTED
     */
-   def value( implicit tx: ProcTxn ) : Float
+   def value( implicit tx: ProcTxn ) : Double
 
    /**
     *    Sets the target value of the control. Due to conciseness
@@ -100,15 +100,17 @@ trait ProcControl {
     *    the passed in argument specifies the target value and
     *    not the current.
     */
-   def value_=( newValue: Float )( implicit tx: ProcTxn ) : Unit
+   def value_=( newValue: Double )( implicit tx: ProcTxn ) : Unit
 
-   def targetValue( implicit tx: ProcTxn ) : Float
+//   def targetValue( implicit tx: ProcTxn ) : Float
 
    def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean
    def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControlAMapping
    def isMapped( implicit tx: ProcTxn ) : Boolean = mapping.isDefined
    def isMapable : Boolean
 //   def mappedInput( implicit tx: ProcTxn ) : Option[ ProcAudioInput ]
+
+   def cv( implicit tx: ProcTxn ): ControlValue
 
 //   /**
 //    *    Queries the underlying internal bus onto which the control

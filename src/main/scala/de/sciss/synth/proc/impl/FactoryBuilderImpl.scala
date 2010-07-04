@@ -18,14 +18,14 @@ class FactoryBuilderImpl( val name: String ) extends ProcFactoryBuilder {
 
    @inline private def requireOngoing = require( !finished, "ProcFactory build has finished" )
 
-   def pControl( name: String, spec: ParamSpec, default: Float ) : ProcParamControl = {
+   def pControl( name: String, spec: ParamSpec, default: Double ) : ProcParamControl = {
       requireOngoing
       val p = new ParamControlImpl( name, spec, default )
       addParam( p )
       p
    }
 
-   def pAudio( name: String, spec: ParamSpec, default: Float ) : ProcParamAudio = {
+   def pAudio( name: String, spec: ParamSpec, default: Double ) : ProcParamAudio = {
       requireOngoing
       val p = new ParamAudioImpl( name, spec, default )
       addParam( p )

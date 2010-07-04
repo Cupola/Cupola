@@ -38,7 +38,7 @@ import collection.{ breakOut, SortedMap }
 import osc._
 
 /**
- *    @version 0.11, 21-Jun-10
+ *    @version 0.12, 04-Jul-10
  */
 trait ProcTxn {
    import ProcTxn._
@@ -50,6 +50,10 @@ trait ProcTxn {
    def beforeCommit( callback: ProcTxn => Unit, prio: Int ) : Unit
    def afterCommit( callback: ProcTxn => Unit ) : Unit
    def afterCommit( callback: ProcTxn => Unit, prio: Int ) : Unit
+
+   def withTransition[ T ]( trns: Transition )( thunk: => T ) : T
+   def time : Double
+   def transit : Transition
 
    private[ proc ] def ccstm : Txn
 }
@@ -72,6 +76,10 @@ object ProcTxn {
    extends ProcTxn with Txn.WriteResource {
       tx =>
 
+      private val startTime    = System.currentTimeMillis // XXX eventually in logical time framework
+//      private val transitRef  = TxnLocal[ Transition ]( Instant )
+      private var transitVar : Transition = Instant
+
       private var serverData  = Map.empty[ Server, ServerData ]
 //    private var waitIDs     = Map.empty[ Server, Int ]
       private val syn         = new AnyRef
@@ -90,6 +98,20 @@ object ProcTxn {
       }
 
       private[ proc ] def ccstm : Txn = txn
+
+      // XXX eventually in logical time framework
+      def time : Double = (System.currentTimeMillis - startTime) * 0.001
+      def transit : Transition = transitVar
+
+      def withTransition[ T ]( t: Transition )( thunk: => T ) : T = {
+         val old = transitVar
+         try {
+            transitVar = t
+            thunk
+         } finally {
+            transitVar = old
+         }
+      }
 
       // ---- WriteResource implementation ----
 

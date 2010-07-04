@@ -32,22 +32,55 @@ import de.sciss.synth._
 import de.sciss.scalaosc.OSCBundle
 
 /**
- *    @version 0.12, 01-Jul-10
+ *    @version 0.12, 04-Jul-10
  */
 object DSL {
    // ---- scope : outside ----
 
+   /**
+    *    Generates a sound process factory
+    *    with the given name and described through
+    *    the given code block.
+    */
    def gen( name: String )( thunk: => Unit ) : ProcFactory = {
       val res = ProcFactoryBuilder( name )( thunk )
       // res.announce
       res
    }
 
+   /**
+    *    Performs a code block where all
+    *    transitions are considered instantly.
+    */
+   def instant[ T ]( thunk: => T )( implicit tx: ProcTxn ) = {
+      tx.withTransition( Instant )( thunk )
+   }
+
+   /**
+    *    Performs a code block with transitional
+    *    semantics taken from a crossfade of
+    *    the given duration (in seconds).
+    */
+   def xfade[ T ]( dur: Double )( thunk: => T )( implicit tx: ProcTxn ) = {
+      val trns = XFade( tx.time, dur )
+      tx.withTransition( trns )( thunk )
+   }
+
+   /**
+    *    Performs a code block with transitional
+    *    semantics taken from gliding for
+    *    the given duration (in seconds).
+    */
+   def glide[ T ]( dur: Double )( thunk: => T )( implicit tx: ProcTxn ) = {
+      val trns = Glide( tx.time, dur ) 
+      tx.withTransition( trns )( thunk )
+   }
+
    // ---- scope : gen (ProcFactoryBuilder) ----
 
-   def pControl( name: String, spec: ParamSpec = ParamSpec(), default: Float ) : ProcParamControl =
+   def pControl( name: String, spec: ParamSpec = ParamSpec(), default: Double ) : ProcParamControl =
       ProcFactoryBuilder.local.pControl( name, spec, default )
-   def pAudio( name: String, spec: ParamSpec = ParamSpec(), default: Float ) : ProcParamAudio =
+   def pAudio( name: String, spec: ParamSpec = ParamSpec(), default: Double ) : ProcParamAudio =
       ProcFactoryBuilder.local.pAudio( name, spec, default )
    def pString( name: String, default: Option[ String ] = None ) : ProcParamString =
       ProcFactoryBuilder.local.pString( name, default )
