@@ -57,15 +57,16 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
          var setMaps    = Vector.empty[ ControlSetMap ]  // warning: rs.newMsg doesn't support setn style! XXX
 //            var kbusMaps   = IQueue.empty[ ControlKBusMap ]
 //            var abusMaps   = IQueue.empty[ ControlABusMap ]
-         var mappings   = IQueue.empty[ ProcControlMapping ]
+         var mappings   = IQueue.empty[ ControlMapping ]
 //Debug.breakpoint
          usedParams.foreach( _ match {
             case pFloat: ProcParamFloat => {
                val name = pFloat.name
-               val ctrl = p.control( name )
-               ctrl.mapping.map( m => mappings = mappings.enqueue( m )).getOrElse({
-                  setMaps :+= SingleControlSetMap( name, ctrl.value.toFloat )
-               })
+               val cv    = p.control( name ).cv
+               cv.mapping match {
+                  case None => setMaps :+= SingleControlSetMap( name, cv.target.toFloat )
+                  case Some( m ) => mappings = mappings.enqueue( m )
+               }
             }
             case pAudioBus: ProcParamAudioInput => {
                setMaps :+= SingleControlSetMap(

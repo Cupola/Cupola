@@ -61,10 +61,11 @@ object NuagesPanel {
       val diam  = 50
       private val eps   = 1.0e-2
 
-      val colrPlaying = new Color( 0x00, 0xC0, 0x00 )
-      val colrStopped = new Color( 0x80, 0x80, 0x80 )
-      val colrMapped  = new Color( 210, 60, 60 )
-      val colrManual  = new Color( 60, 60, 240 )
+      val colrPlaying   = new Color( 0x00, 0xC0, 0x00 )
+      val colrStopped   = new Color( 0x80, 0x80, 0x80 )
+      val colrMapped    = new Color( 210, 60, 60 )
+      val colrManual    = new Color( 60, 60, 240 )
+      val colrGliding   = new Color( 135, 60, 150 )
    }
 
    private[nuages] trait VisualData {
@@ -205,14 +206,15 @@ object NuagesPanel {
       }
    }
 
-   private[nuages] case class VisualMapping( mapping: ProcControlMapping, pEdge: Edge )
+   private[nuages] case class VisualMapping( mapping: ControlBusMapping, pEdge: Edge )
 
    private[nuages] case class VisualControl( control: ProcControl, pNode: PNode, pEdge: Edge )
    extends VisualParam {
       import VisualData._
 
-      var value   = 0.0
+      var value : ControlValue = null
 //      var mapped  = false
+      var gliding = false
       var mapping : Option[ VisualMapping ] = None
 
       private var renderedValue  = Double.NaN
@@ -235,10 +237,10 @@ object NuagesPanel {
 //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
 //               if( ang != value ) {
                   val m    = control.spec.map( ang )
-                  ProcTxn.atomic { implicit t => control.value = m }
+                  ProcTxn.atomic { implicit t => control.v = m }
 //               }
                ang
-            } else value
+            } else control.spec.unmap( value.currentApprox )
             val dr = Drag( ang, vStart )
             drag = Some( dr )
             true
@@ -254,7 +256,7 @@ object NuagesPanel {
             val vEff = math.max( 0.0, math.min( 1.0, dr.valueStart + (ang - dr.angStart) ))
 //            if( vEff != value ) {
                val m    = control.spec.map( vEff )
-               ProcTxn.atomic { implicit t => control.value = m }
+               ProcTxn.atomic { implicit t => control.v = m }
 //            }
          })
       }
@@ -272,9 +274,11 @@ object NuagesPanel {
          renderedValue = Double.NaN   // triggers updateRenderValue
       }
 
-      private def updateRenderValue {
-         renderedValue  = value
-         val angExtent  = (renderedValue * 270).toInt
+      private def updateRenderValue( v: Double ) {
+         renderedValue  = v
+         val vn         = control.spec.unmap( v )
+//println( "updateRenderValue( " + control.name + " ) from " + v + " to " + vn )
+         val angExtent  = (vn * 270).toInt
          val angStart   = 225 - angExtent
          val pValArc    = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), angStart, angExtent, Arc2D.PIE )
          valueArea.reset()
@@ -284,10 +288,11 @@ object NuagesPanel {
 
       protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
          if( valid ) {
-            if( renderedValue != value ) {
-               updateRenderValue
+            val v = value.currentApprox
+            if( renderedValue != v ) {
+               updateRenderValue( v )
             }
-            g.setColor( if( mapping.isDefined ) colrMapped else colrManual )
+            g.setColor( if( mapping.isDefined ) colrMapped else if( gliding ) colrGliding else colrManual )
             g.fill( valueArea )
          }
          g.setColor( ColorLib.getColor( vi.getStrokeColor ))
@@ -646,51 +651,51 @@ with ProcFactoryProvider {
       })
    }
 
-   private def topMappingsChangedI( controls: Map[ ProcControl, Option[ ProcControlMapping ]]) {
-      val byProc = controls.groupBy( _._1.proc )
-      byProc.foreach( tup => {
-         val (proc, map) = tup
-         procMap.get( proc ).foreach( vProc => {
-            map.foreach( tup2 => {
-               val (ctrl, mo) = tup2
-               vProc.params.get( ctrl.name ) match {
-                  case Some( vControl: VisualControl ) => {
-                     vControl.mapping.foreach( vMap => {
-                        g.removeEdge( vMap.pEdge )
-                        vControl.mapping = None
-                     })
-                     vControl.mapping = mo.flatMap({
-                        case ma: ProcControlAMapping => {
-                           val aout = ma.edge.out
-                           procMap.get( aout.proc ).flatMap( vProc2 => {
-                              vProc2.params.get( aout.name ) match {
-                                 case Some( vBus: VisualAudioOutput ) => {
-                                    val pEdge = g.addEdge( vBus.pNode, vControl.pNode )
-                                    Some( VisualMapping( ma, pEdge ))
-                                 }
-                                 case _ => None
-                              }
-                           })
-                        }
-                        case _ => None
-                     })
-                  }
-                  case _ =>
-               }
-            })
-            // damageReport XXX
-         })
-      })
-   }
+//   private def topMappingsChangedI( controls: Map[ ProcControl, ControlValue ]) {
+//      val byProc = controls.groupBy( _._1.proc )
+//      byProc.foreach( tup => {
+//         val (proc, map) = tup
+//         procMap.get( proc ).foreach( vProc => {
+//            map.foreach( tup2 => {
+//               val (ctrl, mo) = tup2
+//               vProc.params.get( ctrl.name ) match {
+//                  case Some( vControl: VisualControl ) => {
+//                     vControl.mapping.foreach( vMap => {
+//                        g.removeEdge( vMap.pEdge )
+//                        vControl.mapping = None
+//                     })
+//                     vControl.mapping = mo.flatMap({
+//                        case ma: ProcControlAMapping => {
+//                           val aout = ma.edge.out
+//                           procMap.get( aout.proc ).flatMap( vProc2 => {
+//                              vProc2.params.get( aout.name ) match {
+//                                 case Some( vBus: VisualAudioOutput ) => {
+//                                    val pEdge = g.addEdge( vBus.pNode, vControl.pNode )
+//                                    Some( VisualMapping( ma, pEdge ))
+//                                 }
+//                                 case _ => None
+//                              }
+//                           })
+//                        }
+//                        case _ => None
+//                     })
+//                  }
+//                  case _ =>
+//               }
+//            })
+//            // damageReport XXX
+//         })
+//      })
+//   }
 
-   private def topMappingsChanged( controls: Map[ ProcControl, Option[ ProcControlMapping ]]) {
-      if( verbose ) println( "topMappingsChanged : " + controls )
-      vis.synchronized {
-         stopAnimation
-         topMappingsChangedI( controls )
-         startAnimation
-      }
-   }
+//   private def topMappingsChanged( controls: Map[ ProcControl, ControlValue ]) {
+//      if( verbose ) println( "topMappingsChanged : " + controls )
+//      vis.synchronized {
+//         stopAnimation
+//         topMappingsChangedI( controls )
+//         startAnimation
+//      }
+//   }
 
 //   case class Update( playing: Option[ Boolean ],
 //                      controls: IMap[ ProcControl, Float ],
@@ -702,7 +707,7 @@ with ProcFactoryProvider {
       procMap.get( p ).foreach( vProc => {
          u.playing.foreach( state => topProcPlaying( p, state ))
          if( u.controls.nonEmpty )               topControlsChanged( u.controls )
-         if( u.mappings.nonEmpty )               topMappingsChanged( u.mappings )
+//         if( u.mappings.nonEmpty )               topMappingsChanged( u.mappings )
          if( u.audioBusesConnected.nonEmpty )    topAddEdges( u.audioBusesConnected )
          if( u.audioBusesDisconnected.nonEmpty ) topRemoveEdges( u.audioBusesDisconnected )
          if( !vProc.valid ) {
@@ -763,6 +768,29 @@ with ProcFactoryProvider {
       })
    }
 
+   private def topRemoveControlMap( vControl: VisualControl, vMap: VisualMapping ) {
+      g.removeEdge( vMap.pEdge )
+      vControl.mapping = None
+   }
+
+   private def topAddControlMap( vControl: VisualControl, m: ControlBusMapping ) {
+      vControl.mapping = m match {
+         case ma: ControlABusMapping => {
+            val aout = ma.edge.out
+            procMap.get( aout.proc ).flatMap( vProc2 => {
+               vProc2.params.get( aout.name ) match {
+                  case Some( vBus: VisualAudioOutput ) => {
+                     val pEdge = g.addEdge( vBus.pNode, vControl.pNode )
+                     Some( VisualMapping( ma, pEdge ))
+                  }
+                  case _ => None
+               }
+            })
+         }
+//         case _ =>
+      }
+   }
+
    private def topControlsChanged( controls: Map[ ProcControl, ControlValue ]) {
       val byProc = controls.groupBy( _._1.proc )
       byProc.foreach( tup => {
@@ -771,9 +799,29 @@ with ProcFactoryProvider {
             map.foreach( tup2 => {
                val (ctrl, cv) = tup2
                vProc.params.get( ctrl.name ) match {
-                  case Some( vControl: VisualControl ) => vControl.value = {
-                     val spec = ctrl.spec
-                     spec.unmap( spec.clip( cv.currentApprox ))
+                  case Some( vControl: VisualControl ) => {
+                     vControl.value = cv
+//                     vControl.value = {
+//                        val spec = ctrl.spec
+//                        spec.unmap( spec.clip( cv.currentApprox ))
+//                     }
+                     vControl.gliding = if( vControl.mapping.isDefined || cv.mapping.isDefined ) {
+                        vControl.mapping match {
+                           case Some( vMap ) => if( cv.mapping != Some( vMap.mapping )) {
+                              topRemoveControlMap( vControl, vMap )
+                              cv.mapping match {
+                                 case Some( bm: ControlBusMapping ) => { topAddControlMap( vControl, bm ); false }
+                                 case Some( g: ControlGliding ) => true
+                                 case _ => false
+                              }
+                           } else false
+                           case None => cv.mapping match {
+                              case Some( bm: ControlBusMapping ) => { topAddControlMap( vControl, bm ); false }
+                              case Some( g: ControlGliding ) => true
+                              case _ => false
+                           }
+                        }
+                     } else false
                   }
                   case _ =>
                }

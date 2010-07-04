@@ -46,8 +46,11 @@ val g1 = ngen( "Sine" ) {
 
 val p1 = g1.make
 
-p1.control( "freq" ).value = 441
-p1.play
+glide( 20 ) { p1.control( "freq" ).v = 441 }; p1.play
+// glide( 20 ) { p1.control( "freq" ).v = 111 }
+
+//p1.control( "freq" ).v = 441
+//p1.play
 
 val g2 = ngen( "Mod" ) {
     val p1 = pControl( "freq", ParamSpec( 0.1f, 20000, ExpWarp ), 1 )
@@ -107,11 +110,11 @@ val p = h.make
 
 // ProcTxn.atomic { implicit t =>
     p.setString( "path", audioDir + "ZahnradGong1 den-L.aif" )
-    p.control( "speed" ).value = 4
+    p.control( "speed" ).v = 4
     p.play
 // }
 
-p.control( "speed" ).value = 0.25f
+p.control( "speed" ).v = 0.25
 p.stop
 p.play; p.stop    // this has problems again ...
 

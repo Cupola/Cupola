@@ -43,12 +43,15 @@ extends ProcParamControl {
       implicit val tx   = pb.tx
       val c             = p.control( name )
       pb.includeParam( this )
-      c.mapping.map( m => {
-         val outBus = m.output // .get
-         require( outBus.rate == control )
-         // stupidly we have two arguments...
-         name.kr( default, List.fill( outBus.numChannels - 1 )( default ): _* )
-      }).getOrElse( name.kr( default ))
+      c.cv.mapping match {
+         case None => name.kr( default )
+         case Some( m ) => {
+            val outBus = m.output // .get
+            require( outBus.rate == control )
+            // stupidly we have two arguments...
+            name.kr( default, List.fill( outBus.numChannels - 1 )( default ): _* )
+         }
+      }
    }
 }
 
@@ -60,12 +63,15 @@ extends ProcParamAudio {
       implicit val tx   = pb.tx
       val c             = p.control( name )
       pb.includeParam( this )
-      c.mapping.map( m => {
-         val outBus = m.output // .get
-         require( outBus.rate == audio )
-         // stupidly we have two arguments...
-         name.ar( default, List.fill( outBus.numChannels - 1 )( default ): _* )
-      }).getOrElse( name.ar( default ))
+      c.cv.mapping match {
+         case None => name.ar( default )
+         case Some( m ) => {
+            val outBus = m.output // .get
+            require( outBus.rate == audio )
+            // stupidly we have two arguments...
+            name.ar( default, List.fill( outBus.numChannels - 1 )( default ): _* )
+         }
+      }
    }
 }
 

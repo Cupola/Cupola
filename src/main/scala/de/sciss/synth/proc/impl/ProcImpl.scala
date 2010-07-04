@@ -37,7 +37,7 @@ import collection.immutable.{ IndexedSeq => IIdxSeq, Set => ISet }
 /**
  *    @version 0.11, 04-Jul-10
  */
-class Impl( fact: FactoryImpl, val server: Server, val name: String )
+class ProcImpl( fact: FactoryImpl, val server: Server, val name: String )
 extends Proc {
    proc =>
 
@@ -191,15 +191,20 @@ extends Proc {
    def isPlaying( implicit tx: ProcTxn ) : Boolean = runningRef().isDefined
 
    private[proc] def controlChanged( ctrl: ProcControl, newValue: ControlValue )( implicit tx: ProcTxn ) {
-      if( !ctrl.isMapped ) runningRef().foreach( _.setFloat( ctrl.name, newValue.current.toFloat ))
+      runningRef().foreach( run => {
+         newValue.mapping match {
+            case None      => run.setFloat( ctrl.name, newValue.current.toFloat )
+            case Some( m ) => m.play 
+         }
+      })
       touch
       update.transform( u => u.copy( controls = u.controls + (ctrl -> newValue) ))
    }
 
-   private[proc] def controlMapped( ctrl: ProcControl, newValue: Option[ ProcControlMapping ])( implicit tx: ProcTxn ) {
-      touch
-      update.transform( u => u.copy( mappings = u.mappings + (ctrl -> newValue) ))
-   }
+//   private[proc] def controlMapped( ctrl: ProcControl, newValue: Option[ ProcControlMapping ])( implicit tx: ProcTxn ) {
+//      touch
+//      update.transform( u => u.copy( mappings = u.mappings + (ctrl -> newValue) ))
+//   }
 
    private[proc] def audioBusConnected( e: ProcEdge )( implicit tx: ProcTxn ) {
       touch

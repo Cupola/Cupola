@@ -34,7 +34,7 @@ import de.sciss.scalaosc.OSCMessage
 import de.sciss.synth.{Model, AudioBus, Group, Server}
 
 /**
- *    @version 0.12, 29-Jun-10
+ *    @version 0.12, 04-Jul-10
  *
  *    @todo XXX after switching to using an actor
  *          to represent a proc, we should get rid
@@ -50,7 +50,6 @@ object Proc extends ThreadLocalObject[ Proc ] {
 
    case class Update( proc: Proc, playing: Option[ Boolean ],
                       controls: IMap[ ProcControl, ControlValue ],
-                      mappings: IMap[ ProcControl, Option[ ProcControlMapping ]],
                       audioBusesConnected: ISet[ ProcEdge ],
                       audioBusesDisconnected: ISet[ ProcEdge ])
    type Listener = TxnModel.Listener[ Update ]
@@ -65,14 +64,12 @@ trait Proc extends TxnModel[ Proc.Update ] {
    def isPlaying( implicit tx: ProcTxn ) : Boolean
    def server : Server
 
-   protected def emptyUpdate = Update( this, None, Map.empty, Map.empty, Set.empty, Set.empty )
+   protected def emptyUpdate = Update( this, None, Map.empty, Set.empty, Set.empty )
    protected def fullUpdate( implicit tx: ProcTxn ) : Update = {
       val ctl                                                        = controls
       val ctlVals: IMap[ ProcControl, ControlValue ]                 = controls.map( c => c -> c.cv )( breakOut )
-      val ctlMaps: IMap[ ProcControl, Option[ ProcControlMapping ]]  = controls.filter( _.isMapped )
-         .map( c => c -> c.mapping )( breakOut )
       val busConns: ISet[ ProcEdge ]                                 = outEdges 
-      Update( this, Some( isPlaying ), ctlVals, ctlMaps, busConns, Set.empty )
+      Update( this, Some( isPlaying ), ctlVals, busConns, Set.empty )
    }
 
 //   def getFloat( name: String )( implicit tx: ProcTxn ) : Float

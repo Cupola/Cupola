@@ -90,7 +90,7 @@ trait ProcControl {
     *    ongoing transition of the current process, call
     *    mixedValue instead. NOT YET IMPLEMENTED
     */
-   def value( implicit tx: ProcTxn ) : Double
+   def v( implicit tx: ProcTxn ) : Double
 
    /**
     *    Sets the target value of the control. Due to conciseness
@@ -100,13 +100,17 @@ trait ProcControl {
     *    the passed in argument specifies the target value and
     *    not the current.
     */
-   def value_=( newValue: Double )( implicit tx: ProcTxn ) : Unit
+   def v_=( newValue: Double )( implicit tx: ProcTxn ) : Unit
 
 //   def targetValue( implicit tx: ProcTxn ) : Float
 
    def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean
-   def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControlAMapping
-   def isMapped( implicit tx: ProcTxn ) : Boolean = mapping.isDefined
+   def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ControlABusMapping
+//   def isMapped( implicit tx: ProcTxn ) : Boolean = mapping.isDefined
+   def isMapped( implicit tx: ProcTxn ) : Boolean = cv.mapping match {
+      case Some( _: ControlBusMapping ) => true
+      case _ => false
+   }
    def isMapable : Boolean
 //   def mappedInput( implicit tx: ProcTxn ) : Option[ ProcAudioInput ]
 
@@ -121,19 +125,19 @@ trait ProcControl {
 //    *    to return Some( bus ).
 //    */
 //   private[proc] def mappedOutput( implicit tx: ProcTxn ) : Option[ RichBus ]
-
-   def mapping( implicit tx: ProcTxn ) : Option[ ProcControlMapping ]
+//
+//   def mapping( implicit tx: ProcTxn ) : Option[ ProcControlMapping ]
 }
 
-trait ProcControlMapping {
-//   def outputRate
-   def output( implicit tx: ProcTxn ) : RichBus
-   def play( implicit tx: ProcTxn )
-   def stop( implicit tx: ProcTxn )
-}
+//trait ProcControlMapping {
+////   def outputRate
+//   def output( implicit tx: ProcTxn ) : RichBus
+//   def play( implicit tx: ProcTxn )
+//   def stop( implicit tx: ProcTxn )
+//}
 
-trait ProcControlAMapping  // XXX not very elegant name
-extends ProcControlMapping {
-//   def input : ProcAudioInput // ( implicit tx: ProcTxn )
-   def edge : ProcEdge// ( implicit tx: ProcTxn )
-}
+//trait ProcControlAMapping  // XXX not very elegant name
+//extends ProcControlMapping {
+////   def input : ProcAudioInput // ( implicit tx: ProcTxn )
+//   def edge : ProcEdge// ( implicit tx: ProcTxn )
+//}

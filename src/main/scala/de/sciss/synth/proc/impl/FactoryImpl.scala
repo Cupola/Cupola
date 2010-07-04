@@ -39,7 +39,7 @@ class FactoryImpl( val name: String, val entry: ProcEntry,
                            val pAudioOuts: IIdxSeq[ ProcParamAudioOutput ])
 extends ProcFactory {
    def make( implicit tx: ProcTxn ) : Proc = {
-      val res = new Impl( this, Server.default, name )
+      val res = new ProcImpl( this, Server.default, name )
       ProcDemiurg.addVertex( res )
       res
    }

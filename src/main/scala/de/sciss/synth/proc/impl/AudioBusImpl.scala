@@ -82,7 +82,7 @@ extends AudioBusImpl with ProcAudioInput {
    protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) {}
 }
 
-class AudioInputImpl( val proc: Impl, val name: String )
+class AudioInputImpl( val proc: ProcImpl, val name: String )
 extends AbstractAudioInputImpl {
    override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
@@ -95,7 +95,7 @@ extends AbstractAudioInputImpl {
    }
 }
 
-class AudioOutputImpl( val proc: Impl, val name: String )
+class AudioOutputImpl( val proc: ProcImpl, val name: String )
 extends AudioBusImpl with ProcAudioOutput {
    out =>
 
@@ -190,7 +190,7 @@ extends AudioBusImpl with ProcAudioOutput {
 //
 //   }
 
-class AudioInsertionImpl( proc: Impl, out: ProcAudioOutput, insert: (ProcAudioInput, ProcAudioOutput) )
+class AudioInsertionImpl( proc: ProcImpl, out: ProcAudioOutput, insert: (ProcAudioInput, ProcAudioOutput) )
                                 ( implicit tx: ProcTxn )
 extends ProcAudioInsertion {
    def |>( in: ProcAudioInput ) : ProcAudioInput = {

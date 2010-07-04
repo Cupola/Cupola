@@ -36,7 +36,10 @@ import de.sciss.synth.proc.{Proc, ProcFactory}
 import collection.mutable.ListBuffer
 import java.awt._
 
-class NuagesFrame( server: Server ) extends JFrame {
+/**
+ *    @version 0.11, 04-Jul-10
+ */
+class NuagesFrame( server: Server ) extends JFrame( "Wolkenpumpe") {
    private val ggPanel  = new NuagesPanel( server )
    private val ggGens   = new JList( GensModel )
 

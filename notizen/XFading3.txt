@@ -1,0 +1,10 @@
+==== XFading3 ====
+
+idee: XFade und Glide sind lediglich traits,
+die unterschiedliche implementierungen zulassen,
+d.h. für Glide also etwas anderes als Line, und
+für XFade etwas anderes als (Lin)XFade2 ?
+
+wenn dann z.B. trans { } einen sub-typ von gen { }
+erzeugt, sind transitionen vollständig komponierbar,
+und die ganze architektur wesentlich generischer.

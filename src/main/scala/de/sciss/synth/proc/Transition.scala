@@ -38,8 +38,16 @@ sealed abstract class DurationalTransition extends Transition {
    def start: Double
    def dur: Double
 
-   def position( time: Double ) = if( dur > 0.0 ) math.max( 0.0, math.min( 1.0, (time - start) / dur )) else 1.0
-   def positionApprox = position( (System.currentTimeMillis - sys) * 0.001 / dur )
+   def position( time: Double ) = {
+//      val res =
+      if( dur > 0.0 ) math.max( 0.0, math.min( 1.0, (time - start) / dur )) else 1.0
+//      println( "time = " + time + "; start = " + start + "; off = " + (time-start) + "; dur = " + dur + "; res = " + res )
+//      res
+   }
+
+   def positionApprox = {
+      if( dur > 0.0 ) math.max( 0.0, math.min( 1.0, (System.currentTimeMillis - sys) * 0.001 / dur )) else 1.0
+   }
 }
 
 case class XFade( start: Double, dur: Double ) extends DurationalTransition

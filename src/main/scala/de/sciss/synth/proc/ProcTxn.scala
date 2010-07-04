@@ -72,11 +72,12 @@ object ProcTxn {
       block( tx )
    }
 
+   private val startTime    = System.currentTimeMillis // XXX eventually in logical time framework
+   
    private class Impl( implicit txn: Txn )
    extends ProcTxn with Txn.WriteResource {
       tx =>
 
-      private val startTime    = System.currentTimeMillis // XXX eventually in logical time framework
 //      private val transitRef  = TxnLocal[ Transition ]( Instant )
       private var transitVar : Transition = Instant
 

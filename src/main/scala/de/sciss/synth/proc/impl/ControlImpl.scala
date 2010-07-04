@@ -32,7 +32,7 @@ import de.sciss.synth.proc._
 import de.sciss.synth._
 import ugen._
 
-class ControlImpl( val proc: Impl, param: ProcParamFloat, val _rate: Rate )
+class ControlImpl( val proc: ProcImpl, param: ProcParamFloat, val _rate: Rate )
 extends ProcControl {
    ctrl =>
 
@@ -42,13 +42,13 @@ extends ProcControl {
 //      private var valueRef = Ref.withObserver( default ) { (oldV, newV) =>
 //         if( oldV != newV ) proc.dispatchControlChange( ctrl, newV )
 //      }
-   private val mappingRef = Ref[ Option[ ProcControlMapping ]]( None )
-//      private val mappingRef = Ref.withObserver[ Option[ ProcControlMapping ]]( None ) { (oldM, newM) =>
-//         if( oldM != newM ) proc.dispatchMappingChange( ctrl, newM )
-//      }
-
-   // XXX this should eventually fuse with mappingRef !!!
-   private val glidingRef = Ref[ Option[ ControlGliding ]]( None )
+//   private val mappingRef = Ref[ Option[ ProcControlMapping ]]( None )
+////      private val mappingRef = Ref.withObserver[ Option[ ProcControlMapping ]]( None ) { (oldM, newM) =>
+////         if( oldM != newM ) proc.dispatchMappingChange( ctrl, newM )
+////      }
+//
+//   // XXX this should eventually fuse with mappingRef !!!
+//   private val glidingRef = Ref[ Option[ ControlGliding ]]( None )
 
    def rate    = Some( _rate )
    def default = param.default // .getOrElse( 0f )
@@ -73,64 +73,91 @@ xfade    xfade    xfade
 
    def cv( implicit tx: ProcTxn ) = valueRef()
 
-   def value( implicit tx: ProcTxn ) : Double = valueRef().current
+   def v( implicit tx: ProcTxn ) : Double = valueRef().current
 
-   def value_=( newValue: Double )( implicit tx: ProcTxn ) {
-      if( isMapped ) { // how to handle this the best? error?
-         valueRef.set( ControlValue.instant( newValue )) // we just ignore the transition and remember the value
-         return
-      }
-
+   def v_=( newValue: Double )( implicit tx: ProcTxn ) {
       val oldCV   = valueRef()
-      val oldCG   = glidingRef()
-      tx.transit match {
-         case Instant   => {
-            if( oldCG.isDefined || oldCV.target != newValue ) {
-               glidingRef.set( None )
-               oldCG.foreach( _.stop )
-               val newCV = if( oldCG.isDefined ) {
-                  ControlValue.instant( newValue )
-               } else {
-                  oldCV.copy( target = newValue )
+      val transit = tx.transit
+      val newCVO  = oldCV.mapping match {
+         case None => {
+            transit match {
+               case Instant => {
+                  if( oldCV.target != newValue ) {
+                     Some( oldCV.copy( target = newValue ))
+                  } else None
                }
-               valueRef.set( newCV )
-               proc.controlChanged( ctrl, newCV )
+               case fade: XFade => error( "NOT YET IMPLEMENTED" )
+               case glide: Glide => {
+                  val current = oldCV.target
+                  if( current != newValue ) {
+                     val startNorm  = spec.unmap( current )
+                     val targetNorm = spec.unmap( newValue )
+                     val newCG = _rate match {
+                        case `control` => new ControlKGliding( ctrl, startNorm, targetNorm, glide )
+                        case `audio`   => new ControlAGliding( ctrl, startNorm, targetNorm, glide )
+                        case _ => error( "Cannot glide rate " + _rate )
+                     }
+                     Some( ControlValue( newValue, Some( newCG )))
+                  } else None
+               }
             }
          }
-         case glide: Glide => {
-            if( oldCG.isDefined || oldCV.target != newValue ) {
-               val newCV = ControlValue( oldCV.current, newValue, glide )
-               val newCG = _rate match {
-                  case `control` => new ControlKGliding( ctrl, newCV )
-                  case `audio`   => new ControlAGliding( ctrl, newCV )
-                  case _ => error( "Cannot glide rate " + _rate )
+         case Some( _: ControlBusMapping ) => {
+            if( oldCV.target != newValue ) {
+               // just remember the value, but don't do anything
+               // ; we could also undo the mapping hereby?
+               Some( oldCV.copy( target = newValue ))
+            } else None
+         }
+         case Some( oldCG: ControlGliding ) => {
+            transit match {
+               case Instant => {
+                  val current = oldCG.currentValue
+                  oldCG.stop
+                  Some( ControlValue.instant( newValue ))
                }
-               glidingRef.set( Some( newCG ))
-               oldCG.foreach( _.stop )
-               valueRef.set( newCV )
-               proc.controlChanged( ctrl, newCV )
+               case fade: XFade => error( "NOT YET IMPLEMENTED" )
+               case glide: Glide => {
+                  val startNorm  = spec.unmap( oldCG.currentValue )
+                  val targetNorm = spec.unmap( newValue )
+                  oldCG.stop
+                  val newCG = _rate match {
+                     case `control` => new ControlKGliding( ctrl, startNorm, targetNorm, glide )
+                     case `audio`   => new ControlAGliding( ctrl, startNorm, targetNorm, glide )
+                     case _ => error( "Cannot glide rate " + _rate )
+                  }
+                  Some( ControlValue( newValue, Some( newCG )))
+               }
             }
          }
-         case fade: XFade => error( "NOT YET IMPLEMENTED" )
       }
+      newCVO.foreach( newCV => {
+         valueRef.set( newCV )
+         proc.controlChanged( ctrl, newCV )
+      })
    }
 
-   def mapping( implicit tx: ProcTxn ) : Option[ ProcControlMapping ] = mappingRef()
+   private[proc] def glidingDone( implicit tx: ProcTxn ) { v = cv.target } 
 
-   def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControlAMapping = {
-//         require( aout.proc.server == proc.server ) // that should be in ~> hopefully
-      require( mapping.isEmpty, "Already mapped" )
+   def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ControlABusMapping = {
+      val oldCV = valueRef()
+      oldCV.mapping match {
+         case None => // Ok
+         case Some( cg: ControlGliding ) => {
+            v = cg.currentValue // stops the thing
+         }
+         case Some( m: ControlBusMapping ) => error( "Already mapped" )
+      }
       val m = _rate match {
-         case `control` => new ControlKBusMapping( aout, ctrl )
-         case `audio` => new ControlABusMapping( aout, ctrl )
+         case `control` => new ControlABusToKMapping( aout, ctrl )
+         case `audio` => new ControlABusToAMapping( aout, ctrl )
          case _ => error( "Cannot map rate " + _rate )
       }
       m.init
-      val mo = Some( m )
-      mappingRef.set( mo )
-      proc.controlMapped( ctrl, mo )
-//         m.connect
-//         this
+      val newCV = ControlValue( oldCV.current, Some( m ))
+      valueRef.set( newCV )
+//      proc.controlMapped( ctrl, newCV )
+      proc.controlChanged( ctrl, newCV )
       m
    }
 
@@ -138,7 +165,7 @@ xfade    xfade    xfade
    def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean = !isMapped
 }
 
-trait ControlMapping {
+trait ControlMappingImpl /* extends ControlMapping*/ {
    protected val synth   = Ref[ Option[ RichSynth ]]( None )
 
    // ---- abstract ----
@@ -160,26 +187,37 @@ trait ControlMapping {
    }
 }
 
-trait ControlGliding extends ControlMapping {
-   def cv: ControlValue
+trait ControlGlidingImpl
+extends ControlGliding with ControlMappingImpl {
+//   def cv: ControlValue
 
    def play( implicit tx: ProcTxn ) {
       val g       = graph
       val rsd     = RichSynthDef( target.proc.server, g )
-      val dur     = cv.transit.asInstanceOf[ Glide ].dur // XXX not so pretty
+//      val dur     = cv.transit.asInstanceOf[ Glide ].dur // XXX not so pretty
+      val spec    = target.spec
+//      val startN  = spec.unmap( /*spec.clip(*/ startValue /*)*/)
+//      val targetN = spec.unmap( targetValue )
       val rs      = rsd.play( target.proc.playGroup,
-         List( "$start" -> cv.source, "$stop" -> cv.target, "$dur" -> dur ), addBefore )
+         List( "$start" -> startNorm, "$stop" -> targetNorm, "$dur" -> glide.dur ), addBefore )
 
       val oldSynth = synth.swap( Some( rs ))
       addOutputConsumers   // requires that synth has been assigned!
       oldSynth.foreach( _.free( true ))
+
+      rs.synth.onEnd { ProcTxn.atomic { tx0 =>
+         synth()( tx0 ).foreach( rs2 => if( rs == rs2 ) {
+            synth.set( None )( tx0 )
+            target.glidingDone( tx0 )  // invokes stop and hence removeOutputConsumers!
+         })
+      }}
    }
 
    protected def graph : SynthGraph
 }
 
-class ControlKGliding( val target: ControlImpl, val cv: ControlValue )
-extends ControlGliding with ControlToKMapping {
+class ControlKGliding( val target: ControlImpl, val startNorm: Double, val targetNorm: Double, val glide: Glide )
+extends ControlGlidingImpl with ControlToKMapping {
    def output( implicit tx: ProcTxn ) = {
       outputRef().getOrElse({
          val res = RichBus.control( proc.server, 1 ) // XXX numChannels
@@ -198,8 +236,8 @@ extends ControlGliding with ControlToKMapping {
    }
 }
 
-class ControlAGliding( val target: ControlImpl, val cv: ControlValue )
-extends ControlGliding with ControlToAMapping {
+class ControlAGliding( val target: ControlImpl, val startNorm: Double, val targetNorm: Double, val glide: Glide )
+extends ControlGlidingImpl with ControlToAMapping {
    def output( implicit tx: ProcTxn ) = {
       outputRef().getOrElse({
          val res = RichBus.audio( proc.server, 1 ) // XXX numChannels
@@ -218,7 +256,8 @@ extends ControlGliding with ControlToAMapping {
    }
 }
 
-abstract class ControlBusMapping extends AbstractAudioInputImpl with ControlMapping with ProcControlAMapping {
+abstract class ControlABusMappingImpl
+extends AbstractAudioInputImpl with ControlMappingImpl with ControlABusMapping {
    def source: ProcAudioOutput
 //      def connect( implicit tx: ProcTxn ) { source ~> this } // XXX NO WE DON'T NEED TO ENFORCE TOPOLOGY !!!
 
@@ -257,7 +296,7 @@ abstract class ControlBusMapping extends AbstractAudioInputImpl with ControlMapp
    protected def graph( inBus: AudioBus ) : SynthGraph
 }
 
-trait ControlToKMapping extends ControlMapping {
+trait ControlToKMapping extends ControlMappingImpl {
    protected var outputRef = Ref[ Option[ RichControlBus ]]( None )
 
    // ---- abstract ----
@@ -288,7 +327,7 @@ trait ControlToKMapping extends ControlMapping {
    }
 }
 
-trait ControlToAMapping extends ControlMapping {
+trait ControlToAMapping extends ControlMappingImpl {
    protected var outputRef = Ref[ Option[ RichAudioBus ]]( None )
 
    // ---- abstract ----
@@ -319,8 +358,8 @@ trait ControlToAMapping extends ControlMapping {
    }
 }
 
-class ControlKBusMapping( val source: ProcAudioOutput, val target: ControlImpl )
-extends ControlBusMapping with ControlToKMapping {
+class ControlABusToKMapping( val source: ProcAudioOutput, val target: ControlImpl )
+extends ControlABusMappingImpl with ControlToKMapping {
    override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
    def output( implicit tx: ProcTxn ) = {
@@ -342,8 +381,8 @@ extends ControlBusMapping with ControlToKMapping {
    }
 }
 
-class ControlABusMapping( val source: ProcAudioOutput, val target: ControlImpl )
-extends ControlBusMapping with ControlToAMapping {
+class ControlABusToAMapping( val source: ProcAudioOutput, val target: ControlImpl )
+extends ControlABusMappingImpl with ControlToAMapping {
    override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
    def output( implicit tx: ProcTxn ) = {
