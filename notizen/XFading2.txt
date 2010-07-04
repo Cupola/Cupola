@@ -1,0 +1,29 @@
+=== XFading === (03-Jul-10)
+
+(d.h. mit Verdopplung der Synths)
+
+- Einführung einer "legacy" group ; erzwungen innerhalb der playGroup
+- damit : Entscheidung für alle Operationen, ob diese auch auf die Legacy Group anzuwenden sind.
+(falls ja: messages werden an playGroup gesendet (playGroup.getOrElse( group.getOrElse( defaultGroup ))
+(falls nein: werden nur an neuen synth gesendet / falls zu kompliziert: zweite hilfsgruppe "current"
+ innerhalb von playGroup)
+
+actions at the moment
+---------------------
+
+n_set : sollte nur "current" gelten (um diskontinuitäten zu vermeiden)  [ OK ]
+n_map : ebenso     [ !CURRENTLY RELIES ON PLAYGROUP! ]
+// --> target.proc.group.mapn could be replaced by target.proc.currentGroup (lazy) ...
+unmap : sollte auf beide angewandt werden, damit resource-management überschaubar bleibt
+// --> d.h. vom konzept her: resource-allocation immer nur auf current group
+//     und deallocation auf beide
+stop : beide
+play : nur current
+disconnect bus : beide
+connect bus : nur current. !!!!achtung: wenn dadurch ein alter bus disconnected würde,
+   muß der entsprechend für die legacy group auf einen dummy gesetzt werden
+   (d.h. wir müssen noch einen read- bzw. write-access verwalten!!!!
+
+und das war's bereits. es fehlen noch:
+- gliss (ramp)
+- bypass ?

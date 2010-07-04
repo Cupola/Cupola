@@ -146,7 +146,10 @@ object Ref {
    }
 }
 
-trait TxnLocal[ @specialized T ] {
+/**
+ *    Note: specialization is commented out due to a bug in scala 2.8.0.RC6 (ticket #3636)
+ */
+trait TxnLocal[ /*@specialized*/ T ] {
    def apply()( implicit tx: ProcTxn ) : T
    def set( v: T )( implicit tx: ProcTxn ) : Unit
    def swap( v: T )( implicit tx: ProcTxn ) : T
@@ -154,8 +157,8 @@ trait TxnLocal[ @specialized T ] {
 }
 
 object TxnLocal {
-   def apply[ @specialized T ] : TxnLocal[ T ] = new Impl( new CTxnLocal[ T ])
-   def apply[ @specialized T ]( initValue: => T ) : TxnLocal[ T ] = new Impl( new CTxnLocal[ T ] {
+   def apply[ /*@specialized*/ T ] : TxnLocal[ T ] = new Impl( new CTxnLocal[ T ])
+   def apply[ /*@specialized*/ T ]( initValue: => T ) : TxnLocal[ T ] = new Impl( new CTxnLocal[ T ] {
       override def initialValue( tx: Txn ): T = initValue
    })
 
