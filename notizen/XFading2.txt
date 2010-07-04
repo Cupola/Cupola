@@ -25,5 +25,30 @@ connect bus : nur current. !!!!achtung: wenn dadurch ein alter bus disconnected 
    (d.h. wir müssen noch einen read- bzw. write-access verwalten!!!!
 
 und das war's bereits. es fehlen noch:
-- gliss (ramp)
+- glide (ramp)
 - bypass ?
+
+
+=== transition matrix (control.value_=) === (04-Jul-10)
+
+old trns	new trns	resolution
+------------------------------------------
+instant		instant		instant if( oldValue != newValue)
+instant		glide		glide   if( oldValue != newValue)
+instant		xfade		xfade   if( oldValue != newValue)
+
+glide		instant		stop glide + instant
+glide		glide		stop glide + glide
+glide		xfade		xfade
+
+xfade		instant		instant if( oldValue != newValue)
+xfade		glide		glide   if( oldValue != newValue)
+xfade		xfade		xfade
+
+d.h. für target instant und glide : wird xfade quasi als instant behandelt und einfach glide gestoppt
+für xfade target tritt der sonderfall ein, daß der xfade immer ausgeführt wird, außer falls die
+alte transition instant war und denselben targetWert besitzt
+; man könnte annehmen, daß für glide-quelle ebenfalls der vergleich (oldValue != newValue) gilt,
+; allerdings kommen hier aufgrund der server/client latenz u.U. diskrepanzen zustande, so daß
+; die neusetzung des wertes besser erzwungen wird. (siehe oben: instant könnte ggf. mit kleinem
+glide erzeugt werden)

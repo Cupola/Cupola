@@ -75,9 +75,34 @@ trait ProcControl {
    def rate : Option[ Rate ]
    def spec : ParamSpec
    def default : Float
-//   def mapped( implicit tx: ProcTxn ): Option[ RichBus ]
+
+   /**
+    *    Queries the nominal value of the control.
+    *    The nominal value regards the current process
+    *    and does not take into account fading background.
+    *    However, it takes into account glissandos.
+    *
+    *    If you wish to obtain the current processes'
+    *    target value, call targetValue instead.
+    *
+    *    If you wish to obtain the effective value as resulting
+    *    from the mixture ob background processes and the
+    *    ongoing transition of the current process, call
+    *    mixedValue instead. NOT YET IMPLEMENTED
+    */
    def value( implicit tx: ProcTxn ) : Float
+
+   /**
+    *    Sets the target value of the control. Due to conciseness
+    *    we decided to call this method value_= and not
+    *    targetValue_=. However it takes the current transition
+    *    into account, and if a fade or glissando is applying,
+    *    the passed in argument specifies the target value and
+    *    not the current.
+    */
    def value_=( newValue: Float )( implicit tx: ProcTxn ) : Unit
+
+   def targetValue( implicit tx: ProcTxn ) : Float
 
    def canMap( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : Boolean
    def map( aout: ProcAudioOutput )( implicit tx: ProcTxn ) : ProcControlAMapping

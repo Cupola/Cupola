@@ -26,4 +26,4 @@ sealed abstract class Transition {
 
 case object Instant extends Transition
 case class xfade( secs: Double ) extends Transition
-case class gliss( secs: Double )
+case class glide( secs: Double )
