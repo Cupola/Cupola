@@ -232,7 +232,8 @@ extends Proc {
 
    def stop( implicit tx: ProcTxn ) : Proc = {
       runningRef().foreach( r => {
-         try { r.stop } catch { case ex => ex.printStackTrace() }
+         r.stop
+//         preGroupOption.foreach( _.freeAll )
          setRunning( None )
       })
       this

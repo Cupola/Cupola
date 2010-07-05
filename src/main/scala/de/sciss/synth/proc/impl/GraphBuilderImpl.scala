@@ -80,7 +80,7 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
          })
          // crucial here to ensure that group is
          // created and used, if we expect mappings.
-         val target = if( mappings.nonEmpty ) {
+         val target = if( mappings.nonEmpty ) { // XXX we should find another solution for this dependancy !!!
             p.coreGroup
 //            p.playGroupOption.getOrElse( p.group )
          } else {
@@ -96,9 +96,9 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
          mappings.foreach( _.play ) // XXX where's the stop??
          bufsZipped.foreach( tup => {
             val (b, rb) = tup
-            b.disposeWith( rb, rs )
+            b.disposeWith( rb, rs )        // XXX should also go in RunningGraphImpl
          })
-         new RunningGraphImpl( rs )
+         new RunningGraphImpl( rs, mappings )
       }
    }
 }
