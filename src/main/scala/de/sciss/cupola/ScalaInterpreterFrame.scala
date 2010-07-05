@@ -45,6 +45,7 @@ val g1 = ngen( "Sine" ) {
 }
 
 val p1 = g1.make
+xfade( 10 ) { p1.control( "freq" ).v = (util.Random.nextInt( 100 ) + 40).midicps }
 
 glide( 20 ) { p1.control( "freq" ).v = 441 }; p1.play
 // glide( 20 ) { p1.control( "freq" ).v = 111 }

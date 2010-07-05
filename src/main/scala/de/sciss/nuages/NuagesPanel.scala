@@ -40,7 +40,6 @@ import prefuse.util.ColorLib
 import prefuse.visual.sort.TreeDepthItemSorter
 import prefuse.visual.expression.InGroupPredicate
 import de.sciss.synth.{Model, Server}
-import de.sciss.synth.swing.PrefuseHelper
 import prefuse.data.{Edge, Node => PNode, Graph}
 import prefuse.controls._
 import de.sciss.synth.proc._

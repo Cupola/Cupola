@@ -90,7 +90,8 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
 //         val target = p.runningGroup
          val bufsZipped = bufSeq.zip( bufs )
          setMaps ++= bufsZipped.map( tup => SingleControlSetMap( tup._1.controlName, tup._2.buf.id ))
-         val rs = rsd.play( target, setMaps, addToHead, bufs )
+         // XXX addToTail is non-standard, but necessary for front-group less procs which have a back-group
+         val rs = rsd.play( target, setMaps, addToTail, bufs )
 //            if( kbusMaps.nonEmpty ) rs.mapn(  true, kbusMaps: _* )
 //            if( abusMaps.nonEmpty ) rs.mapan( true, abusMaps: _* )
          mappings.foreach( _.play ) // XXX where's the stop??

@@ -32,6 +32,7 @@ import de.sciss.synth.proc._
 import collection.breakOut
 import collection.immutable.{ IndexedSeq => IIdxSeq, Set => ISet }
 import de.sciss.synth.{ audio => arate, control => krate, _ }
+import ugen.Line
 
 /**
  *    @version 0.11, 04-Jul-10
@@ -84,14 +85,38 @@ extends Proc {
    }
 
    def runningGroup( implicit tx: ProcTxn ) : RichGroup =
-      groupsRef().map( all => all.front.map( _.play ).getOrElse( all.main )).getOrElse( RichGroup.default( server ))
+      groupsRef().map( all => all.front.map( _.core ).getOrElse( all.main )).getOrElse( RichGroup.default( server ))
 
 
    def sendToBack( xfade: XFade )( implicit tx: ProcTxn ) {
-      if( !isPlaying ) return
-//      if( !xfade.markSendToBack( this )) return
+      if( !isPlaying || !xfade.markSendToBack( this )) return
 
-      error( "NOT YET IMPLEMENTED" )
+      val g       = group           // ensures that main group exists,
+      val all     = groupsRef().get // i.e. that this is valid
+      val bgOldO  = all.back
+      val bgNew   = RichGroup( Group( server ))
+      bgNew.play( g, addToHead )
+      all.front map { f =>
+         f.core.moveToTail( true, bgNew )
+         f.pre.foreach( _.moveBefore( true, f.core ))
+         f.post.foreach( _.moveAfter( true, f.core ))
+      } getOrElse {
+         runningRef().foreach( _.setGroup( bgNew ))
+      }
+      bgOldO.foreach( _.moveToHead( true, bgNew ))
+
+      // OK THIS IS JUST A TEST
+      val rsd     = RichSynthDef( server, SynthGraph {
+         Line.kr( dur = "$dur".ir, doneAction = freeGroup )
+      })
+      val rs      = rsd.play( bgNew, List( "$dur" -> xfade.dur ))
+
+      // update groups
+      groupsRef.set( Some( all.copy( front = None, back = Some( bgNew ))))
+
+      // now re-play
+      setRunning( None )  // don't call stop!
+      play
    }
 
    private def pError( name: String ) = throw new ProcParamUnspecifiedException( name )
@@ -111,9 +136,9 @@ extends Proc {
    def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
       groupsRef.transform( _ map { all =>
          all.front.foreach( f => {
-            f.play.moveToTail( true, newGroup )
-            f.pre.foreach(  _.moveBefore( true, f.play ))
-            f.post.foreach( _.moveAfter(  true, f.play ))
+            f.core.moveToTail( true, newGroup )
+            f.pre.foreach(  _.moveBefore( true, f.core ))
+            f.post.foreach( _.moveAfter(  true, f.core ))
          })
          all.back.foreach( _.moveToHead( true, newGroup ))
          all.main.free( true ) // que se puede...?
@@ -126,7 +151,7 @@ extends Proc {
    }
 
    private def coreGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
-      groupsRef().flatMap( _.front.map( _.play ))
+      groupsRef().flatMap( _.front.map( _.core ))
 
    def coreGroup( implicit tx: ProcTxn ) : RichGroup = {
       coreGroupOption getOrElse {
@@ -191,6 +216,35 @@ extends Proc {
       }
    }
 
+//   private def backGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
+//      groupsRef().flatMap( _.back )
+//
+//   private def backGroup( implicit tx: ProcTxn ) : RichGroup = {
+//      backGroupOption getOrElse {
+//         val g       = Group( server )
+//         val res     = RichGroup( g )
+//         res.play( group, addToHead ) // creates group if necessary
+//         backGroup   = res
+//         res
+//      }
+//   }
+//
+//   private def backGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+//      groupsRef transform { allO =>
+//         val all = allO.get
+//         require( all.back.isEmpty )
+//         Some( all.copy( back = Some( newGroup )))
+//      }
+//   }
+
+   private def backGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+      groupsRef transform { allO =>
+         val all = allO.get
+         require( all.back.isEmpty )
+         Some( all.copy( back = Some( newGroup )))
+      }
+   }
+
    private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) {
       error( "NOT YET IMPLEMENTED" )
    }
@@ -208,16 +262,16 @@ extends Proc {
 //               val target = playGroupOption.getOrElse( groupOption.getOrElse( RichGroup.default( server )))
             fact.entry.play
          }
+         val runO = Some( run )
          lazy val l: Model.Listener = {
             case ProcRunning.Stopped => {
                run.removeListener( l )
-//                     exec( if( running == Some( run )) running = None ) // XXX propagate stop?
-               ProcTxn.atomic { t2 => setRunning( None )( t2 )}
+               ProcTxn.atomic { t2 => if( runningRef()( t2 ) == runO ) setRunning( None )( t2 )}
             }
             case m => println( "Ooooops : " + m )
          }
          run.addListener( l )
-         setRunning( Some( run ))
+         setRunning( runO )
       }
       this
    }
@@ -273,6 +327,6 @@ extends Proc {
 
    override def toString = "proc(" + name + ")"
 
-   private case class FrontGroups( play: RichGroup, pre: Option[ RichGroup ], post: Option[ RichGroup ])
+   private case class FrontGroups( core: RichGroup, pre: Option[ RichGroup ], post: Option[ RichGroup ])
    private case class AllGroups( main: RichGroup, front: Option[ FrontGroups ], back: Option[ RichGroup ])
 }

@@ -50,5 +50,17 @@ sealed abstract class DurationalTransition extends Transition {
    }
 }
 
-case class XFade( start: Double, dur: Double ) extends DurationalTransition
+case class XFade( start: Double, dur: Double ) extends DurationalTransition {
+   private var markSet = TxnLocal( Set.empty[ AnyRef ])
+
+   def markSendToBack( obj: AnyRef )( implicit tx: ProcTxn ) : Boolean = {
+      val s       = markSet()
+      val isNew   = !s.contains( obj )
+      if( isNew ) {
+         markSet.set( s + obj )
+      }
+      isNew
+   }
+}
+
 case class Glide( start: Double, dur: Double ) extends DurationalTransition
