@@ -81,11 +81,13 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
          // crucial here to ensure that group is
          // created and used, if we expect mappings.
          val target = if( mappings.nonEmpty ) {
-//               p.playGroup
-            p.playGroupOption.getOrElse( p.group )
+            p.coreGroup
+//            p.playGroupOption.getOrElse( p.group )
          } else {
-            p.playGroupOption.getOrElse( p.groupOption.getOrElse( RichGroup.default( server )))
+//            p.playGroupOption.getOrElse( p.groupOption.getOrElse( RichGroup.default( server )))
+            p.runningGroup
          }
+//         val target = p.runningGroup
          val bufsZipped = bufSeq.zip( bufs )
          setMaps ++= bufsZipped.map( tup => SingleControlSetMap( tup._1.controlName, tup._2.buf.id ))
          val rs = rsd.play( target, setMaps, addToHead, bufs )

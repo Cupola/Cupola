@@ -32,23 +32,15 @@ import de.sciss.synth.proc._
 import de.sciss.synth._
 import ugen._
 
+/**
+ *    @version 0.11, 04-Jul-10
+ */
 class ControlImpl( val proc: ProcImpl, param: ProcParamFloat, val _rate: Rate )
 extends ProcControl {
    ctrl =>
 
 //   private var valueRef = Ref( default )
    private var valueRef = Ref( ControlValue.instant( default ))
-
-//      private var valueRef = Ref.withObserver( default ) { (oldV, newV) =>
-//         if( oldV != newV ) proc.dispatchControlChange( ctrl, newV )
-//      }
-//   private val mappingRef = Ref[ Option[ ProcControlMapping ]]( None )
-////      private val mappingRef = Ref.withObserver[ Option[ ProcControlMapping ]]( None ) { (oldM, newM) =>
-////         if( oldM != newM ) proc.dispatchMappingChange( ctrl, newM )
-////      }
-//
-//   // XXX this should eventually fuse with mappingRef !!!
-//   private val glidingRef = Ref[ Option[ ControlGliding ]]( None )
 
    def rate    = Some( _rate )
    def default = param.default // .getOrElse( 0f )
@@ -86,7 +78,12 @@ xfade    xfade    xfade
                      Some( oldCV.copy( target = newValue ))
                   } else None
                }
-               case fade: XFade => error( "NOT YET IMPLEMENTED" )
+               case fade: XFade => {
+                  if( oldCV.target != newValue ) {
+                     proc.sendToBack( fade )
+                     Some( oldCV.copy( target = newValue ))
+                  } else None
+               }
                case glide: Glide => {
                   val current = oldCV.target
                   if( current != newValue ) {
@@ -116,7 +113,11 @@ xfade    xfade    xfade
                   oldCG.stop
                   Some( ControlValue.instant( newValue ))
                }
-               case fade: XFade => error( "NOT YET IMPLEMENTED" )
+               case fade: XFade => {
+                  error( "NOT YET IMPLEMENTED" ) // XXX missing: we need to stop the gliss just for the new synth!
+//                  proc.sendToBack( fade )
+//                  Some( ControlValue.instant( newValue ))
+               }
                case glide: Glide => {
                   val startNorm  = spec.unmap( oldCG.currentValue )
                   val targetNorm = spec.unmap( newValue )
@@ -198,8 +199,8 @@ extends ControlGliding with ControlMappingImpl {
       val spec    = target.spec
 //      val startN  = spec.unmap( /*spec.clip(*/ startValue /*)*/)
 //      val targetN = spec.unmap( targetValue )
-      val rs      = rsd.play( target.proc.playGroup,
-         List( "$start" -> startNorm, "$stop" -> targetNorm, "$dur" -> glide.dur ), addBefore )
+      val rs      = rsd.play( target.proc.preGroup,
+         List( "$start" -> startNorm, "$stop" -> targetNorm, "$dur" -> glide.dur ))
 
       val oldSynth = synth.swap( Some( rs ))
       addOutputConsumers   // requires that synth has been assigned!
@@ -286,7 +287,7 @@ extends AbstractAudioInputImpl with ControlMappingImpl with ControlABusMapping {
       val inBus   = bus.get.busOption.get
       val g       = graph( inBus )
       val rsd     = RichSynthDef( inBus.server, g )
-      val rs      = rsd.play( source.proc.playGroup, List( "$in" -> inBus.index ), addAfter )
+      val rs      = rsd.play( source.proc.postGroup, List( "$in" -> inBus.index ))
 
       val oldSynth = synth.swap( Some( rs ))
       addOutputConsumers   // requires that synth has been assigned!

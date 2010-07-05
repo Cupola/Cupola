@@ -29,10 +29,9 @@
 package de.sciss.synth.proc.impl
 
 import de.sciss.synth.proc._
-import de.sciss.synth.{audio => arate, control => krate, AudioBus, Model, Group, Server}
-import actors.{Future, TIMEOUT}
 import collection.breakOut
 import collection.immutable.{ IndexedSeq => IIdxSeq, Set => ISet }
+import de.sciss.synth.{ audio => arate, control => krate, _ }
 
 /**
  *    @version 0.11, 04-Jul-10
@@ -44,8 +43,9 @@ extends Proc {
    import Proc._
 
    private val runningRef        = Ref[ Option[ ProcRunning ]]( None )
-   private val groupVar          = Ref[ Option[ RichGroup ]]( None )
-   private val playGroupVar      = Ref[ Option[ RichGroup ]]( None )
+//   private val groupVar          = Ref[ Option[ RichGroup ]]( None )
+//   private val playGroupVar      = Ref[ Option[ RichGroup ]]( None )
+   private val groupsRef         = Ref[ Option[ AllGroups ]]( None )
    private val pStringValues     = Ref( Map.empty[ ProcParamString, String ])
 
    lazy val audioInputs          = fact.pAudioIns.map(  p => new AudioInputImpl(  this, p.name ))
@@ -83,61 +83,111 @@ extends Proc {
        pStringValues().get( p ).getOrElse( pError( name ))
    }
 
+   def runningGroup( implicit tx: ProcTxn ) : RichGroup =
+      groupsRef().map( all => all.front.map( _.play ).getOrElse( all.main )).getOrElse( RichGroup.default( server ))
+
+
+   def sendToBack( xfade: XFade )( implicit tx: ProcTxn ) {
+      if( !isPlaying ) return
+//      if( !xfade.markSendToBack( this )) return
+
+      error( "NOT YET IMPLEMENTED" )
+   }
+
    private def pError( name: String ) = throw new ProcParamUnspecifiedException( name )
 
-   def groupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupVar()
+   def groupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupsRef().map( _.main )
 
    def group( implicit tx: ProcTxn ) : RichGroup = {
-      groupOption.getOrElse({
+      groupOption getOrElse {
          val g    = Group( server )
          val res  = RichGroup( g )
          res.play( RichGroup.default( server ))
          group    = res
          res
+      }
+   }
+
+   def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+      groupsRef.transform( _ map { all =>
+         all.front.foreach( f => {
+            f.play.moveToTail( true, newGroup )
+            f.pre.foreach(  _.moveBefore( true, f.play ))
+            f.post.foreach( _.moveAfter(  true, f.play ))
+         })
+         all.back.foreach( _.moveToHead( true, newGroup ))
+         all.main.free( true ) // que se puede...?
+         all.copy( main = newGroup )
+      } orElse {
+         val all = AllGroups( newGroup, None, None )
+         runningRef().foreach( _.setGroup( newGroup ))
+         Some( all )
       })
    }
-   def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
-//         groupOption = Some( newGroup )
-      val newGroupO  = Some( newGroup )
-      val oldGroupO  = groupVar.swap( newGroupO )
-      val pgo = playGroupOption
-      pgo.foreach( _.moveToHead( true, newGroup ))
-      // XXX also move the mapping synths!
-      if( pgo.isEmpty ) { // we are still playing in the main group, hence update that
-         runningRef().foreach( _.setGroup( newGroup ))
-      }
-      // XXX what should we do, free it?
-      oldGroupO.foreach( _.free( true ))
-   }
 
-   def playGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = playGroupVar()
+   private def coreGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
+      groupsRef().flatMap( _.front.map( _.play ))
 
-   def playGroup( implicit tx: ProcTxn ) : RichGroup = {
-//println( "playGroup" )
-      playGroupOption.getOrElse({
+   def coreGroup( implicit tx: ProcTxn ) : RichGroup = {
+      coreGroupOption getOrElse {
          val g       = Group( server )
          val res     = RichGroup( g )
          res.play( group ) // creates group if necessary
-         playGroup   = res
+         coreGroup   = res
          res
-      })
+      }
    }
 
-   def playGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
-//println( "playGroup_" )
-      val newGroupO  = Some( newGroup )
-      val oldGroupO  = playGroupVar.swap( newGroupO )
+   private def coreGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+      groupsRef transform { allO =>
+         val all = allO.get
+         require( all.front.isEmpty )
+         Some( all.copy( front = Some( FrontGroups( newGroup, None, None ))))
+      }
       runningRef().foreach( _.setGroup( newGroup ))
-      // XXX what should we do, free it?
-      oldGroupO.foreach( rg => {
-         rg.free( true ) // after running.setGroup !
-      })
    }
 
-   private def await[ A ]( timeOut: Long, fut: Future[ A ])( handler: Function1[ Option[ A ], Unit ]) : Nothing = {
-      fut.inputChannel.reactWithin( timeOut ) {
-         case TIMEOUT => handler( None )
-         case a       => handler( Some( a.asInstanceOf[ A ]))
+   private def preGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
+      groupsRef().flatMap( _.front.flatMap( _.pre ))
+
+   def preGroup( implicit tx: ProcTxn ) : RichGroup = {
+      preGroupOption getOrElse {
+         val g       = Group( server )
+         val res     = RichGroup( g )
+         res.play( coreGroup, addBefore ) // creates coreGroup if necessary
+         preGroup    = res
+         res
+      }
+   }
+
+   private def preGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+      groupsRef transform { allO =>
+         val all     = allO.get
+         val front   = all.front.get
+         require( front.pre.isEmpty )
+         Some( all.copy( front = Some( front.copy( pre = Some( newGroup )))))
+      }
+   }
+
+   private def postGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
+      groupsRef().flatMap( _.front.flatMap( _.post ))
+
+   def postGroup( implicit tx: ProcTxn ) : RichGroup = {
+      postGroupOption getOrElse {
+         val g       = Group( server )
+         val res     = RichGroup( g )
+         res.play( coreGroup, addAfter ) // creates coreGroup if necessary
+         postGroup   = res
+         res
+      }
+   }
+
+   private def postGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+      groupsRef transform { allO =>
+         val all     = allO.get
+         val front   = all.front.get
+         require( front.post.isEmpty )
+         Some( all.copy( front = Some( front.copy( post = Some( newGroup )))))
       }
    }
 
@@ -221,4 +271,7 @@ extends Proc {
    }
 
    override def toString = "proc(" + name + ")"
+
+   private case class FrontGroups( play: RichGroup, pre: Option[ RichGroup ], post: Option[ RichGroup ])
+   private case class AllGroups( main: RichGroup, front: Option[ FrontGroups ], back: Option[ RichGroup ])
 }

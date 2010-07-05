@@ -111,9 +111,14 @@ trait Proc extends TxnModel[ Proc.Update ] {
     */
    def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) : Unit
 
-   def playGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ]
-   def playGroup( implicit tx: ProcTxn ) : RichGroup
-   def playGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn )
+//   def playGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ]
+//   def playGroup( implicit tx: ProcTxn ) : RichGroup
+//   def playGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn )
+
+   def preGroup( implicit tx: ProcTxn ) : RichGroup
+   def coreGroup( implicit tx: ProcTxn ) : RichGroup
+   def postGroup( implicit tx: ProcTxn ) : RichGroup
+   def runningGroup( implicit tx: ProcTxn ) : RichGroup
 
 //   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
 //   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit

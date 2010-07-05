@@ -78,6 +78,14 @@ abstract class RichNode( val initOnline : Boolean ) extends RichObject {
       tx.add( node.moveToHeadMsg( group.group ), None, audible, Map( isOnline -> true )) // XXX no entry?
    }
 
+   def moveToTail( audible: Boolean, group: RichGroup )( implicit tx: ProcTxn ) {
+      tx.add( node.moveToTailMsg( group.group ), None, audible, Map( isOnline -> true )) // XXX no entry?
+   }
+
+   def moveBefore( audible: Boolean, target: RichNode )( implicit tx: ProcTxn ) {
+      tx.add( node.moveBeforeMsg( target.node ), None, audible, Map( isOnline -> true )) // XXX no entry?
+   }
+
    def moveAfter( audible: Boolean, target: RichNode )( implicit tx: ProcTxn ) {
       tx.add( node.moveAfterMsg( target.node ), None, audible, Map( isOnline -> true )) // XXX no entry?
    }
