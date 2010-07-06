@@ -285,7 +285,7 @@ extends Proc {
       error( "NOT YET IMPLEMENTED" )
    }
 
-   private def createBackground( xfade: XFade )( implicit tx: ProcTxn ) {
+   private def createBackground( xfade: XFade, dispose: Boolean )( implicit tx: ProcTxn ) {
 //      if( !xfade.markSendToBack( this )) return
 
       val main    = group           // ensures that main group exists,
@@ -299,17 +299,17 @@ extends Proc {
       val rsd     = RichSynthDef( server, SynthGraph {
          Line.kr( dur = "$dur".ir, doneAction = freeGroup )
       })
-      val rs      = rsd.play( back, List( "$dur" -> xfade.dur ))
+      val rs      = rsd.play( if( dispose ) main else back, List( "$dur" -> xfade.dur ))
 
       // update groups
-      groupsRef.set( Some( AllGroups( main, None, None, None, Some( back ))))
+      groupsRef.set( if( dispose ) None else Some( AllGroups( main, None, None, None, Some( back ))))
    }
 
    def sendToBack( xfade: XFade )( implicit tx: ProcTxn ) {
       runningRef() foreach { r =>
          if( !xfade.markSendToBack( this )) return
          stop
-         createBackground( xfade )
+         createBackground( xfade, false )
          play
       }
    }
@@ -341,24 +341,47 @@ extends Proc {
 
    private def setRunning( run: Option[ ProcRunning ])( implicit tx: ProcTxn ) {
       touch
-      val u    = update.apply
+      val u    = updateRef()
       val flag = Some( run.isDefined )
-      if( u.playing != flag ) update.set( u.copy( playing = flag ))
+      if( u.playing != flag ) updateRef.set( u.copy( playing = flag ))
       runningRef.set( run )
    }
 
    def stop( implicit tx: ProcTxn ) {
-      runningRef().foreach( r => {
+      runningRef() foreach { r =>
          r.stop
          tx transit match {
             case xfade: XFade => {
                xfade.markSendToBack( this )
-               createBackground( xfade )   // ok to do this repeatedly (might be even necessary)
+               createBackground( xfade, false )   // ok to do this repeatedly (might be even necessary)
             }
             case _ =>
          }
          setRunning( None )
-      })
+      }
+   }
+
+   def dispose( implicit tx: ProcTxn ) {
+      runningRef() foreach { r =>
+         r.stop
+         tx transit match {
+            case Instant => {
+               groupsRef() foreach { all =>
+                  all.main.free()
+                  groupsRef.set( None )
+               }
+            }
+            case xfade: XFade => {
+               xfade.markSendToBack( this )
+               createBackground( xfade, true )
+            }
+            case glide: Glide => {
+               error( "NOT YET SUPPORTED" )
+            }
+         }
+println( "WARNING : Proc.dispose : STILL INCOMPLETE : EDGES ARE NOT YET REMOVED" )
+         ProcDemiurg.removeVertex( proc )
+      }
    }
 
    def isPlaying( implicit tx: ProcTxn ) : Boolean = runningRef().isDefined
@@ -371,7 +394,7 @@ extends Proc {
          }
       })
       touch
-      update.transform( u => u.copy( controls = u.controls + (ctrl -> newValue) ))
+      updateRef.transform( u => u.copy( controls = u.controls + (ctrl -> newValue) ))
    }
 
 //   private[proc] def controlMapped( ctrl: ProcControl, newValue: Option[ ProcControlMapping ])( implicit tx: ProcTxn ) {
@@ -381,7 +404,7 @@ extends Proc {
 
    private[proc] def audioBusConnected( e: ProcEdge )( implicit tx: ProcTxn ) {
       touch
-      update.transform( u => if( u.audioBusesDisconnected.contains( e )) {
+      updateRef.transform( u => if( u.audioBusesDisconnected.contains( e )) {
          u.copy( audioBusesDisconnected = u.audioBusesDisconnected - e )
       } else {
          u.copy( audioBusesConnected = u.audioBusesConnected + e )

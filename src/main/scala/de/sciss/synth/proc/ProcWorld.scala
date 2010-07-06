@@ -35,7 +35,7 @@ import actors.{ Actor, DaemonActor, Future, TIMEOUT }
 import collection.immutable.{ IndexedSeq => IIdxSeq, Seq => ISeq, Set => ISet }
 
 /**
- *    @version 0.12, 02-Jul-10
+ *    @version 0.12, 06-Jul-10
  */
 object ProcWorld {
 //   case class ProcsRemoved( procs: Proc* )
@@ -72,13 +72,24 @@ class ProcWorld extends TxnModel[ ProcWorld.Update ] {
    protected def emptyUpdate = Update( Set.empty, Set.empty )
 
    def topology( implicit tx: ProcTxn ) = topologyRef()
+
    def addProc( p: Proc )( implicit tx: ProcTxn ) {
       touch
       topologyRef.transform( _ addVertex p )
-      update.transform( u => if( u.procsRemoved.contains( p )) {
+      updateRef.transform( u => if( u.procsRemoved.contains( p )) {
           u.copy( procsRemoved = u.procsRemoved - p )
       } else {
           u.copy( procsAdded   = u.procsAdded   + p )
+      })
+   }
+
+   def removeProc( p: Proc )( implicit tx: ProcTxn ) {
+      touch
+      topologyRef.transform( _ removeVertex p )
+      updateRef.transform( u => if( u.procsAdded.contains( p )) {
+          u.copy( procsAdded = u.procsAdded - p )
+      } else {
+          u.copy( procsRemoved = u.procsRemoved + p )
       })
    }
 
@@ -111,6 +122,11 @@ object ProcDemiurg { // ( val server: Server )
       val world = worlds( e.server )
 //      world.topology.transform( _.addVertex( e ))
       world.addProc( e )
+   }
+
+   def removeVertex( e: Proc )( implicit tx: ProcTxn ) : Unit = syn.synchronized {
+      val world = worlds( e.server )
+      world.removeProc( e )
    }
 
    def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) : Unit = syn.synchronized {

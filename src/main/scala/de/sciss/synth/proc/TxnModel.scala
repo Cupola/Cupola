@@ -48,7 +48,7 @@ import collection.immutable.{ Queue => IQueue }
  */
 object TxnModel {
    trait Listener[ T ] {
-      def update( u: T )
+      def updated( u: T )
    }
 }
 
@@ -57,7 +57,7 @@ trait TxnModel[ T ] {
 
    type L = Listener[ T ]
 
-   protected val update       = TxnLocal( emptyUpdate )
+   protected val updateRef    = TxnLocal( emptyUpdate )
    private val touched        = TxnLocal( false )
    private val newListeners   = TxnLocal( IQueue.empty[ L ])
    private val listeners      = Ref( IQueue.empty[ L ])
@@ -79,13 +79,13 @@ trait TxnModel[ T ] {
       if( !touched.swap( true )) {
          tx.beforeCommit( tx0 => { // dispatch preparation
             val parList    = listeners()( tx0 )
-            val parUpd : T = if( parList.nonEmpty ) update()( tx0 ) else null.asInstanceOf[ T ]
+            val parUpd : T = if( parList.nonEmpty ) updateRef()( tx0 ) else null.asInstanceOf[ T ]
             val fullList   = newListeners()( tx0 )
             val fullUpd    = if( fullList.nonEmpty ) fullUpdate( tx0 ) else null.asInstanceOf[ T ]
             if( fullList.nonEmpty ) listeners.transform( _ ++ fullList )( tx0 )
             if( parUpd != null || fullUpd != null ) tx0.afterCommit { tx1 =>
-               parList.foreach(  _.update( parUpd  ))
-               fullList.foreach( _.update( fullUpd ))
+               parList.foreach(  _.updated( parUpd  ))
+               fullList.foreach( _.updated( fullUpd ))
             }
          }, Int.MaxValue )
       }

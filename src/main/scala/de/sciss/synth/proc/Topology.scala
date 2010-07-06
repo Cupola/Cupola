@@ -32,7 +32,7 @@ import collection.immutable.{ IndexedSeq => IIdxSeq, Map => IMap, Seq => ISeq, S
 import collection.mutable.{ HashSet => MHashSet, Set => MSet, Stack => MStack }
 
 /**
- *    @version 0.12, 27-Jun-10
+ *    @version 0.12, 06-Jun-10
  */
 object Topology {
    def empty[ V, E <: Edge[ V ]] = apply( Vector.empty[ V ], 0, Map.empty[ V, ISet[ E ]])
@@ -94,6 +94,14 @@ case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unposi
 // XXX TEST
 //      copy( vertices.patch( unpositioned, Vector( v ), 0 ), unpositioned + 1 )
       copy( v +: vertices, unpositioned + 1 )
+   }
+
+   def removeVertex( v: V ) : T = {
+      val idx = vertices.indexOf( v )
+      if( idx >= 0 ) {
+         val newUnpos = if( idx >= unpositioned ) unpositioned - 1 else unpositioned
+         copy( vertices.patch( idx, Vector.empty, 1 ), newUnpos )
+      } else this
    }
 
    // note: assumes audio rate

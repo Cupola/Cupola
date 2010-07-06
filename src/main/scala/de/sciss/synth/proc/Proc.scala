@@ -63,6 +63,7 @@ trait Proc extends TxnModel[ Proc.Update ] with TxnPlayer {
 //   def stop( implicit tx: ProcTxn ) : Proc
    def isPlaying( implicit tx: ProcTxn ) : Boolean
    def server : Server
+   def dispose( implicit tx: ProcTxn ) : Unit
 
    protected def emptyUpdate = Update( this, None, Map.empty, Set.empty, Set.empty )
    protected def fullUpdate( implicit tx: ProcTxn ) : Update = {
@@ -83,10 +84,13 @@ trait Proc extends TxnModel[ Proc.Update ] with TxnPlayer {
 //   def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichAudioBus
 //   def setAudioBus( name: String, value: RichAudioBus )( implicit tx: ProcTxn ) : Proc
 
-   def params : IIdxSeq[ ProcParam ]
+   def params : IIdxSeq[ ProcParam ]   // XXX change naming
    def param( name: String ) : ProcParam
-   def controls : IIdxSeq[ ProcControl ]
+   def controls: IIdxSeq[ ProcControl ]
    def control( name: String ) : ProcControl
+
+   def apply( name: String )( implicit tx: ProcTxn ) : Double = control( name ).v
+   def update( name: String, value: Double )( implicit tx: ProcTxn ) { control( name ).v_=( value )}
 
    def audioInputs : IIdxSeq[ ProcAudioInput ]
    def audioInput( name: String ) : ProcAudioInput

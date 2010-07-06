@@ -51,7 +51,7 @@ import geom._
 import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
 
 /**
- *    @version 0.11, 02-Jul-10
+ *    @version 0.11, 06-Jul-10
  */
 object NuagesPanel {
    var verbose = false
@@ -366,11 +366,11 @@ with ProcFactoryProvider {
 //   }
 
    private object topoListener extends ProcWorld.Listener {
-      def update( u: ProcWorld.Update ) { defer( topoUpdate( u ))}
+      def updated( u: ProcWorld.Update ) { defer( topoUpdate( u ))}
    }
 
    private object procListener extends Proc.Listener {
-      def update( u: Proc.Update ) { defer( procUpdate( u ))}
+      def updated( u: Proc.Update ) { defer( procUpdate( u ))}
    }
 
 //   private val procListener : Model.Listener = {
@@ -740,7 +740,9 @@ with ProcFactoryProvider {
 //      aggrTable.removeItem( vProc.aggr )
       aggrTable.removeTuple( vProc.aggr ) // XXX OK???
       vProc.params.values.foreach( vParam => {
-         g.removeEdge( vParam.pEdge )
+// WE MUST NOT REMOVE THE EDGES, AS THE REMOVAL OF
+// VPROC.PNODE INCLUDES ALL THE EDGES!
+//         g.removeEdge( vParam.pEdge )
          g.removeNode( vParam.pNode )
       })
       procMap -= vProc.proc

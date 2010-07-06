@@ -45,12 +45,12 @@ val g1 = ngen( "Sine" ) {
 }
 
 val p1 = g1.make
-xfade( 10 ) { p1.control( "freq" ).v = (util.Random.nextInt( 100 ) + 40).midicps }
+xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 100 ) + 40).midicps }
 
-glide( 20 ) { p1.control( "freq" ).v = 441 }; p1.play
-// glide( 20 ) { p1.control( "freq" ).v = 111 }
+glide( 20 ) { p1( "freq" ) = 441 }; p1.play
+// glide( 20 ) { p1( "freq" ) = 111 }
 
-//p1.control( "freq" ).v = 441
+//p1( "freq" ) = 441
 //p1.play
 
 val g2 = ngen( "Mod" ) {
@@ -111,14 +111,14 @@ val p = h.make
 
 // ProcTxn.atomic { implicit t =>
     p.setString( "path", audioDir + "ZahnradGong1 den-L.aif" )
-    p.control( "speed" ).v = 4
+    p( "speed" ) = 4
     p.play
 // }
 
-p.control( "speed" ).v = 0.25
+p( "speed" ) = 0.25
 p.stop
 p.play; p.stop    // this has problems again ...
-
+xfade( 10 ) { p.dispose }
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
@@ -152,7 +152,7 @@ p1 ~> p2; p2 ~> p3
 p1.setString( "path", audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ) // XXX defaults currenty not working 
 p1.play; p2.play; p3.play
 
-p2.setFloat( "freq", -200 )
+p2( "freq" ) = -200
 
 /////
 
@@ -178,12 +178,12 @@ val g1 = ngen( "Noise" ) {
 }
 
 val p1 = g1.make
-xfade( 10 ) { p1.control( "freq" ).v = (util.Random.nextInt( 90 ) + 40).midicps; p1.play }
+xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 90 ) + 40).midicps; p1.play }
 "..."
 xfade( 10 ) { p1.stop }
 
 p1.play
-xfade( 10 ) { p1.control( "freq" ).v = (util.Random.nextInt( 90 ) + 40).midicps }
+xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 90 ) + 40).midicps }
 """
 
       pane.initialCode = Some(
