@@ -89,7 +89,15 @@ extends Proc {
 
 
    def sendToBack( xfade: XFade )( implicit tx: ProcTxn ) {
-      if( !isPlaying || !xfade.markSendToBack( this )) return
+      if( !isPlaying ) return
+      createBackground( xfade )
+      // now re-play
+      stop
+      play
+   }
+
+   private def createBackground( xfade: XFade )( implicit tx: ProcTxn ) {
+      if( !xfade.markSendToBack( this )) return
 
       val g       = group           // ensures that main group exists,
       val all     = groupsRef().get // i.e. that this is valid
@@ -117,11 +125,6 @@ extends Proc {
 
       // update groups
       groupsRef.set( Some( all.copy( front = None, back = Some( bgNew ))))
-
-      // now re-play
-//      setRunning( None )  // don't call stop!
-      stop
-      play
    }
 
    private def pError( name: String ) = throw new ProcParamUnspecifiedException( name )
@@ -266,6 +269,10 @@ extends Proc {
       if( isPlaying ) {
          println( "WARNING: Proc.play - '" + this + "' already playing")
       } else {
+         tx transit match {
+            case xfade: XFade => coreGroup // enforce XXX ugly
+            case _ =>
+         }
          val run = Proc.use( proc ) {
 //               val target = playGroupOption.getOrElse( groupOption.getOrElse( RichGroup.default( server )))
             fact.entry.play
@@ -293,6 +300,10 @@ extends Proc {
 
    def stop( implicit tx: ProcTxn ) {
       runningRef().foreach( r => {
+         tx transit match {
+            case xfade: XFade => createBackground( xfade )
+            case _ =>
+         }
          r.stop
 //         preGroupOption.foreach( _.freeAll )
          setRunning( None )

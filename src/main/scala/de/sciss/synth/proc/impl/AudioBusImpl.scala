@@ -35,7 +35,12 @@ import de.sciss.synth._
 /**
  *    @version 0.11, 05-Jul-10
  */
+object AudioBusImpl {
+   var verbose = true
+}
 abstract class AudioBusImpl /* extends ProcAudioBus */ /* with RichAudioBus.User */ {
+   import AudioBusImpl._ 
+
    protected val busRef : Ref[ Option[ RichAudioBus ]] = Ref( None )
    protected val syntheticRef = Ref( false )
 //      protected val indexRef  = Ref( -1 )
@@ -48,6 +53,7 @@ abstract class AudioBusImpl /* extends ProcAudioBus */ /* with RichAudioBus.User
 
    def edges( implicit tx: ProcTxn ) = edgesRef()
    private[proc] def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) {
+      if( verbose ) println( this.toString + " : addEdge( " + e + " )" )
       edgesRef.transform( _ + e )
       edgeAdded( e )
    }
@@ -58,12 +64,15 @@ abstract class AbstractAudioInputImpl
 extends AudioBusImpl with ProcAudioInput {
    in =>
 
+   import AudioBusImpl._
+
 //      def name = param.name
 
    def bus_=( newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ) {
 //      if( verbose ) println( "IN BUS " + proc.name + " / " + newBus )
       val oldBus = busRef.swap( newBus )
       if( oldBus != newBus ) { // crucial to avoid infinite loops
+         if( verbose ) println( this.toString + " : bus = " + newBus + " (old: " + oldBus + ")" )
 // YYY
 //         oldBus.foreach( _.removeReader( this ))
 //         newBus.foreach( _.addReader( this ))   // invokes busChanged
@@ -74,6 +83,7 @@ extends AudioBusImpl with ProcAudioInput {
    def synthetic_=( newSyn: Boolean )( implicit tx: ProcTxn ) {
       val oldSyn = syntheticRef.swap( newSyn )
       if( oldSyn != newSyn ) {
+         if( verbose ) println( this.toString + " : synthetic = " + newSyn )
          edges.foreach( _.out.synthetic_=( newSyn ))
       }
    }
@@ -89,6 +99,8 @@ extends AudioBusImpl with ProcAudioInput {
 
 class AudioInputImpl( val proc: ProcImpl, val name: String )
 extends AbstractAudioInputImpl {
+   import AudioBusImpl._
+   
    override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
 //      protected val edges = Ref( Set.empty[ ProcEdge ])
@@ -103,9 +115,12 @@ extends AbstractAudioInputImpl {
 //// XXX what now?
 //   }
 
-   def play( implicit tx: ProcTxn ) {}
+   def play( implicit tx: ProcTxn ) {
+      if( verbose ) println( this.toString + " : play" )
+   }
 
    def stop( implicit tx: ProcTxn ) {
+      if( verbose ) println( this.toString + " : stop" )
       bus foreach { rb =>
          tx.transit match {
             case xfade: XFade => bus = None // XXX ??? korrekt
@@ -119,11 +134,14 @@ class AudioOutputImpl( val proc: ProcImpl, val name: String )
 extends AudioBusImpl with ProcAudioOutput {
    out =>
 
+   import AudioBusImpl._
+
 //      def name = param.name
 
    override def toString = "aOut(" + proc.name + " @ " + name + ")"
 
    def play( implicit tx: ProcTxn ) {
+      if( verbose ) println( this.toString + " : play" )
       bus foreach { rb =>
          tx.transit match {
             case Instant                  =>
@@ -133,6 +151,7 @@ extends AudioBusImpl with ProcAudioOutput {
    }
 
    def stop( implicit tx: ProcTxn ) {
+      if( verbose ) println( this.toString + " : stop" )
       bus foreach { rb =>
          tx.transit match {
             case Instant      =>
@@ -176,9 +195,11 @@ extends AudioBusImpl with ProcAudioOutput {
       val writer  = new RichAudioBus.User {
          def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) {}
       }
+      if( verbose ) println( this.toString + " : play : addRW (" + rb + ")" )
       rb.addReader( reader )
       rb.addWriter( writer )
       rs.onEnd { tx0 =>
+         if( verbose ) println( this.toString + " : p    : removeRW (" + rb + ")" )
          rb.removeReader( reader )( tx0 )
          rb.removeWriter( writer )( tx0 )
       }
@@ -195,9 +216,11 @@ extends AudioBusImpl with ProcAudioOutput {
       val writer  = new RichAudioBus.User {
          def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) {}
       }
+      if( verbose ) println( this.toString + " : stop : addRW (" + rb + ")" )
       rb.addReader( reader )
       rb.addWriter( writer )
       rs.onEnd { tx0 =>
+         if( verbose ) println( this.toString + " : s    : removeRW (" + rb + ")" )
          rb.removeReader( reader )( tx0 )
          rb.removeWriter( writer )( tx0 )
       }
@@ -211,6 +234,7 @@ extends AudioBusImpl with ProcAudioOutput {
 //      if( verbose ) println( "OUT BUS " + proc.name + " / " + newBus )
       val oldBus = busRef.swap( newBus )
       if( oldBus != newBus ) { // crucial to avoid infinite loops
+         if( verbose ) println( this.toString + " : bus = " + newBus + " (old: " + oldBus + ")" )
 // YYY
 //         oldBus.foreach( _.removeWriter( this ))
 //         newBus.foreach( _.addWriter( this ))   // invokes busChanged
