@@ -31,13 +31,13 @@ package de.sciss.synth.proc
 import de.sciss.synth.{ AudioBus, Group, Model }
 
 /**
- *    @version 0.11, 01-Jul-10
+ *    @version 0.11, 05-Jul-10
  */
-object ProcRunning {
-   case object Stopped
-}
+//object ProcRunning {
+//   case object Stopped
+//}
 
-trait ProcRunning extends Model {
+trait ProcRunning /* extends Model*/ {
    def stop( implicit tx: ProcTxn ) : Unit
    def setFloat( name: String, value: Float )( implicit tx: ProcTxn ) : Unit
    def setString( name: String, value: String )( implicit tx: ProcTxn ) : Unit

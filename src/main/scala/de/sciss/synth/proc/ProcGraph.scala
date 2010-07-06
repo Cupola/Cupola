@@ -33,6 +33,7 @@ import de.sciss.synth.AddAction
 /**
  *    @version 0.12, 01-Jul-10
  */
+// XXX THIS SHOULD EXTEND TxnPlayer AND WE KILL OFF ProcRunning
 trait ProcEntry {
 //   def play( target: RichGroup )( implicit tx: ProcTxn ) : ProcRunning
    def play( implicit tx: ProcTxn ) : ProcRunning

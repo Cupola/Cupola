@@ -23,12 +23,7 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
       }
    }
 
-   /*
-    *    Since the mappings might create the playGroup,
-    *    and Proc will have running = None _during_ this
-    *    call, it is crucial not to pass in a target
-    *    node, but instead have the graphbuilder determine
-    *    the target!
+   /**
     */
    def play : ProcRunning = {
       implicit val t = tx
@@ -49,38 +44,52 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
             } else res1
          }
 
-         val server     = p.server
-         val rsd        = RichSynthDef( server, g )
-         val bufSeq     = buffers.toSeq
-         val bufs       = bufSeq.map( _.create( server ))
+         val server        = p.server
+         val rsd           = RichSynthDef( server, g )
+         val bufSeq        = buffers.toSeq
+         val bufs          = bufSeq.map( _.create( server ))
 
-         var setMaps    = Vector.empty[ ControlSetMap ]  // warning: rs.newMsg doesn't support setn style! XXX
-//            var kbusMaps   = IQueue.empty[ ControlKBusMap ]
-//            var abusMaps   = IQueue.empty[ ControlABusMap ]
-         var mappings   = IQueue.empty[ ControlMapping ]
-//Debug.breakpoint
+         var setMaps       = Vector.empty[ ControlSetMap ]  // warning: rs.newMsg doesn't support setn style! XXX
+         var accessories   = IQueue.empty[ TxnPlayer ]
+         var audioInputs   = IQueue.empty[ (String, RichAudioBus) ]
+         var audioOutputs  = IQueue.empty[ (String, RichAudioBus) ]
+         var useCore       = false
+
          usedParams.foreach( _ match {
             case pFloat: ProcParamFloat => {
                val name = pFloat.name
                val cv    = p.control( name ).cv
                cv.mapping match {
                   case None => setMaps :+= SingleControlSetMap( name, cv.target.toFloat )
-                  case Some( m ) => mappings = mappings.enqueue( m )
+                  case Some( m ) => {
+                     accessories = accessories.enqueue( m )
+                     useCore     = true
+                  }
                }
             }
+//            case pAudioBus: ProcParamAudioInput => {
+//               setMaps :+= SingleControlSetMap(
+//                  pAudioBus.name, p.audioInput( pAudioBus.name ).bus.get.busOption.get.index )
+//            }
             case pAudioBus: ProcParamAudioInput => {
-               setMaps :+= SingleControlSetMap(
-                  pAudioBus.name, p.audioInput( pAudioBus.name ).bus.get.busOption.get.index )
+               val b       = p.audioInput( pAudioBus.name )
+               accessories = accessories.enqueue( b )
+               audioInputs = audioInputs enqueue (pAudioBus.name -> b.bus.get)
             }
+//            case pAudioBus: ProcParamAudioOutput => {
+//               setMaps :+= SingleControlSetMap(
+//                  pAudioBus.name, p.audioOutput( pAudioBus.name ).bus.get.busOption.get.index )
+//            }
             case pAudioBus: ProcParamAudioOutput => {
-               setMaps :+= SingleControlSetMap(
-                  pAudioBus.name, p.audioOutput( pAudioBus.name ).bus.get.busOption.get.index )
+               val b       = p.audioOutput( pAudioBus.name )
+               accessories  = accessories.enqueue( b )
+               audioOutputs = audioOutputs enqueue (pAudioBus.name -> b.bus.get)
             }
             case x => println( "Ooops. what parameter is this? " + x ) // scalac doesn't check exhaustion...
          })
          // crucial here to ensure that group is
          // created and used, if we expect mappings.
-         val target = if( mappings.nonEmpty ) { // XXX we should find another solution for this dependancy !!!
+         val target = if( useCore ) { // XXX we should find another solution for this dependancy !!!
             p.coreGroup
 //            p.playGroupOption.getOrElse( p.group )
          } else {
@@ -94,12 +103,18 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
          val rs = rsd.play( target, setMaps, addToTail, bufs )
 //            if( kbusMaps.nonEmpty ) rs.mapn(  true, kbusMaps: _* )
 //            if( abusMaps.nonEmpty ) rs.mapan( true, abusMaps: _* )
-         mappings.foreach( _.play ) // XXX where's the stop??
+         accessories.foreach( _.play ) // XXX where's the stop??
+         val audioReaders = audioInputs.map(  tup => AudioBusNodeSetter.reader( tup._1, tup._2, rs ).add )
+         val audioWriters = audioOutputs.map( tup => AudioBusNodeSetter.reader( tup._1, tup._2, rs ).add )
+         rs.onEnd { tx0 =>
+            audioReaders.foreach( _.remove )
+            audioWriters.foreach( _.remove )
+         }
          bufsZipped.foreach( tup => {
             val (b, rb) = tup
             b.disposeWith( rb, rs )        // XXX should also go in RunningGraphImpl
          })
-         new RunningGraphImpl( rs, mappings )
+         new RunningGraphImpl( rs, accessories )
       }
    }
 }

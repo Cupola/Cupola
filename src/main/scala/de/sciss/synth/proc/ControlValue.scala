@@ -24,9 +24,7 @@ case class ControlValue( target: Double, mapping: Option[ ControlMapping ]) {
    }
 }
 
-sealed trait ControlMapping {
-   def play( implicit tx: ProcTxn ) : Unit
-   def stop( implicit tx: ProcTxn ) : Unit
+sealed trait ControlMapping extends TxnPlayer {
    def output( implicit tx: ProcTxn ) : RichBus
 }
 

@@ -30,10 +30,11 @@ package de.sciss.synth.proc
 
 import de.sciss.synth._
 import collection.breakOut
+import collection.immutable.{ Queue => IQueue }
 import ProcTxn._
 
 /**
- *    @version 0.11, 21-Jun-10
+ *    @version 0.11, 05-Jul-10
  */
 trait RichObject { def server: Server }
 
@@ -54,6 +55,23 @@ case class RichBuffer( buf: Buffer ) extends RichObject {
 
 abstract class RichNode( val initOnline : Boolean ) extends RichObject {
    val isOnline: RichState = new RichState( "isOnline", initOnline )
+   private val onEndFuns   = Ref( IQueue.empty[ Function1[ ProcTxn, Unit ]])
+
+   // ---- constructor ----
+   node.onEnd {
+      ProcTxn.atomic { implicit tx =>
+         val wasOnline  = isOnline.swap( false )
+         val funs       = onEndFuns.swap( IQueue.empty )
+         funs.foreach( f => try {
+            f( tx )
+         } catch { case e => e.printStackTrace })
+      }
+   }
+
+   def onEnd( fun: ProcTxn => Unit )( implicit tx: ProcTxn ) {
+      onEndFuns.transform( _ enqueue fun )
+   }
+
    def node: Node
 
    def server = node.server

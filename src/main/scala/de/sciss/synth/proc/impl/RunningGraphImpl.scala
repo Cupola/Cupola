@@ -32,22 +32,26 @@ import de.sciss.synth.AudioBus
 import collection.immutable.{ Seq => ISeq }
 import de.sciss.synth.proc._
 
-class RunningGraphImpl( rs: RichSynth, mappings: ISeq[ ControlMapping ]) extends ProcRunning {
-   import ProcRunning._
+class RunningGraphImpl( rs: RichSynth, accessories: ISeq[ TxnPlayer ]) extends ProcRunning {
+//   import ProcRunning._
 
-   rs.synth.onEnd {
-      ProcTxn.atomic { implicit tx =>
-//         if( rs.isOnline.get ) {
-            mappings.foreach( _.stop )
-//            dispatch( Stopped )
-//         }
-      }
-      dispatch( Stopped ) // XXX eventually do away with this
-   }
+//   rs.synth.onEnd {
+//      ProcTxn.atomic { implicit tx =>
+////         if( rs.isOnline.get ) {
+//            mappings.foreach( _.stop )
+////            dispatch( Stopped )
+////         }
+//      }
+//      dispatch( Stopped ) // XXX eventually do away with this
+//   }
 
    def stop( implicit tx: ProcTxn ) = {
-      rs.free()
-      mappings.foreach( _.stop )
+      tx transit match {
+         case Instant      => rs.free()
+         case glide: Glide => error( "NOT YET SUPPORTED" )
+         case xfade: XFade => // nada. Proc calls setGroup already
+      }
+      accessories.foreach( _.stop )
    }
 
    def setString( name: String, value: String )( implicit tx: ProcTxn ) { error( "not yet supported" )}

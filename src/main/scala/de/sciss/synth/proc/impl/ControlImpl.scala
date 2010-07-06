@@ -272,6 +272,13 @@ extends AbstractAudioInputImpl with ControlMappingImpl with ControlABusMapping {
       addEdge( edge )
    }
 
+   def sendToBack( xfade: XFade, backGroup: RichGroup )( implicit tx: ProcTxn ) {
+// XXX what now?
+//      death.node.onEnd {
+//
+//      }
+   }
+
    /**
     *    That means the mapping source bus changed.
     *    If numChannels changes we need to rebuild.

@@ -32,9 +32,9 @@ import de.sciss.synth.{ Bus, Rate }
 import collection.immutable.{ Set => ISet }
 
 /**
- *    @version 0.12, 03-Jul-10
+ *    @version 0.12, 05-Jul-10
  */
-sealed trait ProcAudioBus {
+sealed trait ProcAudioBus extends TxnPlayer {
    def proc : Proc
    def bus( implicit tx: ProcTxn ): Option[ RichAudioBus ]
    def bus_=( newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ): Unit
@@ -59,10 +59,14 @@ trait ProcAudioOutput extends ProcAudioBus {
    def ~>  ( in: ProcAudioInput )( implicit tx: ProcTxn ) : Proc
    def ~/> ( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioOutput
    def ~|  ( insert: (ProcAudioInput, ProcAudioOutput) )( implicit tx: ProcTxn ) : ProcAudioInsertion
+
+//   def sendToBack( xfade: XFade, backGroup: RichGroup )( implicit tx: ProcTxn ) : Unit
 }
 
 trait ProcAudioInput extends ProcAudioBus {
    private[proc] def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) : Unit
+
+//   def sendToBack( xfade: XFade, backGroup: RichGroup )( implicit tx: ProcTxn ) : Unit
 }
 
 trait ProcAudioInsertion {

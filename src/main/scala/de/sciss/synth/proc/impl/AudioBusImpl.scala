@@ -29,9 +29,13 @@
 package de.sciss.synth.proc.impl
 
 import de.sciss.synth.proc._
-import de.sciss.synth.{audio, AudioBus}
+import de.sciss.synth.ugen.{EnvGen, ReplaceOut, In}
+import de.sciss.synth._
 
-abstract class AudioBusImpl extends /* ProcAudioBus with */ RichAudioBus.User {
+/**
+ *    @version 0.11, 05-Jul-10
+ */
+abstract class AudioBusImpl /* extends ProcAudioBus */ /* with RichAudioBus.User */ {
    protected val busRef : Ref[ Option[ RichAudioBus ]] = Ref( None )
    protected val syntheticRef = Ref( false )
 //      protected val indexRef  = Ref( -1 )
@@ -60,8 +64,9 @@ extends AudioBusImpl with ProcAudioInput {
 //      if( verbose ) println( "IN BUS " + proc.name + " / " + newBus )
       val oldBus = busRef.swap( newBus )
       if( oldBus != newBus ) { // crucial to avoid infinite loops
-         oldBus.foreach( _.removeReader( this ))
-         newBus.foreach( _.addReader( this ))   // invokes busChanged
+// YYY
+//         oldBus.foreach( _.removeReader( this ))
+//         newBus.foreach( _.addReader( this ))   // invokes busChanged
          edges.foreach( _.out.bus_=( newBus ))
       }
    }
@@ -88,10 +93,25 @@ extends AbstractAudioInputImpl {
 
 //      protected val edges = Ref( Set.empty[ ProcEdge ])
 
-   def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
-//      if( verbose ) println( "IN INDEX " + proc.name + " / " + bus )
-//         indexRef.set( bus.index )
-      proc.busParamChanged( this, bus )
+//   def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
+////      if( verbose ) println( "IN INDEX " + proc.name + " / " + bus )
+////         indexRef.set( bus.index )
+//      proc.busParamChanged( this, bus )
+//   }
+
+//   def sendToBack( xfade: XFade, backGroup: RichGroup )( implicit tx: ProcTxn ) {
+//// XXX what now?
+//   }
+
+   def play( implicit tx: ProcTxn ) {}
+
+   def stop( implicit tx: ProcTxn ) {
+      bus foreach { rb =>
+         tx.transit match {
+            case xfade: XFade => bus = None // XXX ??? korrekt
+            case _ =>
+         }
+      }
    }
 }
 
@@ -103,12 +123,85 @@ extends AudioBusImpl with ProcAudioOutput {
 
    override def toString = "aOut(" + proc.name + " @ " + name + ")"
 
-//      protected val edges     = Ref.withObserver( Set.empty[ ProcEdge ]) { (oldSet, newSet) =>
-//         val edgesRemoved     = oldSet.diff( newSet )
-//         val edgesAdded       = newSet.diff( oldSet )
-//         if( edgesRemoved.nonEmpty ) proc.dispatchAudioBusesDisconnected( edgesRemoved.toSeq: _* )
-//         if( edgesAdded.nonEmpty )   proc.dispatchAudioBusesConnected(    edgesAdded.toSeq:   _* )
-//      }
+   def play( implicit tx: ProcTxn ) {
+      bus foreach { rb =>
+         tx.transit match {
+            case Instant                  =>
+            case d: DurationalTransition  => play( d, rb )
+         }
+      }
+   }
+
+   def stop( implicit tx: ProcTxn ) {
+      bus foreach { rb =>
+         tx.transit match {
+            case Instant      =>
+            case xfade: XFade => {
+               stop( xfade, rb, proc.backGroup, doNothing )
+               bus = None // XXX ??? korrekt
+            }
+            case glide: Glide => {
+               stop( glide, rb, proc.postGroup, freeSelf )
+            }
+         }
+      }
+   }
+
+   private def fadeGraph( numChannels: Int ) = SynthGraph {
+      // a bit "pricey" but smooth
+      // ; alternative worth checking out: using curve -4 (fadein) resp. +4 (fadeout) and .squared
+      // (xfade produces equal power curve)
+      val line    = EnvGen.kr( Env( "$start".ir, List( EnvSeg( 1, "$stop".ir, sinShape ))),
+         timeScale = "$dur".ir, doneAction = "$done".ir ) //.squared
+      val idx      = "$bus".kr
+      ReplaceOut.ar( idx, In.ar( idx, numChannels ) * line )
+   }
+
+//   private def fadeOutGraph( numChannels: Int ) = SynthGraph {
+//      // a bit "pricey" but smooth
+//      val line    = EnvGen.kr( Env( 1, List( EnvSeg( 1, 0, sinShape ))),
+//         timeScale = "$dur".ir, doneAction = "$done".ir ).squared
+//      val in      = "$in".kr
+//      ReplaceOut.ar( in, In.ar( in, numChannels ) * line )
+//   }
+
+   private def play( d: DurationalTransition, rb: RichAudioBus )( implicit tx: ProcTxn ) {
+      val rg   = proc.postGroup
+      val rsd  = RichSynthDef( rg.server, fadeGraph( rb.numChannels ))
+      val rs   = rsd.play( rg, List( "$start" -> 0, "$stop" -> 1, "$dur" -> d.dur,
+                                     "$done" -> freeSelf.id ), addToTail )
+      val reader  = new RichAudioBus.User {
+         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) { rs.set( true, "$bus" -> b.index )( tx0 )}
+      }
+      val writer  = new RichAudioBus.User {
+         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) {}
+      }
+      rb.addReader( reader )
+      rb.addWriter( writer )
+      rs.onEnd { tx0 =>
+         rb.removeReader( reader )( tx0 )
+         rb.removeWriter( writer )( tx0 )
+      }
+   }
+
+   private def stop( d: DurationalTransition, rb: RichAudioBus, rg: RichGroup, doneAction: DoneAction )
+                   ( implicit tx: ProcTxn ) {
+      val rsd  = RichSynthDef( rg.server, fadeGraph( rb.numChannels ))
+      val rs   = rsd.play( rg, List( "$start" -> 1, "$stop" -> 0, "$dur" -> d.dur,
+                                     "$done" -> doneAction.id ), addToTail )
+      val reader  = new RichAudioBus.User {
+         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) { rs.set( true, "$bus" -> b.index )( tx0 )}
+      }
+      val writer  = new RichAudioBus.User {
+         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) {}
+      }
+      rb.addReader( reader )
+      rb.addWriter( writer )
+      rs.onEnd { tx0 =>
+         rb.removeReader( reader )( tx0 )
+         rb.removeWriter( writer )( tx0 )
+      }
+   }
 
    protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) {
       proc.audioBusConnected( e )
@@ -118,8 +211,9 @@ extends AudioBusImpl with ProcAudioOutput {
 //      if( verbose ) println( "OUT BUS " + proc.name + " / " + newBus )
       val oldBus = busRef.swap( newBus )
       if( oldBus != newBus ) { // crucial to avoid infinite loops
-         oldBus.foreach( _.removeWriter( this ))
-         newBus.foreach( _.addWriter( this ))   // invokes busChanged
+// YYY
+//         oldBus.foreach( _.removeWriter( this ))
+//         newBus.foreach( _.addWriter( this ))   // invokes busChanged
          edges.foreach( _.in.bus_=( newBus ))
       }
    }

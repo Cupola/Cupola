@@ -105,17 +105,22 @@ extends Proc {
       }
       bgOldO.foreach( _.moveToHead( true, bgNew ))
 
-      // OK THIS IS JUST A TEST
+      // XXX graphs like this could be lazy vals
+      // in the companion object
       val rsd     = RichSynthDef( server, SynthGraph {
          Line.kr( dur = "$dur".ir, doneAction = freeGroup )
       })
       val rs      = rsd.play( bgNew, List( "$dur" -> xfade.dur ))
+//      audioInputs.foreach(  _.sendToBack( xfade, bgNew ))
+//      audioOutputs.foreach( _.sendToBack( xfade, bgNew ))
+//      // XXX missing: mapped controls
 
       // update groups
       groupsRef.set( Some( all.copy( front = None, back = Some( bgNew ))))
 
       // now re-play
-      setRunning( None )  // don't call stop!
+//      setRunning( None )  // don't call stop!
+      stop
       play
    }
 
@@ -132,6 +137,9 @@ extends Proc {
          res
       }
    }
+
+   // callers should know what they are doing... XXX
+   def backGroup( implicit tx: ProcTxn ) : RichGroup = groupsRef().get.back.get
 
    def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
       groupsRef.transform( _ map { all =>
@@ -254,7 +262,7 @@ extends Proc {
       error( "NOT YET IMPLEMENTED" )
    }
 
-   def play( implicit tx: ProcTxn ) : Proc = {
+   def play( implicit tx: ProcTxn ) {
       if( isPlaying ) {
          println( "WARNING: Proc.play - '" + this + "' already playing")
       } else {
@@ -263,17 +271,16 @@ extends Proc {
             fact.entry.play
          }
          val runO = Some( run )
-         lazy val l: Model.Listener = {
-            case ProcRunning.Stopped => {
-               run.removeListener( l )
-               ProcTxn.atomic { t2 => if( runningRef()( t2 ) == runO ) setRunning( None )( t2 )}
-            }
-            case m => println( "Ooooops : " + m )
-         }
-         run.addListener( l )
+//         lazy val l: Model.Listener = {
+//            case ProcRunning.Stopped => {
+//               run.removeListener( l )
+//               ProcTxn.atomic { t2 => if( runningRef()( t2 ) == runO ) setRunning( None )( t2 )}
+//            }
+//            case m => println( "Ooooops : " + m )
+//         }
+//         run.addListener( l )
          setRunning( runO )
       }
-      this
    }
 
    private def setRunning( run: Option[ ProcRunning ])( implicit tx: ProcTxn ) {
@@ -284,13 +291,12 @@ extends Proc {
       runningRef.set( run )
    }
 
-   def stop( implicit tx: ProcTxn ) : Proc = {
+   def stop( implicit tx: ProcTxn ) {
       runningRef().foreach( r => {
          r.stop
 //         preGroupOption.foreach( _.freeAll )
          setRunning( None )
       })
-      this
    }
 
    def isPlaying( implicit tx: ProcTxn ) : Boolean = runningRef().isDefined

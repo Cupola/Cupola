@@ -55,12 +55,12 @@ object Proc extends ThreadLocalObject[ Proc ] {
    type Listener = TxnModel.Listener[ Update ]
 }
 
-trait Proc extends TxnModel[ Proc.Update ] {
+trait Proc extends TxnModel[ Proc.Update ] with TxnPlayer {
    import Proc._
    
    def name : String
-   def play( implicit tx: ProcTxn ) : Proc
-   def stop( implicit tx: ProcTxn ) : Proc
+//   def play( implicit tx: ProcTxn ) : Proc
+//   def stop( implicit tx: ProcTxn ) : Proc
    def isPlaying( implicit tx: ProcTxn ) : Boolean
    def server : Server
 
@@ -119,6 +119,7 @@ trait Proc extends TxnModel[ Proc.Update ] {
    def coreGroup( implicit tx: ProcTxn ) : RichGroup
    def postGroup( implicit tx: ProcTxn ) : RichGroup
    def runningGroup( implicit tx: ProcTxn ) : RichGroup
+   def backGroup( implicit tx: ProcTxn ) : RichGroup
 
 //   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
 //   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit
