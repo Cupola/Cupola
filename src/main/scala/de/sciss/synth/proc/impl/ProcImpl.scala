@@ -84,47 +84,23 @@ extends Proc {
        pStringValues().get( p ).getOrElse( pError( name ))
    }
 
-   def runningGroup( implicit tx: ProcTxn ) : RichGroup =
-      groupsRef().map( all => all.front.map( _.core ).getOrElse( all.main )).getOrElse( RichGroup.default( server ))
+//   def runningGroup( implicit tx: ProcTxn ) : RichGroup =
+//      groupsRef().map( all => all.front.map( _.core ).getOrElse( all.main )).getOrElse( RichGroup.default( server ))
 
-
-   def sendToBack( xfade: XFade )( implicit tx: ProcTxn ) {
-      if( !isPlaying ) return
-      createBackground( xfade )
-      // now re-play
-      stop
-      play
-   }
-
-   private def createBackground( xfade: XFade )( implicit tx: ProcTxn ) {
-      if( !xfade.markSendToBack( this )) return
-
-      val g       = group           // ensures that main group exists,
-      val all     = groupsRef().get // i.e. that this is valid
-      val bgOldO  = all.back
-      val bgNew   = RichGroup( Group( server ))
-      bgNew.play( g, addToHead )
-      all.front map { f =>
-         f.core.moveToTail( true, bgNew )
-         f.pre.foreach( _.moveBefore( true, f.core ))
-         f.post.foreach( _.moveAfter( true, f.core ))
+   def runningTarget( requireGroup: Boolean )( implicit tx: ProcTxn ) : (RichNode, AddAction) = {
+      groupsRef() map { all =>
+         all.core map { core =>
+            core -> addToHead
+         } getOrElse { all.pre map { pre =>
+            pre -> addAfter
+         } getOrElse { all.post map { post =>
+            post -> addBefore
+         } getOrElse {
+            all.main -> addToTail
+         }}}
       } getOrElse {
-         runningRef().foreach( _.setGroup( bgNew ))
+         RichGroup.default( server ) -> addToHead
       }
-      bgOldO.foreach( _.moveToHead( true, bgNew ))
-
-      // XXX graphs like this could be lazy vals
-      // in the companion object
-      val rsd     = RichSynthDef( server, SynthGraph {
-         Line.kr( dur = "$dur".ir, doneAction = freeGroup )
-      })
-      val rs      = rsd.play( bgNew, List( "$dur" -> xfade.dur ))
-//      audioInputs.foreach(  _.sendToBack( xfade, bgNew ))
-//      audioOutputs.foreach( _.sendToBack( xfade, bgNew ))
-//      // XXX missing: mapped controls
-
-      // update groups
-      groupsRef.set( Some( all.copy( front = None, back = Some( bgNew ))))
    }
 
    private def pError( name: String ) = throw new ProcParamUnspecifiedException( name )
@@ -141,91 +117,135 @@ extends Proc {
       }
    }
 
-   // callers should know what they are doing... XXX
-   def backGroup( implicit tx: ProcTxn ) : RichGroup = groupsRef().get.back.get
+//   // callers should know what they are doing... XXX
+//   def backGroup( implicit tx: ProcTxn ) : RichGroup = groupsRef().get.back.get
+//
+//   def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+//      groupsRef.transform( _ map { all =>
+//         all.front.foreach( f => {
+//            f.core.moveToTail( true, newGroup )
+//            f.pre.foreach(  _.moveBefore( true, f.core ))
+//            f.post.foreach( _.moveAfter(  true, f.core ))
+//         })
+//         all.back.foreach( _.moveToHead( true, newGroup ))
+//         all.main.free( true ) // que se puede...?
+//         all.copy( main = newGroup )
+//      } orElse {
+//         val all = AllGroups( newGroup, None, None )
+//         runningRef().foreach( _.setGroup( newGroup ))
+//         Some( all )
+//      })
+//   }
 
    def group_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
       groupsRef.transform( _ map { all =>
-         all.front.foreach( f => {
-            f.core.moveToTail( true, newGroup )
-            f.pre.foreach(  _.moveBefore( true, f.core ))
-            f.post.foreach( _.moveAfter(  true, f.core ))
-         })
-         all.back.foreach( _.moveToHead( true, newGroup ))
+         moveAllTo( all, newGroup )
          all.main.free( true ) // que se puede...?
          all.copy( main = newGroup )
       } orElse {
-         val all = AllGroups( newGroup, None, None )
+         val all = AllGroups( newGroup, None, None, None, None )
          runningRef().foreach( _.setGroup( newGroup ))
          Some( all )
       })
    }
 
-   private def coreGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
-      groupsRef().flatMap( _.front.map( _.core ))
+   private def moveAllTo( all: AllGroups, newGroup: RichGroup )( implicit tx: ProcTxn ) {
+      all.core orElse runningRef().map( _.anchorNode ) map { core =>
+         core.moveToTail( true, newGroup )
+         all.pre.foreach(  _.moveBefore( true, core ))
+         all.post.foreach( _.moveAfter(  true, core ))
+      } getOrElse {
+         all.post.map { post =>
+            post.moveToTail( true, newGroup )
+            all.pre.foreach( _.moveBefore( true, post ))
+         } getOrElse {
+            all.pre.foreach( _.moveToTail( true, newGroup ))
+         }
+      }
+      all.back.foreach( _.moveToHeadIfOnline( newGroup )) // ifOnline !
+   }
+
+   private def coreGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupsRef().flatMap( _.core )
 
    def coreGroup( implicit tx: ProcTxn ) : RichGroup = {
       coreGroupOption getOrElse {
          val g       = Group( server )
          val res     = RichGroup( g )
-         res.play( group ) // creates group if necessary
-         coreGroup   = res
+         val main    = group       // creates group if necessary
+         val all     = groupsRef().get
+         val (target, addAction) = all.pre map { pre =>
+            pre -> addAfter
+         } getOrElse { all.post map { post =>
+            post -> addBefore
+         } getOrElse {
+            main -> addToTail
+         }}
+         res.play( target, addAction )
+         runningRef().foreach( _.setGroup( res ))
+         groupsRef.set( Some( all.copy( core = Some( res ))))
          res
       }
    }
 
-   private def coreGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
-      groupsRef transform { allO =>
-         val all = allO.get
-         require( all.front.isEmpty )
-         Some( all.copy( front = Some( FrontGroups( newGroup, None, None ))))
-      }
-      runningRef().foreach( _.setGroup( newGroup ))
-   }
-
-   private def preGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
-      groupsRef().flatMap( _.front.flatMap( _.pre ))
+   private def preGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupsRef().flatMap( _.pre )
 
    def preGroup( implicit tx: ProcTxn ) : RichGroup = {
       preGroupOption getOrElse {
          val g       = Group( server )
          val res     = RichGroup( g )
-         res.play( coreGroup, addBefore ) // creates coreGroup if necessary
-         preGroup    = res
+         val main    = group       // creates group if necessary
+         val all     = groupsRef().get
+         val (target, addAction) = all.core orElse runningRef().map( _.anchorNode ) map { core =>
+            core -> addBefore
+         } getOrElse { all.post map { post =>
+            post -> addBefore
+         } getOrElse {
+            main -> addToTail
+         }}
+         res.play( target, addAction )
+         groupsRef.set( Some( all.copy( pre = Some( res ))))
          res
       }
    }
 
-   private def preGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
-      groupsRef transform { allO =>
-         val all     = allO.get
-         val front   = all.front.get
-         require( front.pre.isEmpty )
-         Some( all.copy( front = Some( front.copy( pre = Some( newGroup )))))
-      }
-   }
+//   private def preGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+//      groupsRef transform { allO =>
+//         val all     = allO.get
+//         val front   = all.front.get
+//         require( front.pre.isEmpty )
+//         Some( all.copy( front = Some( front.copy( pre = Some( newGroup )))))
+//      }
+//   }
 
-   private def postGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
-      groupsRef().flatMap( _.front.flatMap( _.post ))
+   private def postGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupsRef().flatMap( _.post )
 
    def postGroup( implicit tx: ProcTxn ) : RichGroup = {
       postGroupOption getOrElse {
          val g       = Group( server )
          val res     = RichGroup( g )
-         res.play( coreGroup, addAfter ) // creates coreGroup if necessary
-         postGroup   = res
+         val main    = group       // creates group if necessary
+         val all     = groupsRef().get
+         val (target, addAction) = all.core orElse runningRef().map( _.anchorNode ) map { core =>
+            core -> addAfter
+         } getOrElse { all.pre map { pre =>
+            pre -> addAfter
+         } getOrElse {
+            main -> addToTail
+         }}
+         res.play( target, addAction )
+         groupsRef.set( Some( all.copy( post = Some( res ))))
          res
       }
    }
 
-   private def postGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
-      groupsRef transform { allO =>
-         val all     = allO.get
-         val front   = all.front.get
-         require( front.post.isEmpty )
-         Some( all.copy( front = Some( front.copy( post = Some( newGroup )))))
-      }
-   }
+//   private def postGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+//      groupsRef transform { allO =>
+//         val all     = allO.get
+//         val front   = all.front.get
+//         require( front.post.isEmpty )
+//         Some( all.copy( front = Some( front.copy( post = Some( newGroup )))))
+//      }
+//   }
 
 //   private def backGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] =
 //      groupsRef().flatMap( _.back )
@@ -247,14 +267,14 @@ extends Proc {
 //         Some( all.copy( back = Some( newGroup )))
 //      }
 //   }
-
-   private def backGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
-      groupsRef transform { allO =>
-         val all = allO.get
-         require( all.back.isEmpty )
-         Some( all.copy( back = Some( newGroup )))
-      }
-   }
+//
+//   private def backGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn ) {
+//      groupsRef transform { allO =>
+//         val all = allO.get
+//         require( all.back.isEmpty )
+//         Some( all.copy( back = Some( newGroup )))
+//      }
+//   }
 
    private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) {
       error( "NOT YET IMPLEMENTED" )
@@ -263,6 +283,35 @@ extends Proc {
    private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput,
                              insert: (ProcAudioInput, ProcAudioOutput) ) {
       error( "NOT YET IMPLEMENTED" )
+   }
+
+   private def createBackground( xfade: XFade )( implicit tx: ProcTxn ) {
+//      if( !xfade.markSendToBack( this )) return
+
+      val main    = group           // ensures that main group exists,
+      val all     = groupsRef().get // i.e. that this is valid
+      val back    = RichGroup( Group( server ))
+      back.play( main, addToHead )
+      moveAllTo( all, back )
+
+      // XXX graphs like this could be lazy vals
+      // in the companion object
+      val rsd     = RichSynthDef( server, SynthGraph {
+         Line.kr( dur = "$dur".ir, doneAction = freeGroup )
+      })
+      val rs      = rsd.play( back, List( "$dur" -> xfade.dur ))
+
+      // update groups
+      groupsRef.set( Some( AllGroups( main, None, None, None, Some( back ))))
+   }
+
+   def sendToBack( xfade: XFade )( implicit tx: ProcTxn ) {
+      runningRef() foreach { r =>
+         if( !xfade.markSendToBack( this )) return
+         stop
+         createBackground( xfade )
+         play
+      }
    }
 
    def play( implicit tx: ProcTxn ) {
@@ -300,12 +349,14 @@ extends Proc {
 
    def stop( implicit tx: ProcTxn ) {
       runningRef().foreach( r => {
+         r.stop
          tx transit match {
-            case xfade: XFade => createBackground( xfade )
+            case xfade: XFade => {
+               xfade.markSendToBack( this )
+               createBackground( xfade )   // ok to do this repeatedly (might be even necessary)
+            }
             case _ =>
          }
-         r.stop
-//         preGroupOption.foreach( _.freeAll )
          setRunning( None )
       })
    }
@@ -344,6 +395,8 @@ extends Proc {
 
    override def toString = "proc(" + name + ")"
 
-   private case class FrontGroups( core: RichGroup, pre: Option[ RichGroup ], post: Option[ RichGroup ])
-   private case class AllGroups( main: RichGroup, front: Option[ FrontGroups ], back: Option[ RichGroup ])
+//   private case class FrontGroups( core: Option[ RichGroup ], pre: Option[ RichGroup ], post: Option[ RichGroup ])
+//   private case class AllGroups( main: RichGroup, front: FrontGroups, back: Option[ RichGroup ])
+   private case class AllGroups( main: RichGroup, pre: Option[ RichGroup ], core: Option[ RichGroup ],
+                                 post: Option[ RichGroup ], back: Option[ RichGroup ])
 }

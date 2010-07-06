@@ -45,6 +45,8 @@ class RunningGraphImpl( rs: RichSynth, accessories: ISeq[ TxnPlayer ]) extends P
 //      dispatch( Stopped ) // XXX eventually do away with this
 //   }
 
+   def anchorNode( implicit tx: ProcTxn ) : RichNode = rs
+
    def stop( implicit tx: ProcTxn ) = {
       tx transit match {
          case Instant      => rs.free()

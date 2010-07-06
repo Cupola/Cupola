@@ -44,7 +44,7 @@ trait ProcTxn {
    import ProcTxn._
 
    def add( msg: OSCMessage with OSCSend, change: Option[ (FilterMode, RichState, Boolean) ], audible: Boolean,
-            dependancies: Map[ RichState, Boolean ] = Map.empty ) : Unit
+            dependancies: Map[ RichState, Boolean ] = Map.empty, noErrors: Boolean = false ) : Unit
 
    def beforeCommit( callback: ProcTxn => Unit ) : Unit
    def beforeCommit( callback: ProcTxn => Unit, prio: Int ) : Unit
@@ -73,7 +73,10 @@ object ProcTxn {
    }
 
    private val startTime    = System.currentTimeMillis // XXX eventually in logical time framework
-   
+
+   private val errOffMsg   = OSCMessage( "/error", -1 )
+   private val errOnMsg    = OSCMessage( "/error", -2 )
+
    private class Impl( implicit txn: Txn )
    extends ProcTxn with Txn.WriteResource {
       tx =>
@@ -179,9 +182,9 @@ val server = Server.default // XXX vergación
          })
 
       def add( msg: OSCMessage with OSCSend, change: Option[ (FilterMode, RichState, Boolean) ], audible: Boolean,
-               dependancies: Map[ RichState, Boolean ]) : Unit = syn.synchronized {
+               dependancies: Map[ RichState, Boolean ], noError: Boolean = false ) : Unit = syn.synchronized {
 
-         if( verbose ) println( "TXN ADD : " + (msg, change, audible, dependancies) )
+         if( verbose ) println( "TXN ADD : " + (msg, change, audible, dependancies, noError) )
 
          def processDeps : Entry = {
             dependancies.foreach( tup => {
@@ -190,7 +193,7 @@ val server = Server.default // XXX vergación
                   stateMap += state -> state.get( tx )
                }
             })
-            val entry = Entry( entryCnt, msg, change, audible, dependancies )
+            val entry = Entry( entryCnt, msg, change, audible, dependancies, noError )
             entryCnt += 1
             entries = entries.enqueue( entry )
             entry
@@ -289,8 +292,9 @@ val server = Server.default // XXX vergación
             println( "clump #" + idx + " : " + msgs.toList )
          })
 
-         val sorted: Map[ Int, IIdxSeq[ OSCMessage ]] = clumps.mapValues(
-            _.sortWith( (a, b) => {
+         val sorted: Map[ Int, IIdxSeq[ OSCMessage ]] = clumps mapValues { entries =>
+            var noError = false
+            entries.sortWith( (a, b) => {
                // here comes the tricky bit:
                // preserve dependancies, but also
                // entry indices in the case that there
@@ -305,14 +309,23 @@ val server = Server.default // XXX vergación
                   else true
                } else false
 
-            }).map( _.msg )( breakOut ))
+            }).flatMap( entry => {
+               if( entry.noError == noError ) {
+                  List( entry.msg )
+               } else {
+                  noError = !noError
+                  List( if( noError ) errOffMsg else errOnMsg, entry.msg )
+               }
+            })( breakOut )
+         }
          (sorted, if( clumps.contains( audibleIdx )) clumpIdx else clumpIdx - 1)
       }
    }
 
    private case class Entry( idx: Int, msg: OSCMessage with OSCSend,
                              change: Option[ (FilterMode, RichState, Boolean) ],
-                             audible: Boolean, dependancies: Map[ RichState, Boolean ])
+                             audible: Boolean, dependancies: Map[ RichState, Boolean ],
+                             noError: Boolean )
 
 //   private object EntryOrdering extends Ordering[ Entry ] {
 //      def compare( a: Entry, b: Entry ) = a.idx.compare( b.idx )

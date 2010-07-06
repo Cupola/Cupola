@@ -169,7 +169,22 @@ val pBub = ngen( "bubbles" ) {
 }
 
 val procBub = pBub.make
-   """
+
+/////
+val g1 = ngen( "Noise" ) {
+    val p1 = pControl( "freq", ParamSpec( 20, 20000, ExpWarp ), 882 )
+
+    graph { Resonz.ar( PinkNoise.ar, p1.kr, 0.25 )}
+}
+
+val p1 = g1.make
+xfade( 10 ) { p1.control( "freq" ).v = (util.Random.nextInt( 90 ) + 40).midicps; p1.play }
+"..."
+xfade( 10 ) { p1.stop }
+
+p1.play
+xfade( 10 ) { p1.control( "freq" ).v = (util.Random.nextInt( 90 ) + 40).midicps }
+"""
 
       pane.initialCode = Some(
 """

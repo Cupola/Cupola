@@ -31,7 +31,7 @@ package de.sciss.synth.proc
 import collection.breakOut
 import collection.immutable.{ IndexedSeq => IIdxSeq, Map => IMap, Seq => ISeq, Set => ISet }
 import de.sciss.scalaosc.OSCMessage
-import de.sciss.synth.{Model, AudioBus, Group, Server}
+import de.sciss.synth._
 
 /**
  *    @version 0.12, 04-Jul-10
@@ -116,10 +116,12 @@ trait Proc extends TxnModel[ Proc.Update ] with TxnPlayer {
 //   def playGroup_=( newGroup: RichGroup )( implicit tx: ProcTxn )
 
    def preGroup( implicit tx: ProcTxn ) : RichGroup
-   def coreGroup( implicit tx: ProcTxn ) : RichGroup
+//   def coreGroup( implicit tx: ProcTxn ) : RichGroup
    def postGroup( implicit tx: ProcTxn ) : RichGroup
-   def runningGroup( implicit tx: ProcTxn ) : RichGroup
-   def backGroup( implicit tx: ProcTxn ) : RichGroup
+
+   def runningTarget( requireGroup: Boolean )( implicit tx: ProcTxn ) : (RichNode, AddAction)
+
+//   def backGroup( implicit tx: ProcTxn ) : RichGroup
 
 //   private[proc] def connect( out: ProcAudioOutput, in: ProcAudioInput )( implicit tx: ProcTxn ) : Unit
 //   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) : Unit

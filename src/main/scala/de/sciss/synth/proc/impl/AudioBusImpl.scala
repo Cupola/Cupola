@@ -29,11 +29,11 @@
 package de.sciss.synth.proc.impl
 
 import de.sciss.synth.proc._
-import de.sciss.synth.ugen.{EnvGen, ReplaceOut, In}
-import de.sciss.synth._
+import de.sciss.synth.{ ControlSetMap => CSet, _ }
+import ugen._
 
 /**
- *    @version 0.11, 05-Jul-10
+ *    @version 0.11, 06-Jul-10
  */
 object AudioBusImpl {
    var verbose = true
@@ -140,12 +140,48 @@ extends AudioBusImpl with ProcAudioOutput {
 
    override def toString = "aOut(" + proc.name + " @ " + name + ")"
 
+//   private def fadeInGraph( numChannels: Int ) = SynthGraph {
+//      val line    = Line.kr( 0, 1, "$dur".ir, "$done".ir )
+//      val wBus    = line
+//      val wIn     = (1 - line).sqrt
+//      val sigIn   = In.ar( "$in".kr, numChannels )
+//      val bus     = "$bus".kr
+//      val sigBus  = In.ar( bus, numChannels )
+//      ReplaceOut.ar( bus, (sigIn * wIn) + (sigBus * wBus) )
+//   }
+//
+//   private def fadeOutGraph( numChannels: Int ) = SynthGraph {
+//      val line    = Line.kr( 0, 1, "$dur".ir, "$done".ir )
+//      val wIn     = line
+//      val wBus    = (1 - line).sqrt
+//      val sigIn   = In.ar( "$in".kr, numChannels )
+//      val bus     = "$bus".kr
+//      val sigBus  = In.ar( bus, numChannels )
+//      ReplaceOut.ar( bus, (sigIn * wIn) + (sigBus * wBus) )
+//   }
+
+   private def xfadeGraph( numChannels: Int ) = SynthGraph {
+      val line    = EnvGen.kr( Env( "$start".ir, List( EnvSeg( 1, "$stop".ir, varShape( "$shape".ir )))),
+         timeScale = "$dur".ir, doneAction = "$done".ir )
+      val wIn     = (1 - line).sqrt
+      val wBus    = line
+      val sigIn   = In.ar( "$in".kr, numChannels )
+      val bus     = "$bus".kr
+      val sigBus  = In.ar( bus, numChannels )
+      ReplaceOut.ar( bus, (sigIn * wIn) + (sigBus * wBus) )
+   }
+
+   private def routeGraph( numChannels: Int ) = SynthGraph {
+      Line.kr( 0, 0, "$dur".ir, "$done".ir )
+      Out.ar( "$out".kr, In.ar( "$in".kr , numChannels))
+   }
+
    def play( implicit tx: ProcTxn ) {
       if( verbose ) println( this.toString + " : play" )
       bus foreach { rb =>
          tx.transit match {
             case Instant                  =>
-            case d: DurationalTransition  => play( d, rb )
+            case d: DurationalTransition  => fade( d, rb, 0 -> 1, welchShape, freeSelf )
          }
       }
    }
@@ -156,27 +192,38 @@ extends AudioBusImpl with ProcAudioOutput {
          tx.transit match {
             case Instant      =>
             case xfade: XFade => {
-               stop( xfade, rb, proc.backGroup, doNothing )
-               bus = None // XXX ??? korrekt
+               fade( xfade, rb, 1 -> 0, sinShape, doNothing )
             }
             case glide: Glide => {
-               stop( glide, rb, proc.postGroup, freeSelf )
+               fade( glide, rb, 1 -> 0, sinShape, freeSelf )
             }
          }
       }
    }
 
-   private def fadeGraph( numChannels: Int ) = SynthGraph {
-      // a bit "pricey" but smooth
-      // ; alternative worth checking out: using curve -4 (fadein) resp. +4 (fadeout) and .squared
-      // (xfade produces equal power curve)
-      val line    = EnvGen.kr( Env( "$start".ir, List( EnvSeg( 1, "$stop".ir, sinShape ))),
-         timeScale = "$dur".ir, doneAction = "$done".ir ) //.squared
-      val idx      = "$bus".kr
-      ReplaceOut.ar( idx, In.ar( idx, numChannels ) * line )
-   }
+//   private def fadeGraph( numChannels: Int ) = SynthGraph {
+//      // a bit "pricey" but smooth
+//      // ; alternative worth checking out: using curve -4 and .sqrt
+//      // (xfade produces equal power curve)
+//      val line    = EnvGen.kr( Env( "$start".ir, List( EnvSeg( 1, "$stop".ir, sinShape ))),
+//         timeScale = "$dur".ir, doneAction = "$done".ir ) //.squared
+//      val idx      = "$bus".kr
+//      ReplaceOut.ar( idx, In.ar( idx, numChannels ) * line )
+//   }
 
-//   private def fadeOutGraph( numChannels: Int ) = SynthGraph {
+// this has a too fast attack
+//   private def xfadeGraph( numChannels: Int ) = SynthGraph {
+//      val line    = EnvGen.kr( Env( "$start".ir, List( EnvSeg( 1, "$stop".ir, curveShape( -4 )))),
+//         timeScale = "$dur".ir, doneAction = "$done".ir )
+//      val wBus    = line.sqrt
+//      val wIn     = (1 - line).sqrt
+//      val sigIn   = In.ar( "$in".kr, numChannels )
+//      val bus     = "$bus".kr
+//      val sigBus  = In.ar( bus, numChannels )
+//      ReplaceOut.ar( bus, (sigIn * wIn) + (sigBus * wBus) )
+//   }
+
+   //   private def fadeOutGraph( numChannels: Int ) = SynthGraph {
 //      // a bit "pricey" but smooth
 //      val line    = EnvGen.kr( Env( 1, List( EnvSeg( 1, 0, sinShape ))),
 //         timeScale = "$dur".ir, doneAction = "$done".ir ).squared
@@ -184,46 +231,51 @@ extends AudioBusImpl with ProcAudioOutput {
 //      ReplaceOut.ar( in, In.ar( in, numChannels ) * line )
 //   }
 
-   private def play( d: DurationalTransition, rb: RichAudioBus )( implicit tx: ProcTxn ) {
-      val rg   = proc.postGroup
-      val rsd  = RichSynthDef( rg.server, fadeGraph( rb.numChannels ))
-      val rs   = rsd.play( rg, List( "$start" -> 0, "$stop" -> 1, "$dur" -> d.dur,
-                                     "$done" -> freeSelf.id ), addToTail )
-      val reader  = new RichAudioBus.User {
-         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) { rs.set( true, "$bus" -> b.index )( tx0 )}
-      }
-      val writer  = new RichAudioBus.User {
-         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) {}
-      }
-      if( verbose ) println( this.toString + " : play : addRW (" + rb + ")" )
-      rb.addReader( reader )
-      rb.addWriter( writer )
-      rs.onEnd { tx0 =>
-         if( verbose ) println( this.toString + " : p    : removeRW (" + rb + ")" )
-         rb.removeReader( reader )( tx0 )
-         rb.removeWriter( writer )( tx0 )
-      }
-   }
+//   private def play( d: DurationalTransition, rb: RichAudioBus )( implicit tx: ProcTxn ) {
+//      val rg   = proc.postGroup
+//      val rsd  = RichSynthDef( rg.server, fadeGraph( rb.numChannels ))
+//      val rs   = rsd.play( rg, List( "$start" -> 0, "$stop" -> 1, "$dur" -> d.dur,
+//                                     "$done" -> freeSelf.id ), addToTail )
+//      val reader  = new RichAudioBus.User {
+//         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) { rs.set( true, "$bus" -> b.index )( tx0 )}
+//      }
+//      val writer  = new RichAudioBus.User {
+//         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) {}
+//      }
+//      if( verbose ) println( this.toString + " : play : addRW (" + rb + ")" )
+//      rb.addReader( reader )
+//      rb.addWriter( writer )
+//      rs.onEnd { tx0 =>
+//         if( verbose ) println( this.toString + " : p    : removeRW (" + rb + ")" )
+//         rb.removeReader( reader )( tx0 )
+//         rb.removeWriter( writer )( tx0 )
+//      }
+//   }
 
-   private def stop( d: DurationalTransition, rb: RichAudioBus, rg: RichGroup, doneAction: DoneAction )
-                   ( implicit tx: ProcTxn ) {
-      val rsd  = RichSynthDef( rg.server, fadeGraph( rb.numChannels ))
-      val rs   = rsd.play( rg, List( "$start" -> 1, "$stop" -> 0, "$dur" -> d.dur,
-                                     "$done" -> doneAction.id ), addToTail )
-      val reader  = new RichAudioBus.User {
-         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) { rs.set( true, "$bus" -> b.index )( tx0 )}
-      }
-      val writer  = new RichAudioBus.User {
-         def busChanged( b: AudioBus )( implicit tx0: ProcTxn ) {}
-      }
-      if( verbose ) println( this.toString + " : stop : addRW (" + rb + ")" )
-      rb.addReader( reader )
-      rb.addWriter( writer )
-      rs.onEnd { tx0 =>
-         if( verbose ) println( this.toString + " : s    : removeRW (" + rb + ")" )
-         rb.removeReader( reader )( tx0 )
-         rb.removeWriter( writer )( tx0 )
-      }
+   /**
+    *    Consideration: Eventually we might safe a few UGens by checking if rb is private
+    *    (in that case we don't need to care about what was previously on that bus.
+    *    _however_ : if we allow multiple fadeouts to nest, we probably must
+    *    conserve the old signal. thus --> don't branch around
+    *
+    *    Furthermore, we assume that the background layer will be created appropriately
+    *    by the proc, so we just play to the regular groups
+    */
+   private def fade( d: DurationalTransition, rb: RichAudioBus, line: (Int, Int), shape: ConstEnvShape,
+                     doneAction: DoneAction )( implicit tx: ProcTxn ) {
+      val server        = rb.server
+      val numChannels   = rb.numChannels
+      val rsd1          = RichSynthDef( server, routeGraph( numChannels ))
+      val rsd2          = RichSynthDef( server, xfadeGraph( numChannels ))
+      val tmpBus        = RichBus.audio( server, numChannels )
+      val rs1           = rsd1.play( proc.preGroup, List( "$dur" -> d.dur, "$done" -> doneAction.id ))
+      val rs2           = rsd2.play( proc.postGroup,
+         List( "$start" -> line._1, "$stop" -> line._2, "$shape" -> shape.id,
+              "$dur" -> d.dur, "$done" -> doneAction.id ))
+      rs1.read(      rb     -> "$in" )
+      rs1.write(     tmpBus -> "$out" )
+      rs2.read(      tmpBus -> "$in" )
+      rs2.readWrite( rb     -> "$bus" )
    }
 
    protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) {

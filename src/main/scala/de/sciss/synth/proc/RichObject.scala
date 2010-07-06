@@ -32,15 +32,16 @@ import de.sciss.synth._
 import collection.breakOut
 import collection.immutable.{ Queue => IQueue }
 import ProcTxn._
+import de.sciss.scalaosc.{OSCBundle, OSCMessage}
 
 /**
- *    @version 0.11, 05-Jul-10
+ *    @version 0.11, 06-Jul-10
  */
 trait RichObject { def server: Server }
 
 case class RichBuffer( buf: Buffer ) extends RichObject {
-   val isOnline: RichState   = new RichState( "isOnline", false )
-   val hasContent: RichState = new RichState( "hasContent", false )
+   val isOnline: RichState   = new RichState( this, "isOnline", false )
+   val hasContent: RichState = new RichState( this, "hasContent", false )
 
    def server = buf.server
 
@@ -54,7 +55,7 @@ case class RichBuffer( buf: Buffer ) extends RichObject {
 }
 
 abstract class RichNode( val initOnline : Boolean ) extends RichObject {
-   val isOnline: RichState = new RichState( "isOnline", initOnline )
+   val isOnline: RichState = new RichState( this, "isOnline", initOnline )
    private val onEndFuns   = Ref( IQueue.empty[ Function1[ ProcTxn, Unit ]])
 
    // ---- constructor ----
@@ -76,12 +77,49 @@ abstract class RichNode( val initOnline : Boolean ) extends RichObject {
 
    def server = node.server
 
+   // oh my god it's the funky shit
+   // ; things start to compose nicely...
+   def read( assoc: (RichAudioBus, String), autoRelease: Boolean = true )
+           ( implicit tx: ProcTxn ) : AudioBusNodeSetter = {
+      val (rb, name) = assoc
+      val reader     = AudioBusNodeSetter.reader( name, rb, this )
+      registerSetter( reader, autoRelease )
+   }
+
+   def write( assoc: (RichAudioBus, String), autoRelease: Boolean = true )
+            ( implicit tx: ProcTxn ) : AudioBusNodeSetter = {
+      val (rb, name) = assoc
+      val writer     = AudioBusNodeSetter.writer( name, rb, this )
+      registerSetter( writer, autoRelease )
+   }
+   
+   def readWrite( assoc: (RichAudioBus, String), autoRelease: Boolean = true )
+                ( implicit tx: ProcTxn ) : AudioBusNodeSetter = {
+      val (rb, name) = assoc
+      val rw         = AudioBusNodeSetter.readerWriter( name, rb, this )
+      registerSetter( rw, autoRelease )
+   }
+
+   private def registerSetter( abns: AudioBusNodeSetter, autoRelease: Boolean )
+                             ( implicit tx: ProcTxn ) : AudioBusNodeSetter = {
+      abns.add
+      if( autoRelease ) onEnd { tx0 => abns.remove( tx0 )}
+      abns
+   }
+
    def free( audible: Boolean = true )( implicit tx: ProcTxn ) {
       tx.add( node.freeMsg, Some( (IfChanges, isOnline, false) ), audible, Map( isOnline -> true ))
    }
 
    def set( audible: Boolean, pairs: ControlSetMap* )( implicit tx: ProcTxn ) {
       tx.add( node.setMsg( pairs: _* ), None, audible, Map( isOnline -> true ))
+   }
+
+   def setIfOnline( pairs: ControlSetMap* )( implicit tx: ProcTxn ) {
+      // XXX eventually this should be like set with different failure resolution
+      if( isOnline.get ) tx.add( node.setMsg( pairs: _* ), None, true, noErrors = true )
+//      if( isOnline.get ) tx.add( OSCBundle(
+//         OSCMessage( "/error", -1 ), node.setMsg( pairs: _* ), OSCMessage( "/error", -2 )), true )
    }
 
    def mapn( audible: Boolean, pairs: ControlKBusMap* )( implicit tx: ProcTxn ) {
@@ -93,19 +131,23 @@ abstract class RichNode( val initOnline : Boolean ) extends RichObject {
    }
 
    def moveToHead( audible: Boolean, group: RichGroup )( implicit tx: ProcTxn ) {
-      tx.add( node.moveToHeadMsg( group.group ), None, audible, Map( isOnline -> true )) // XXX no entry?
+      tx.add( node.moveToHeadMsg( group.group ), None, audible, Map( isOnline -> true, group.isOnline -> true ))
+   }
+
+   def moveToHeadIfOnline( group: RichGroup )( implicit tx: ProcTxn ) {
+      if( isOnline.get ) tx.add( node.moveToHeadMsg( group.group ), None, true, Map( group.isOnline -> true ), true )
    }
 
    def moveToTail( audible: Boolean, group: RichGroup )( implicit tx: ProcTxn ) {
-      tx.add( node.moveToTailMsg( group.group ), None, audible, Map( isOnline -> true )) // XXX no entry?
+      tx.add( node.moveToTailMsg( group.group ), None, audible, Map( isOnline -> true, group.isOnline -> true ))
    }
 
    def moveBefore( audible: Boolean, target: RichNode )( implicit tx: ProcTxn ) {
-      tx.add( node.moveBeforeMsg( target.node ), None, audible, Map( isOnline -> true )) // XXX no entry?
+      tx.add( node.moveBeforeMsg( target.node ), None, audible, Map( isOnline -> true, target.isOnline -> true ))
    }
 
    def moveAfter( audible: Boolean, target: RichNode )( implicit tx: ProcTxn ) {
-      tx.add( node.moveAfterMsg( target.node ), None, audible, Map( isOnline -> true )) // XXX no entry?
+      tx.add( node.moveAfterMsg( target.node ), None, audible, Map( isOnline -> true, target.isOnline -> true ))
    }
 }
 
@@ -151,7 +193,7 @@ object RichSynthDef {
 }
 
 case class RichSynthDef( server: Server, synthDef: SynthDef ) extends RichObject {
-   val isOnline: RichState = new RichState( "isOnline", false )
+   val isOnline: RichState = new RichState( this, "isOnline", false )
 
    def name : String = synthDef.name
 
@@ -174,7 +216,7 @@ case class RichSynthDef( server: Server, synthDef: SynthDef ) extends RichObject
    }
 }
 
-class RichState( name: String, init: Boolean ) {
+class RichState( obj: AnyRef, name: String, init: Boolean ) {
    private val value = Ref( init )
 //   def isSatisfied( value: Boolean )( implicit tx: ProcTxn ) : Boolean = this.value() == value
 //   def currentState( implicit tx: ProcTxn ) : AnyRef
@@ -182,5 +224,5 @@ class RichState( name: String, init: Boolean ) {
    def get( implicit tx: ProcTxn ) : Boolean = value.apply
    def set( newValue: Boolean )( implicit tx: ProcTxn ) : Unit = value.set( newValue )
 
-   override def toString = "<" + name + ">"
+   override def toString = "<" + obj.toString + " " + name + ">"
 }

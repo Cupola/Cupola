@@ -31,7 +31,7 @@ package de.sciss.synth.proc
 import de.sciss.synth.{ AudioBus, Group, Model }
 
 /**
- *    @version 0.11, 05-Jul-10
+ *    @version 0.11, 06-Jul-10
  */
 //object ProcRunning {
 //   case object Stopped
@@ -48,4 +48,6 @@ trait ProcRunning /* extends Model*/ {
    def setGroup( group: RichGroup )( implicit tx: ProcTxn ) : Unit
 
 //   def controlAudioMapChanged( name: String, index: Int )( implicit tx: ProcTxn ) : Unit // XXX ugly
+
+   def anchorNode( implicit tx: ProcTxn ) : RichNode
 }
