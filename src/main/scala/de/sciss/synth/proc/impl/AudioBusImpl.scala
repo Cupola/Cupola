@@ -267,7 +267,7 @@ extends AudioBusImpl with ProcAudioOutput {
       val numChannels   = rb.numChannels
       val rsd1          = RichSynthDef( server, routeGraph( numChannels ))
       val rsd2          = RichSynthDef( server, xfadeGraph( numChannels ))
-      val tmpBus        = RichBus.audio( server, numChannels )
+      val tmpBus        = RichBus.tmpAudio( server, numChannels )
       val rs1           = rsd1.play( proc.preGroup, List( "$dur" -> d.dur, "$done" -> doneAction.id ))
       val rs2           = rsd2.play( proc.postGroup,
          List( "$start" -> line._1, "$stop" -> line._2, "$shape" -> shape.id,

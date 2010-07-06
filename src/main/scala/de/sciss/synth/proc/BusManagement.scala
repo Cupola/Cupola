@@ -49,6 +49,16 @@ sealed trait RichBus {
 }
 
 object RichAudioBus {
+   /**
+    *    A consumer reading or writing from an audio bus.
+    *    Since a RichAudioBus is a meta structure, the
+    *    underlying audio bus may change due to optimization.
+    *    In this case the consumer is asked to update its
+    *    data. Also initial bus allocation is lazy, therefore
+    *    when adding the user as reader or writer, the
+    *    bus implementation will push its initial allocation
+    *    information to the user.    
+    */
    trait User {
       def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) : Unit
    }
@@ -161,8 +171,24 @@ trait RichControlBus extends RichBus with ControlRated {
 }
 
 object RichBus {
+   /**
+    *    Constructs a new audio bus proxy for use in a shared environment, where
+    *    there can be situations of semi-orphaned buses (only one reader or
+    *    only one writer left).
+    */
    def audio( server: Server, numChannels: Int ) : RichAudioBus = AudioImpl( server, numChannels )
    def control( server: Server, numChannels: Int ) : RichControlBus = ControlImpl( server, numChannels )
+   /**
+    *    Constructs a new audio bus proxy for use in a short-term temporary fashion.
+    *    The implementation does not maintain dummy and empty buses for the case that
+    *    there is only one reader or only one writer. As a consequence, it should not
+    *    be used in such a scenario, as precious bus indices will be occupied. On the
+    *    other hand, this method is useful for internal temporary buses, because when
+    *    both a reader and a writer release the resource, there are no spurious
+    *    bus re-assignments causing further busChanged notifications (which would go
+    *    to concurrently freed nodes).
+    */
+   def tmpAudio( server: Server, numChannels: Int ) : RichAudioBus = TempAudioImpl( server, numChannels )
 
    def soundIn( server: Server, numChannels: Int ) : RichAudioBus = {
       val o = server.options
@@ -281,17 +307,20 @@ object RichBus {
       def removeWriter( u: User )( implicit tx: ProcTxn ) {}
    }
 
-   private case class AudioImpl( server: Server, numChannels: Int ) extends RichAudioBus {
-      import RichAudioBus._
-
-      private val bus      = Ref.make[ AudioBusHolder ]
-      private val readers  = Ref( Set.empty[ User ])
-      private val writers  = Ref( Set.empty[ User ])
+   private abstract class AbstractAudioImpl extends RichAudioBus {
+      protected val bus = Ref.make[ AudioBusHolder ]
 
       def busOption( implicit tx: ProcTxn ) = {
          val bh = bus()
          if( bh != null ) Some( bh.bus ) else None
       }
+   }
+
+   private case class AudioImpl( server: Server, numChannels: Int ) extends AbstractAudioImpl {
+      import RichAudioBus._
+
+      private val readers  = Ref( Set.empty[ User ])
+      private val writers  = Ref( Set.empty[ User ])
 
       def addReader( u: User )( implicit tx: ProcTxn ) {
          val r       = readers()
@@ -392,6 +421,43 @@ object RichBus {
             }
          }
          oldBus.free
+      }
+   }
+
+   private case class TempAudioImpl( server: Server, numChannels: Int ) extends AbstractAudioImpl {
+      import RichAudioBus._
+
+      private val users = Ref( Set.empty[ User ])
+
+      def addReader( u: User )( implicit tx: ProcTxn ) { add( u )}
+      def addWriter( u: User )( implicit tx: ProcTxn ) { add( u )}
+
+      private def add( u: User )( implicit tx: ProcTxn ) {
+         val g = users()
+         val bh  = if( g.isEmpty ) {
+            val res = allocAudioBus( server, numChannels )
+            bus.set( res )
+            res
+         } else { // re-use existing bus
+            val res = bus()
+            res.alloc
+            res
+         }
+         val newBus = new AudioBus( server, bh.index, numChannels )
+         users.transform( _ + u )
+         // always perform this on the newly added
+         // reader no matter if the bus is new:
+         u.busChanged( newBus )
+      }
+
+      def removeReader( u: User )( implicit tx: ProcTxn ) { remove( u )}
+      def removeWriter( u: User )( implicit tx: ProcTxn ) { remove( u )}
+
+      private def remove( u: User )( implicit tx: ProcTxn ) {
+         val rw = users()
+         if( !rw.contains( u )) return
+         users.set( rw - u )
+         bus().free
       }
    }
 

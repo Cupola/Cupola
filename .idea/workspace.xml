@@ -92,10 +92,19 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="AudioBusImpl.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="AudioBusImpl.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/AudioBusImpl.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="195" column="0" selection-start="6590" selection-end="6590" vertical-scroll-proportion="0.2555147">
+            <state line="325" column="32" selection-start="12095" selection-end="12095" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="BusManagement.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/BusManagement.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="176" column="31" selection-start="6108" selection-end="6108" vertical-scroll-proportion="0.54064274">
               <folding />
             </state>
           </provider>
@@ -146,15 +155,6 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Test.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Test.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="194" column="24" selection-start="5992" selection-end="5992" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="RunningGraphImpl.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/RunningGraphImpl.scala">
           <provider selected="true" editor-type-id="text-editor">
@@ -195,7 +195,6 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ControlImpl.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/TxnPlayer.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ControlValue.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGraph.scala" />
@@ -211,6 +210,7 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ProcImpl.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/AudioBusImpl.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/BusManagement.scala" />
       </list>
     </option>
   </component>
@@ -1309,11 +1309,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGraph.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="35" column="63" selection-start="1146" selection-end="1146" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ControlValue.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="26" column="46" selection-start="755" selection-end="755" vertical-scroll-proportion="0.0" />
@@ -1410,7 +1405,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/AudioBusImpl.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="195" column="0" selection-start="6590" selection-end="6590" vertical-scroll-proportion="0.2555147">
+        <state line="325" column="32" selection-start="12095" selection-end="12095" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/BusManagement.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="176" column="31" selection-start="6108" selection-end="6108" vertical-scroll-proportion="0.54064274">
           <folding />
         </state>
       </provider>
