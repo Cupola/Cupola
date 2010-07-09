@@ -43,9 +43,8 @@ abstract class AudioBusImpl /* extends ProcAudioBus */ /* with RichAudioBus.User
 
    protected val busRef : Ref[ Option[ RichAudioBus ]] = Ref( None )
    protected val syntheticRef = Ref( false )
-//      protected val indexRef  = Ref( -1 )
-//      protected val edges     = Ref( Set.empty[ ProcEdge ])
    private val edgesRef = Ref( Set.empty[ ProcEdge ])
+   protected val playingRef = Ref( false )
 
    def bus( implicit tx: ProcTxn ) : Option[ RichAudioBus ] = busRef()
 //      def index( implicit tx: ProcTxn ) = indexRef()
@@ -57,7 +56,18 @@ abstract class AudioBusImpl /* extends ProcAudioBus */ /* with RichAudioBus.User
       edgesRef.transform( _ + e )
       edgeAdded( e )
    }
+
    protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) : Unit
+
+   private[proc] def removeEdge( e: ProcEdge )( implicit tx: ProcTxn ) {
+      if( verbose ) println( this.toString + " : removeEdge( " + e + " )" )
+      edgesRef.transform( _ - e )
+      edgeRemoved( e )
+   }
+
+   protected def edgeRemoved( e: ProcEdge )( implicit tx: ProcTxn ) : Unit
+
+   def isPlaying( implicit tx: ProcTxn ) : Boolean = playingRef()
 }
 
 abstract class AbstractAudioInputImpl
@@ -94,13 +104,14 @@ extends AudioBusImpl with ProcAudioInput {
 //         proc.busChanged( this, bus )
 //      }
 
-   protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) {}
+   protected def edgeAdded( e: ProcEdge )( implicit tx: ProcTxn ) {} // XXX should still fire
+   protected def edgeRemoved( e: ProcEdge )( implicit tx: ProcTxn ) {} // XXX should still fire
 }
 
 class AudioInputImpl( val proc: ProcImpl, val name: String )
 extends AbstractAudioInputImpl {
    import AudioBusImpl._
-   
+
    override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
 //      protected val edges = Ref( Set.empty[ ProcEdge ])
@@ -117,10 +128,15 @@ extends AbstractAudioInputImpl {
 
    def play( implicit tx: ProcTxn ) {
       if( verbose ) println( this.toString + " : play" )
+      val wasPlaying = playingRef.swap( true )
+      if( wasPlaying ) {
+         println( "WARNING : Was already playing " + this )
+      }
    }
 
    def stop( implicit tx: ProcTxn ) {
       if( verbose ) println( this.toString + " : stop" )
+      val wasPlaying = playingRef.swap( false )
 //      bus foreach { rb =>
 //         tx.transit match {
 //            case xfade: XFade => bus = None // XXX ??? korrekt
@@ -178,6 +194,11 @@ extends AudioBusImpl with ProcAudioOutput {
 
    def play( implicit tx: ProcTxn ) {
       if( verbose ) println( this.toString + " : play" )
+      val wasPlaying = playingRef.swap( true )
+      if( wasPlaying ) {
+         println( "WARNING : Was already playing " + this )
+         return
+      }
       bus foreach { rb =>
          tx.transit match {
             case Instant                  =>
@@ -188,6 +209,11 @@ extends AudioBusImpl with ProcAudioOutput {
 
    def stop( implicit tx: ProcTxn ) {
       if( verbose ) println( this.toString + " : stop" )
+      val wasPlaying = playingRef.swap( false )
+      if( !wasPlaying ) {
+         println( "WARNING : Was already playing " + this )
+         return
+      }
       bus foreach { rb =>
          tx.transit match {
             case Instant      =>
@@ -282,6 +308,10 @@ extends AudioBusImpl with ProcAudioOutput {
       proc.audioBusConnected( e )
    }
 
+   protected def edgeRemoved( e: ProcEdge )( implicit tx: ProcTxn ) {
+      proc.audioBusDisconnected( e )
+   }
+
    def bus_=( newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ) {
 //      if( verbose ) println( "OUT BUS " + proc.name + " / " + newBus )
       val oldBus = busRef.swap( newBus )
@@ -312,9 +342,15 @@ extends AudioBusImpl with ProcAudioOutput {
       val e = ProcEdge( out, in )
       require( !edges.contains( e ))
 //         edges.transform( _ + e )
+      val outWasPlaying = out.isPlaying
+      val inWasPlaying  = in.isPlaying
+      if( inWasPlaying )  in.stop
+      if( outWasPlaying ) out.stop
       addEdge( e )
       ProcDemiurg.addEdge( e )
       finishConnect( e )
+      if( outWasPlaying ) out.play
+      if( inWasPlaying )  in.play
       in.proc
    }
 
@@ -338,6 +374,7 @@ extends AudioBusImpl with ProcAudioOutput {
       val e = m.edge // ProcEdge( out, m.input )
       require( !edges.contains( e ))
 //         edges.transform( _ + e )
+if( isPlaying ) println( "WARNING: ~> ctrl : not stopped / restarted yet!" )
       addEdge( e )
       if( control.rate == Some( audio )) { // in this case we need to enforce topology
          ProcDemiurg.addEdge( e )
@@ -347,9 +384,20 @@ extends AudioBusImpl with ProcAudioOutput {
    }
 
    def ~/>( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioOutput = {
-      proc.disconnect( this, in )
+      val e = ProcEdge( out, in )
+      if( edges.contains( e )) {
+         ProcDemiurg.removeEdge( e )
+         removeEdge( e )
+         finishDisconnect( e )
+//      proc.disconnect( this, in )
+      }
       this
    }
+
+   private def finishDisconnect( e: ProcEdge )( implicit tx: ProcTxn ) {
+      e.in.removeEdge( e )
+      bus = None
+  }
 
    def ~|( insert: (ProcAudioInput, ProcAudioOutput) )( implicit tx: ProcTxn ) : ProcAudioInsertion =
       new AudioInsertionImpl( proc, this, insert )

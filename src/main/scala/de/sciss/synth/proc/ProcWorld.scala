@@ -98,6 +98,10 @@ class ProcWorld extends TxnModel[ ProcWorld.Update ] {
       res.foreach( tup => topologyRef.set( tup._1 ))
       res
    }
+
+   def removeEdge( e: ProcEdge )( implicit tx: ProcTxn ) {
+      topologyRef.transform( _.removeEdge( e ))
+   }
 }
 
 object ProcDemiurg { // ( val server: Server )
@@ -177,6 +181,11 @@ object ProcDemiurg { // ( val server: Server )
          }
          case Some( g ) => startMoving( g )
       }
+   }
+
+   def removeEdge( e: ProcEdge )( implicit tx: ProcTxn ) : Unit = syn.synchronized {
+      val world = worlds( e.sourceVertex.server )
+      world.removeEdge( e )
    }
 
    def getSynthDef( server: Server, graph: SynthGraph )( implicit tx: ProcTxn ) : RichSynthDef = syn.synchronized {

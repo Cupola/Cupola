@@ -384,7 +384,8 @@ extends Proc {
                error( "NOT YET SUPPORTED" )
             }
          }
-println( "WARNING : Proc.dispose : STILL INCOMPLETE : EDGES ARE NOT YET REMOVED" )
+//         audioInputs.foreach( _.dispose )
+//println( "WARNING : Proc.dispose : STILL INCOMPLETE : EDGES ARE NOT YET REMOVED" )
          ProcDemiurg.removeVertex( proc )
       }
    }
@@ -413,6 +414,15 @@ println( "WARNING : Proc.dispose : STILL INCOMPLETE : EDGES ARE NOT YET REMOVED"
          u.copy( audioBusesDisconnected = u.audioBusesDisconnected - e )
       } else {
          u.copy( audioBusesConnected = u.audioBusesConnected + e )
+      })
+   }
+
+   private[proc] def audioBusDisconnected( e: ProcEdge )( implicit tx: ProcTxn ) {
+      touch
+      updateRef.transform( u => if( u.audioBusesConnected.contains( e )) {
+         u.copy( audioBusesConnected = u.audioBusesConnected - e )
+      } else {
+         u.copy( audioBusesDisconnected = u.audioBusesDisconnected + e )
       })
    }
 

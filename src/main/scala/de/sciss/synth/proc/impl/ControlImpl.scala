@@ -186,12 +186,16 @@ trait ControlMappingImpl /* extends ControlMapping*/ {
       synth.swap( None ).foreach( _.free( true ))
       removeOutputConsumers
    }
+
+//   def isPlaying( implicit tx: ProcTxn ) : Boolean = synth().map( _.isOnline.get ).getOrElse( false )
 }
 
 trait ControlGlidingImpl
 extends ControlGliding with ControlMappingImpl {
 //   def cv: ControlValue
 
+   def isPlaying( implicit tx: ProcTxn ) : Boolean = synth().map( _.isOnline.get ).getOrElse( false )
+   
    def play( implicit tx: ProcTxn ) {
       val g       = graph
       val rsd     = RichSynthDef( target.proc.server, g )

@@ -32,18 +32,18 @@ import collection.immutable.{ IndexedSeq => IIdxSeq, Map => IMap, Seq => ISeq, S
 import collection.mutable.{ HashSet => MHashSet, Set => MSet, Stack => MStack }
 
 /**
- *    @version 0.12, 06-Jun-10
+ *    @version 0.12, 09-Jun-10
  */
 object Topology {
-   def empty[ V, E <: Edge[ V ]] = apply( Vector.empty[ V ], 0, Map.empty[ V, ISet[ E ]])
+   def empty[ V, E <: Edge[ V ]] = apply( Vector.empty[ V ], ISet.empty[ E ])( 0, Map.empty[ V, ISet[ E ]])
 
    trait Edge[ V ] {
       def sourceVertex : V
       def targetVertex : V
    }
 }
-case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unpositioned: Int,
-                                                  edgeMap: IMap[ V, ISet[ E ]]) {
+case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], edges: ISet[ E ])
+                                                ( unpositioned: Int, edgeMap: IMap[ V, ISet[ E ]]) {
    import Topology._
 
    type T = Topology[ V, E ]
@@ -55,6 +55,7 @@ case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unposi
       val loBound	   = vertices.indexOf( target )
       require( (loBound >= 0) && (upBound >= 0) )
       val newEdgeMap = edgeMap + (source -> (edgeMap.getOrElse( source,  Set.empty ) + e))
+      val newEdgeSet = edges + e
 
       // dealing with unpositioned elements
       if( upBound < unpositioned ) { // first edge for source
@@ -64,13 +65,13 @@ case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unposi
             val newUnpos   = unpositioned - 2
             val newVertices= vertices.patch( min, Vector.empty, 1 ).patch( max - 1, Vector.empty, 1 )
                .patch( newUnpos, Vector( source, target ), 0 )
-            Some( (copy( newVertices, newUnpos, newEdgeMap ), source, Vector( target )))
+            Some( (copy( newVertices, newEdgeSet )( newUnpos, newEdgeMap ), source, Vector( target )))
          } else {
 //            Some( (this, Vector.empty) )
             val newUnpos   = unpositioned - 1
             val newVertices= vertices.patch( upBound, Vector.empty, 1 )
                .patch( loBound - 1, Vector( source ), 0 )
-            Some( (copy( newVertices, newUnpos, newEdgeMap ), target, Vector( source )))
+            Some( (copy( newVertices, newEdgeSet )( newUnpos, newEdgeMap ), target, Vector( source )))
          }
 
       // regular algorithm
@@ -82,25 +83,32 @@ case class Topology[ V, E <: Topology.Edge[ V ]]( vertices: IIdxSeq[ V ], unposi
             None  // Cycle --> Abort
          } else {
             val (newVertices, affected) = shift( visited, loBound, upBound )
-            Some( (copy( newVertices, unpositioned, newEdgeMap ), source, affected) )
+            Some( (copy( newVertices, newEdgeSet )( unpositioned, newEdgeMap ), source, affected) )
          }
       } else { // loBound == upBound
          None
       }
    }
 
+   def removeEdge( e: E ) : T = {
+      if( edges.contains( e )) {
+         val source = e.sourceVertex
+         copy( edges = edges - e )( unpositioned, edgeMap + (source -> (edgeMap( source ) - e)) )
+      } else this
+   }
+
    def addVertex( v: V ) : T = {
       require( !vertices.contains( v ))
 // XXX TEST
 //      copy( vertices.patch( unpositioned, Vector( v ), 0 ), unpositioned + 1 )
-      copy( v +: vertices, unpositioned + 1 )
+      copy( v +: vertices )( unpositioned + 1, edgeMap )
    }
 
    def removeVertex( v: V ) : T = {
       val idx = vertices.indexOf( v )
       if( idx >= 0 ) {
          val newUnpos = if( idx >= unpositioned ) unpositioned - 1 else unpositioned
-         copy( vertices.patch( idx, Vector.empty, 1 ), newUnpos )
+         copy( vertices.patch( idx, Vector.empty, 1 ))( newUnpos, edgeMap - v )
       } else this
    }
 

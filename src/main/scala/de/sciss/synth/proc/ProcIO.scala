@@ -65,6 +65,7 @@ trait ProcAudioOutput extends ProcAudioBus {
 
 trait ProcAudioInput extends ProcAudioBus {
    private[proc] def addEdge( e: ProcEdge )( implicit tx: ProcTxn ) : Unit
+   private[proc] def removeEdge( e: ProcEdge )( implicit tx: ProcTxn ) : Unit
 
 //   def sendToBack( xfade: XFade, backGroup: RichGroup )( implicit tx: ProcTxn ) : Unit
 }
