@@ -28,6 +28,9 @@
 
 package de.sciss.synth.proc
 
+/**
+ *    @version 0.11, 09-Jul-10
+ */
 trait ThreadLocalObject[ T <: AnyRef ] {
    private val tl = new ThreadLocal[ T ]
 
@@ -38,11 +41,12 @@ trait ThreadLocalObject[ T <: AnyRef ] {
    }
 
    def use[ U ]( obj: T )( thunk: => U ) : U = {
+      val old = tl.get()
       tl.set( obj )
       try {
          thunk
       } finally {
-         tl.set( null.asInstanceOf[ T ])
+         tl.set( old ) // null.asInstanceOf[ T ]
       }
    }
 }

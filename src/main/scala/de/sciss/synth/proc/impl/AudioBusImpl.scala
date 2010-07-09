@@ -121,12 +121,12 @@ extends AbstractAudioInputImpl {
 
    def stop( implicit tx: ProcTxn ) {
       if( verbose ) println( this.toString + " : stop" )
-      bus foreach { rb =>
-         tx.transit match {
-            case xfade: XFade => bus = None // XXX ??? korrekt
-            case _ =>
-         }
-      }
+//      bus foreach { rb =>
+//         tx.transit match {
+//            case xfade: XFade => bus = None // XXX ??? korrekt
+//            case _ =>
+//         }
+//      }
    }
 }
 

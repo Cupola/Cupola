@@ -32,22 +32,23 @@ extends JFrame( "Scala Interpreter" ) {
 """// Press '""" + KeyEvent.getKeyModifiersText( txnKeyStroke.getModifiers() ) + " + " +
       KeyEvent.getKeyText( txnKeyStroke.getKeyCode() ) + """' to execute transactionally.
 
-s.dumpOSC(1)
-
 val f = new de.sciss.nuages.NuagesFrame( s )
 f.setSize( 640, 480 )
 f.setVisible( true )
 
-val g1 = ngen( "Sine" ) {
-    val p1 = pControl( "freq", ParamSpec( 20, 20000, ExpWarp ), 882 )
+s.dumpOSC(1)
 
-    graph { SinOsc.ar( p1.kr )}
+val g1 = ngen( "Sine" ) {
+    val pf1 = pControl( "f1", ParamSpec( 20, 20000, ExpWarp ), 333 )
+    val pf2 = pControl( "f2", ParamSpec( 20, 20000, ExpWarp ), 444 )
+
+    graph { SinOsc.ar( List( pf1.kr, pf2.kr ))}
 }
 
 val p1 = g1.make
-xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 100 ) + 40).midicps }
+// xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 100 ) + 40).midicps }
 
-glide( 20 ) { p1( "freq" ) = 441 }; p1.play
+// glide( 20 ) { p1( "freq" ) = 441 }; p1.play
 // glide( 20 ) { p1( "freq" ) = 111 }
 
 //p1( "freq" ) = 441

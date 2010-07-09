@@ -123,6 +123,8 @@ trait Proc extends TxnModel[ Proc.Update ] with TxnPlayer {
 //   def coreGroup( implicit tx: ProcTxn ) : RichGroup
    def postGroup( implicit tx: ProcTxn ) : RichGroup
 
+   def anchorNode( implicit tx: ProcTxn ) : RichNode
+   
    def runningTarget( requireGroup: Boolean )( implicit tx: ProcTxn ) : (RichNode, AddAction)
 
 //   def backGroup( implicit tx: ProcTxn ) : RichGroup

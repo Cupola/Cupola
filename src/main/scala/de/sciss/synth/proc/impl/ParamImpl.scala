@@ -33,7 +33,7 @@ import de.sciss.synth.proc._
 import de.sciss.synth.ugen.{Out, In}
 
 /**
- *    @version 0.11, 04-Jul-10
+ *    @version 0.12, 09-Jul-10
  */
 class ParamControlImpl( val name: String, val spec: ParamSpec, val default: Double )
 extends ProcParamControl {
@@ -88,9 +88,19 @@ extends ProcParamAudioInput {
       val ain = p.audioInput( name )
       val b = ain.bus.getOrElse({
          if( ain.synthetic ) {
-            val res = RichBus.audio( p.server, 1 )
-            ain.bus = Some( res )
-            res
+            // YYY we might solves this differently, by rolling back the transaction
+            // and somehow requesting e.out.proc to play in the retried transaction?
+            // ... XXX this may also be dangerous when we implement control outputs
+            // as we could produce cyclic calls here
+            // ... XXX another idea would be to create something like e.out.proc.prepare
+            // so that the graph is there, but no actual synth yet created??
+            val e = ain.edges.headOption.getOrElse( error( "Bus " + ain + " not connected" ))
+            if( !e.out.proc.isPlaying ) e.out.proc.play
+            // now retry
+            ain.bus.getOrElse( error( "Bus " + ain + " must be specified" ))
+//            val res = RichBus.audio( p.server, 1 )
+//            ain.bus = Some( res )
+//            res
          } else if( physical ) {
             val res = RichBus.soundIn( p.server, 1 )
             ain.bus = Some( res )

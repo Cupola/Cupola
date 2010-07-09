@@ -35,7 +35,7 @@ import de.sciss.synth.{ audio => arate, control => krate, _ }
 import ugen.Line
 
 /**
- *    @version 0.11, 04-Jul-10
+ *    @version 0.12, 09-Jul-10
  */
 class ProcImpl( fact: FactoryImpl, val server: Server, val name: String )
 extends Proc {
@@ -150,7 +150,7 @@ extends Proc {
    }
 
    private def moveAllTo( all: AllGroups, newGroup: RichGroup )( implicit tx: ProcTxn ) {
-      all.core orElse runningRef().map( _.anchorNode ) map { core =>
+      anchorNodeOption map { core =>
          core.moveToTail( true, newGroup )
          all.pre.foreach(  _.moveBefore( true, core ))
          all.post.foreach( _.moveAfter(  true, core ))
@@ -195,7 +195,7 @@ extends Proc {
          val res     = RichGroup( g )
          val main    = group       // creates group if necessary
          val all     = groupsRef().get
-         val (target, addAction) = all.core orElse runningRef().map( _.anchorNode ) map { core =>
+         val (target, addAction) = anchorNodeOption map { core =>
             core -> addBefore
          } getOrElse { all.post map { post =>
             post -> addBefore
@@ -217,6 +217,11 @@ extends Proc {
 //      }
 //   }
 
+   private def anchorNodeOption( implicit tx: ProcTxn ) : Option[ RichNode ] =
+      groupsRef().flatMap( _.core ) orElse runningRef().map( _.anchorNode )
+
+   def anchorNode( implicit tx: ProcTxn ) : RichNode = anchorNodeOption getOrElse coreGroup
+
    private def postGroupOption( implicit tx: ProcTxn ) : Option[ RichGroup ] = groupsRef().flatMap( _.post )
 
    def postGroup( implicit tx: ProcTxn ) : RichGroup = {
@@ -225,7 +230,7 @@ extends Proc {
          val res     = RichGroup( g )
          val main    = group       // creates group if necessary
          val all     = groupsRef().get
-         val (target, addAction) = all.core orElse runningRef().map( _.anchorNode ) map { core =>
+         val (target, addAction) = anchorNodeOption map { core =>
             core -> addAfter
          } getOrElse { all.pre map { pre =>
             pre -> addAfter

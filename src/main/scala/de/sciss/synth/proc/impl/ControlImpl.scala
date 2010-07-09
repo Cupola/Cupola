@@ -33,7 +33,7 @@ import de.sciss.synth._
 import ugen._
 
 /**
- *    @version 0.11, 04-Jul-10
+ *    @version 0.12, 09-Jul-10
  */
 class ControlImpl( val proc: ProcImpl, param: ProcParamFloat, val _rate: Rate )
 extends ProcControl {
@@ -174,7 +174,7 @@ trait ControlMappingImpl /* extends ControlMapping*/ {
    def play( implicit tx: ProcTxn ) : Unit
    protected def addOutputConsumers( implicit tx: ProcTxn ) : Unit
    protected def removeOutputConsumers( implicit tx: ProcTxn ) : Unit
-   protected def targetNode( implicit tx: ProcTxn ): RichNode
+//   protected def targetNode( implicit tx: ProcTxn ): RichNode
 
    def proc    = target.proc
    def name    = target.name + "#map"
@@ -227,7 +227,7 @@ extends ControlGlidingImpl with ControlToKMapping {
       })
    }
 
-   protected def targetNode( implicit tx: ProcTxn ) = target.proc.group // XXX anyway wrong!
+//   protected def targetNode( implicit tx: ProcTxn ) = target.proc.group // XXX anyway wrong!
 
    protected def graph = SynthGraph {
       val line    = Line.kr( "$start".ir, "$stop".ir, "$dur".ir, freeSelf )
@@ -247,7 +247,7 @@ extends ControlGlidingImpl with ControlToAMapping {
       })
    }
 
-   protected def targetNode( implicit tx: ProcTxn ) = target.proc.group // XXX anyway wrong!
+//   protected def targetNode( implicit tx: ProcTxn ) = target.proc.group // XXX anyway wrong!
 
    protected def graph = SynthGraph {
       val line    = Line.ar( "$start".ir, "$stop".ir, "$dur".ir, freeSelf )
@@ -312,7 +312,7 @@ trait ControlToKMapping extends ControlMappingImpl {
 
    private val outputReader = new RichControlBus.User {
       def busChanged( bus: ControlBus )( implicit tx: ProcTxn ) {
-         targetNode.mapn( true, target.name -> bus )
+         target.proc.anchorNode.mapn( true, target.name -> bus )
       }
    }
 
@@ -351,7 +351,7 @@ trait ControlToAMapping extends ControlMappingImpl {
 
    private val outputReader = new RichAudioBus.User {
       def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
-         targetNode.mapan( true, target.name -> bus )
+         target.proc.anchorNode.mapan( true, target.name -> bus )
       }
    }
 
@@ -379,7 +379,7 @@ extends ControlABusMappingImpl with ControlToKMapping {
       })
    }
 
-   protected def targetNode( implicit tx: ProcTxn ) = target.proc.group // XXX anyway wrong!
+//   protected def targetNode( implicit tx: ProcTxn ) = target.proc.group // XXX anyway wrong!
 
    protected def graph( inBus: AudioBus ) = SynthGraph {
       val in      = A2K.kr( In.ar( "$in".kr, inBus.numChannels ))
@@ -402,7 +402,7 @@ extends ControlABusMappingImpl with ControlToAMapping {
       })
    }
 
-   protected def targetNode( implicit tx: ProcTxn ) = target.proc.group // XXX anyway wrong!
+//   protected def targetNode( implicit tx: ProcTxn ) = target.proc.group // XXX anyway wrong!
 
    protected def graph( inBus: AudioBus ) = SynthGraph {
       val in      = In.ar( "$in".kr, inBus.numChannels )
