@@ -7,6 +7,7 @@ import java.awt.Cursor
 import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 import prefuse.{Visualization, Display}
+import prefuse.render.EdgeRenderer
 
 object DragControl {
    private val csrHand     = Cursor.getPredefinedCursor( Cursor.HAND_CURSOR )
@@ -73,9 +74,17 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
                if( data.itemPressed( vi, e, displayPt )) return // consumed
             }
          }
+         case er: EdgeRenderer => {
+            println( "EDGE ")
+         }
          case _ =>
       }
       if( !SwingUtilities.isLeftMouseButton( e ) || e.isShiftDown() ) return
+//      if( e.isAltDown() ) {
+//         vi match {
+//
+//         }
+//      }
       val dr   = new Drag( displayPt )
       drag     = Some( dr )
       if( vi.isInstanceOf[ AggregateItem ]) setFixed( vi, true )

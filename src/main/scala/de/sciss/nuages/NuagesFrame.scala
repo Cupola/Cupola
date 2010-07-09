@@ -35,6 +35,7 @@ import java.awt.geom.Point2D
 import de.sciss.synth.proc.{Proc, ProcFactory}
 import collection.mutable.ListBuffer
 import java.awt._
+import plaf.basic.BasicPanelUI
 
 /**
  *    @version 0.11, 04-Jul-10
@@ -83,9 +84,16 @@ println( "font = " + font )
          }
       })
 
-      val ggGensScroll = new JScrollPane( ggGens, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+      val ggGensScroll  = new JScrollPane( ggGens, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
          ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER )
-      cp.add( BorderLayout.EAST, ggGensScroll )
+      val ggEastBox     = new JPanel( new BorderLayout() )
+      val uiPanel       = new BasicPanelUI()
+      ggEastBox.setUI( uiPanel )
+      ggEastBox.setBackground( Color.black )
+      ggEastBox.add( ggGensScroll, BorderLayout.CENTER )
+      val ggTransition = new NuagesTransitionPanel( ggPanel )
+      ggEastBox.add( ggTransition, BorderLayout.SOUTH )
+      cp.add( BorderLayout.EAST, ggEastBox )
       cp.add( BorderLayout.CENTER, ggPanel )
 
       setDefaultCloseOperation( WindowConstants.DISPOSE_ON_CLOSE )

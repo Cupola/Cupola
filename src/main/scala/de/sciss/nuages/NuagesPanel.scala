@@ -129,7 +129,7 @@ object NuagesPanel {
       protected def renderDetail( g: Graphics2D, vi: VisualItem )
    }
 
-   private[nuages] case class VisualProc( proc: Proc, pNode: PNode, aggr: AggregateItem,
+   private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: AggregateItem,
                                           params: Map[ String, VisualParam ]) extends VisualData {
       import VisualData._
 
@@ -144,7 +144,11 @@ object NuagesPanel {
          if( super.itemPressed( vi, e, pt )) return true
 
          if( playArea.contains( pt.getX() - r.getX(), pt.getY() - r.getY() )) {
-            ProcTxn.atomic { implicit t => if( playing ) proc.stop else proc.play }
+            ProcTxn.atomic { implicit t =>
+               t.withTransition( main.transition( t.time )) {
+                  if( playing ) proc.stop else proc.play
+               }
+            }
             true
          } else false
       }
@@ -207,7 +211,7 @@ object NuagesPanel {
 
    private[nuages] case class VisualMapping( mapping: ControlBusMapping, pEdge: Edge )
 
-   private[nuages] case class VisualControl( control: ProcControl, pNode: PNode, pEdge: Edge )
+   private[nuages] case class VisualControl( main: NuagesPanel, control: ProcControl, pNode: PNode, pEdge: Edge )
    extends VisualParam {
       import VisualData._
 
@@ -236,7 +240,7 @@ object NuagesPanel {
 //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
 //               if( ang != value ) {
                   val m    = control.spec.map( ang )
-                  ProcTxn.atomic { implicit t => control.v = m }
+                  setControl( control, m )
 //               }
                ang
             } else control.spec.unmap( value.currentApprox )
@@ -244,6 +248,12 @@ object NuagesPanel {
             drag = Some( dr )
             true
          } else false
+      }
+
+      private def setControl( c: ProcControl, v: Double ) {
+         ProcTxn.atomic { implicit t =>
+            t.withTransition( main.transition( t.time )) { c.v = v }
+         }
       }
 
       override def itemDragged( vi: VisualItem, e: MouseEvent, pt: Point2D ) {
@@ -255,7 +265,7 @@ object NuagesPanel {
             val vEff = math.max( 0.0, math.min( 1.0, dr.valueStart + (ang - dr.angStart) ))
 //            if( vEff != value ) {
                val m    = control.spec.map( vEff )
-               ProcTxn.atomic { implicit t => control.v = m }
+               setControl( control, m )
 //            }
          })
       }
@@ -309,6 +319,8 @@ object NuagesPanel {
 
 class NuagesPanel( server: Server ) extends JPanel
 with ProcFactoryProvider {
+   panel =>
+   
    import NuagesPanel._
    import ProcWorld._
    import Proc._
@@ -365,6 +377,8 @@ with ProcFactoryProvider {
 ////      case EdgesAdded( edges @ _* )       => defer( topAddEdges( edges: _* ))
 //   }
 
+   var transition: Double => Transition = (_) => Instant
+   
    private object topoListener extends ProcWorld.Listener {
       def updated( u: ProcWorld.Update ) { defer( topoUpdate( u ))}
    }
@@ -589,7 +603,7 @@ with ProcFactoryProvider {
             case pFloat: ProcParamFloat => {
                val (pParamNode, pParamEdge, vi) = createNode
                val pControl   = p.control( pFloat.name )
-               val vControl   = VisualControl( pControl, pParamNode, pParamEdge )
+               val vControl   = VisualControl( panel, pControl, pParamNode, pParamEdge )
 //               val mVal       = u.controls( pControl )
 //               vControl.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
                vi.set( COL_NUAGES, vControl )
@@ -612,7 +626,7 @@ with ProcFactoryProvider {
                vBus.name -> vBus
             }
          })( breakOut )
-         val res = VisualProc( p, pNode, aggr, vParams )
+         val res = VisualProc( panel, p, pNode, aggr, vParams )
 //         res.playing = u.playing == Some( true )
          res
       }
