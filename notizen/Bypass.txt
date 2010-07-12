@@ -30,3 +30,21 @@ bus A
 --> alloc bus B
 in.bus(isolated) = bus B
 xfade synths von A --> B (reader A / writer B)
+
+//// 12-jul-10
+wenn physical wiederhergestellt werden soll:
+- es geht niemals, daß n_set nach fade ausgeführt wird, d.h.
+für synth A muß sofort der output auf 0 gesetzt werden.
+damit ergibt sich für die sterbenden synth B die notwendigkeit,
+das ungemischte signal von A zu erhalten. folglich:
+
+pre A : read physical --> write tmp
+A : write physical
+post A : 
+	x = read tmp
+	y = read physical
+	unmixed A = y - x  // hat natürlich etwas floating point noise, sollte aber egal sein
+	ReplaceOut( physical, XFade( x -> y ))
+	Out( tmp2, unmixed )
+
+B : read tmp2

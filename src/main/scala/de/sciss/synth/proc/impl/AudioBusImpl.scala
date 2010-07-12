@@ -181,7 +181,9 @@ extends AudioBusImpl with ProcAudioOutput {
 //      ReplaceOut.ar( bus, (sigIn * wIn) + (sigBus * wBus) )
 //   }
 
-   private def xfadeGraph( numChannels: Int ) = SynthGraph {
+   // create xfade graph including ReplaceOut.
+   // returns the old bus signal and the new one
+   private def xfadeGraphMain( numChannels: Int ) : (GE, GE) = {
       val line    = EnvGen.kr( Env( "$start".ir, List( EnvSeg( 1, "$stop".ir, varShape( "$shape".ir )))),
          timeScale = "$dur".ir, doneAction = "$done".ir )
       val wIn     = (1 - line).sqrt
@@ -190,6 +192,15 @@ extends AudioBusImpl with ProcAudioOutput {
       val bus     = "$bus".kr
       val sigBus  = In.ar( bus, numChannels )
       ReplaceOut.ar( bus, (sigIn * wIn) + (sigBus * wBus) )
+      (sigIn, sigBus)
+   }
+
+   private def xfadeGraph( numChannels: Int ) = SynthGraph( xfadeGraphMain( numChannels ))
+
+   private def xfadeSendGraph( numChannels: Int ) = SynthGraph {
+      val (sigOld, sigMix) = xfadeGraphMain( numChannels )
+      val sigPure = sigMix - sigOld
+      Out.ar( "$out".kr, sigPure )
    }
 
    private def routeGraph( numChannels: Int ) = SynthGraph {
@@ -299,7 +310,7 @@ extends AudioBusImpl with ProcAudioOutput {
       val rsd1          = RichSynthDef( server, routeGraph( numChannels ))
       val rsd2          = RichSynthDef( server, xfadeGraph( numChannels ))
       val tmpBus        = RichBus.tmpAudio( server, numChannels )
-println( "fade " + name + " -> tmpBus = " + tmpBus )
+//println( "fade " + name + " -> tmpBus = " + tmpBus )
       // bit tricky... we should place them as "innermost" as possible,
       // so that for example a mapping synth in the post-group won't
       // read the bus too early.
@@ -365,7 +376,7 @@ println( "fade " + name + " -> tmpBus = " + tmpBus )
          synthetic = true
          bus.foreach( oldBus => {
             val res = RichBus.audio( proc.server, oldBus.numChannels )
-println( "finishConnect " + e + " -> bus = " + res )
+//println( "finishConnect " + e + " -> bus = " + res )
             bus = Some( res )
          })
       } else {
@@ -394,50 +405,42 @@ if( isPlaying ) println( "WARNING: ~> ctrl : not stopped / restarted yet!" )
       val e = ProcEdge( out, in )
       if( edges.contains( e )) {
          val inWasPlaying = in.isPlaying
-         if( inWasPlaying ) in.proc.stop
+         if( inWasPlaying ) in.proc.stop  // keeps reading from oldBus!
          ProcDemiurg.removeEdge( e )
          removeEdge( e )
          val outPhysical  = out.isPlaying && param.physical && edges.isEmpty
          if( outPhysical ) {
             bus.foreach( oldBus => {
                val numChannels   = oldBus.numChannels
-               val newBus        = RichBus.soundOut( proc.server, numChannels )
+               val server        = proc.server
+               val newBus        = RichBus.soundOut( server, numChannels )
                tx.transit match {
                   case d: DurationalTransition => {
-                     val g = SynthGraph {
-                        val line       = EnvGen.kr( Env( "$start".ir,
-                           List( EnvSeg( 1, "$stop".ir, varShape( "$shape".ir )))),
-                           timeScale = "$dur".ir, doneAction = "$done".ir )
-                        val wIn        = line
-                        val wOut       = (1 - line).sqrt
-                        val busOld     = "$bus1".kr
-                        val busNew     = "$bus2".kr
-                        val sigInOld   = In.ar( busOld, numChannels )
-                        val sigInNew   = In.ar( busNew, numChannels )
-                        ReplaceOut.ar( busNew, (sigInNew * wIn) + (sigInOld * wOut) )
-                        Out.ar( busOld, sigInNew * wOut )
-                     }
-                     val rsd  = RichSynthDef( proc.server, g )
-                     val rs   = rsd.play( proc.postGroup,
-                        List( "$start" -> 0, "$stop" -> 1, "$shape" -> welchShape.id, // ? welchShape
-                             "$dur" -> d.dur, "$done" -> freeSelf.id ), addToTail ) // ? addToTail
-                     rs.readWrite( oldBus -> "$bus1" )
-                     rs.readWrite( newBus -> "$bus2" )
+                     val rsd1          = RichSynthDef( server, routeGraph( numChannels ))
+                     val rsd2          = RichSynthDef( server, xfadeSendGraph( numChannels ))
+                     val tmpBus        = RichBus.tmpAudio( server, numChannels )
+                     // bit tricky... we should place them as "innermost" as possible,
+                     // so that for example a mapping synth in the post-group won't
+                     // read the bus too early.
+                     val rs1           = rsd1.play( proc.preGroup, List( "$dur" -> d.dur, "$done" -> freeSelf.id ), addToTail )
+                     val rs2           = rsd2.play( proc.postGroup,
+                        List( "$start" -> 0, "$stop" -> 1, "$shape" -> welchShape.id,
+                             "$dur" -> d.dur, "$done" -> freeSelf.id ), addToHead )
+                     rs1.read(      newBus -> "$in" )
+                     rs1.write(     tmpBus -> "$out" )
+                     rs2.read(      tmpBus -> "$in" )
+                     rs2.readWrite( newBus -> "$bus" )
+                     rs2.write(     oldBus -> "$out" )
+//                     fade( d, newBus, 0 -> 1, welchShape, freeSelf )
                   }
                   case _ =>
                }
+println( "SETTING BUS FROM " + oldBus + " TO " + newBus )
                bus = Some( newBus )
-//if( out.isPlaying ) proc.migrateAccessories( )
-//               proc.busChanged( this, newBus )
-//println( "--> MIGRATE" )
-//               oldBus.migrateTo( newBus )
-//println( "ETARGIM <--" )
-// XXX
-//error( "NEED TO SOLVE MIGRATION" )
             })
          }
          finishDisconnect( e )
-         if( inWasPlaying && in.bus.isDefined ) in.proc.play  // i.e. physical
+         if( inWasPlaying && in.bus.isDefined ) in.proc.play  // i.e. physical ; XXX currently always false
       }
       this
    }

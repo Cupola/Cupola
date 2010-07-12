@@ -31,7 +31,7 @@ package de.sciss.synth.proc
 import de.sciss.synth.AudioBus
 
 /**
- *    @version 0.11, 10-Jul-10
+ *    @version 0.11, 12-Jul-10
  */
 trait AudioBusNodeSetter {
    def add( implicit tx: ProcTxn )     : AudioBusNodeSetter
@@ -57,7 +57,7 @@ object AudioBusNodeSetter {
          require( newBus.numChannels == bus.numChannels )
          val wasAdded = added()
          if( wasAdded ) remove
-         val res = newInstance( name, bus, rn )
+         val res = newInstance( name, newBus, rn )
          if( wasAdded ) res.add
          res
       }
