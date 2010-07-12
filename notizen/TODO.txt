@@ -1,4 +1,4 @@
-Sound Processes
+==== Sound Processes ====
 
 - [NO] (( mapan : line synth sollte wohl nicht freeSelf machen, sondern trigger senden, so daß client den richtigen endwert setzt, before audio-bus leer wird? // irgendwie scheint es klick-los zu gehen...? (warum?)
 ---> der letzte wert wird definitiv gehalten, also kein problem ))
@@ -7,22 +7,27 @@ Sound Processes
 - bufEmpty
 
 
-Nuages
+==== Nuages ====
 
+needed for SMC:
 - bypass filter
 - insert filter (a: new; b: existing via drag)
-- meter
-- gui update glide values
-- tablet support
-- disconnect mappings
 - dispose proc
-- selectable proc (evtl. aggregate?)
 - lazy slider for xfade/ glide
 - how to implement NuagesULoop?
 // vielleicht radikal anderes konzept mit
 // einem globalen buffer-pool?
+- smc: freesound proc
+
+useful for SMC:
+- tablet support
+- disconnect mappings
 - soloing
 - control-room recorder
 - diskin based procs: track playback position
-- smc: freesound proc
+- meter
+
+other:
+- gui update glide values
+- selectable proc (evtl. aggregate?)
 - duplicate processes

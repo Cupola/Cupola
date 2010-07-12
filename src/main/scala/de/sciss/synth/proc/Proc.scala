@@ -55,10 +55,10 @@ object Proc extends ThreadLocalObject[ Proc ] {
    type Listener = TxnModel.Listener[ Update ]
 }
 
-trait Proc extends TxnModel[ Proc.Update ] with TxnPlayer {
+trait Proc extends TxnModel[ Proc.Update ] with TxnPlayer with ProcSpec {
    import Proc._
    
-   def name : String
+//   def name : String
 //   def play( implicit tx: ProcTxn ) : Proc
 //   def stop( implicit tx: ProcTxn ) : Proc
    def isPlaying( implicit tx: ProcTxn ) : Boolean
@@ -84,8 +84,6 @@ trait Proc extends TxnModel[ Proc.Update ] with TxnPlayer {
 //   def getAudioBus( name: String )( implicit tx: ProcTxn ) : RichAudioBus
 //   def setAudioBus( name: String, value: RichAudioBus )( implicit tx: ProcTxn ) : Proc
 
-   def params : IIdxSeq[ ProcParam ]   // XXX change naming
-   def param( name: String ) : ProcParam
    def controls: IIdxSeq[ ProcControl ]
    def control( name: String ) : ProcControl
 

@@ -30,9 +30,10 @@ package de.sciss.synth.proc
 
 import de.sciss.synth._
 import de.sciss.scalaosc.OSCBundle
+import collection.immutable.{ IndexedSeq => IIdxSeq }
 
 /**
- *    @version 0.12, 04-Jul-10
+ *    @version 0.12, 12-Jul-10
  */
 object DSL {
    // ---- scope : outside ----
@@ -116,7 +117,12 @@ trait ProcBuffer {
    def numChannels : Int
 }
 
-trait ProcFactory {
+trait ProcSpec {
    def name : String
-   def make( implicit tx: ProcTxn ) : Proc 
+   def params : IIdxSeq[ ProcParam ]   // XXX change naming
+   def param( name: String ) : ProcParam
+}
+
+trait ProcFactory extends ProcSpec {
+   def make( implicit tx: ProcTxn ) : Proc
 }

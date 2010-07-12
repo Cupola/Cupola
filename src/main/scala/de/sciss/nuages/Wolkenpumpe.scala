@@ -32,6 +32,9 @@ import de.sciss.synth.proc.{ Ref, ProcFactory, ProcTxn}
 import de.sciss.synth.Model
 import java.awt.Font
 
+/**
+ *    @version 0.11, 12-Jul-10
+ */
 object Wolkenpumpe extends Model {
    // --- dispatched from the model ----
    case class GensRemoved( pfs: ProcFactory* )
@@ -45,6 +48,12 @@ object Wolkenpumpe extends Model {
    }
 
    def add( pf: ProcFactory )( implicit tx: ProcTxn ) {
+      // we currently use a heuristic to determine
+      // the kind of proc factory...
+//      pf.params.find( _.name == "in" ) match {
+//         case Some( ProcParamAudioInput ) =>
+//         case _ =>
+//      }
       gens.transform( _ + pf )
    }
 

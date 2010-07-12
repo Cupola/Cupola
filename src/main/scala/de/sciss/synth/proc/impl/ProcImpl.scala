@@ -51,7 +51,7 @@ extends Proc {
 
    lazy val audioInputs          = fact.pAudioIns.map(  p => new AudioInputImpl(  this, p ))
    lazy val audioOutputs         = fact.pAudioOuts.map( p => new AudioOutputImpl( this, p ))
-   lazy val controls             = fact.paramSeq.collect {
+   lazy val controls             = fact.params.collect {
       case pControl: ProcParamControl  => new ControlImpl( proc, pControl, krate )
       case pAudio: ProcParamAudio      => new ControlImpl( proc, pAudio, arate )
    }
@@ -61,7 +61,7 @@ extends Proc {
    def audioOutput( name: String ) : ProcAudioOutput  = audioOutputs.find( _.name == name ).get
 
    def param( name: String ) : ProcParam = fact.paramMap( name )
-   def params : IIdxSeq[ ProcParam ] = fact.paramSeq
+   def params : IIdxSeq[ ProcParam ] = fact.params
 
    def control( name: String ) : ProcControl = controlMap( name )
 

@@ -187,6 +187,39 @@ xfade( 10 ) { p1.stop }
 
 p1.play
 xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 90 ) + 40).midicps }
+
+////
+val audioDir = "/Users/rutz/Desktop/Cupola/audio_work/"
+
+val genAt2aSide = ngen( "at_2aside" ) {
+    val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
+    val b   = bufCue( "disk", audioDir + "material/2A-SideBlossCon2A-SideBloss.aif" )
+
+    graph {
+        HPF.ar( VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 ), 30 )
+    }
+}
+
+val genFFreqFilter = ngen( "f_filt" ) {
+    val pfreq = pAudio( "freq", ParamSpec( -1, 1 ), 0.54 )
+    val pmix  = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
+
+	graph { in =>
+		val normFreq	= pfreq.ar
+        val lowFreqN	= Lag.ar( Clip.ar( normFreq, -1, 0 ))
+        val highFreqN	= Lag.ar( Clip.ar( normFreq,  0, 1 ))
+        val lowFreq		= LinExp.ar( lowFreqN, -1, 0, 30, 20000 )
+        val highFreq	= LinExp.ar( highFreqN, 0, 1, 30, 20000 )
+        val lowMix		= Clip.ar( lowFreqN * -10.0, 0, 1 )
+        val highMix		= Clip.ar( highFreqN * 10.0, 0, 1 )
+        val dryMix		= 1 - (lowMix + highMix)
+        val lpf			= LPF.ar( in, lowFreq ) * lowMix
+        val hpf			= HPF.ar( in, highFreq ) * highMix
+        val dry			= in * dryMix
+		val flt			= dry + lpf + hpf
+        LinXFade2.ar( in, flt, pmix.ar * 2 - 1 )
+    }
+}
 """
 
       pane.initialCode = Some(

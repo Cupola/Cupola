@@ -34,7 +34,7 @@ import collection.immutable.{ IndexedSeq => IIdxSeq }
 
 class FactoryImpl( val name: String, val entry: ProcEntry,
                            val paramMap: Map[ String, ProcParam ],
-                           val paramSeq: IIdxSeq[ ProcParam ],
+                           val params: IIdxSeq[ ProcParam ],
                            val pAudioIns: IIdxSeq[ ProcParamAudioInput ],
                            val pAudioOuts: IIdxSeq[ ProcParamAudioOutput ])
 extends ProcFactory {
@@ -43,6 +43,8 @@ extends ProcFactory {
       ProcDemiurg.addVertex( res )
       res
    }
+
+   def param( name: String ) : ProcParam = paramMap( name )
 
    override def toString = "gen(" + name + ")"
 }
