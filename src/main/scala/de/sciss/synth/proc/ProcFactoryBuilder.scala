@@ -40,7 +40,7 @@ import ProcTransport._
 import ugen._
 
 /**
- *    @version 0.12, 04-Jul-10
+ *    @version 0.12, 12-Jul-10
  */
 trait ProcFactoryBuilder {
    def name : String
@@ -50,8 +50,10 @@ trait ProcFactoryBuilder {
    def pAudioIn( name: String, default: Option[ RichAudioBus ]) : ProcParamAudioInput
    def pAudioOut( name: String, default: Option[ RichAudioBus ]) : ProcParamAudioOutput
 
-   def graph( thunk: => GE ) : ProcGraph
-   def graph( fun: GE => GE ) : ProcGraph
+   def synthOutput( fun: () => GE ) : ProcGraph
+   def synth( fun: () => Unit ) : ProcGraph
+   def filter( fun: GE => Unit ) : ProcGraph
+   def filterOutput( fun: GE => GE ) : ProcGraph
 
    def bufCue( name: String, path: String ) : ProcBuffer
    def bufCue( name: String, p: ProcParamString ) : ProcBuffer

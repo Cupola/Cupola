@@ -7,6 +7,9 @@ import plaf.basic.{BasicSliderUI, BasicPanelUI}
 import de.sciss.synth.proc._
 import java.awt.event.{ActionListener, ActionEvent}
 
+/**
+ *    @version 0.11, 12-Jul-10
+ */
 class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
    panel =>
 
@@ -42,6 +45,9 @@ class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
       ggSlider.setUI( new BasicSliderUI( ggSlider ))
       ggSlider.setBackground( Color.black )
       ggSlider.setForeground( Color.white )
+//      val dim           = ggSlider.getPreferredSize()
+//      dim.width         = 64
+//      ggSlider.setPreferredSize( dim )
       panel.add( ggSlider )
 
       def dispatchTransition {

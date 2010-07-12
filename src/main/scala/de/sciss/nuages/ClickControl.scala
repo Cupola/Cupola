@@ -41,17 +41,20 @@ import de.sciss.synth.proc.{Proc, ProcTxn, ProcFactory}
  *    for newly created procs.
  * 
  *    Methods are guaranteed to be called in the awt
- *    event thread. 
+ *    event thread.
+ *
+ *    @version 0.11, 12-Jul-10  
  */
 trait ProcFactoryProvider {
-   def factory: Option[ ProcFactory ]
+   def genFactory: Option[ ProcFactory ]
+   def filterFactory: Option[ ProcFactory ]
    def setLocationHint( p: Proc, loc: Point2D )
 }
 
 class ClickControl( pfp: ProcFactoryProvider ) extends ControlAdapter {
    override def mousePressed( e: MouseEvent ) {
       if( e.getClickCount() != 2 ) return
-      pfp.factory match {
+      pfp.genFactory match {
          case Some( pf ) => {
             val d          = getDisplay( e )
             val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )

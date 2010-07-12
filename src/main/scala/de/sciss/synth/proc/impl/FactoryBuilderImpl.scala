@@ -1,7 +1,7 @@
 package de.sciss.synth.proc.impl
 
 import de.sciss.synth.proc._
-import de.sciss.synth.GE
+import de.sciss.synth.{Rate, audio, control, GE}
 
 class FactoryBuilderImpl( val name: String ) extends ProcFactoryBuilder {
    private var finished                   = false
@@ -64,19 +64,45 @@ class FactoryBuilderImpl( val name: String ) extends ProcFactoryBuilder {
       p
    }
 
-   def graph( fun: GE => GE ) : ProcGraph = {
-      val res = graph( fun( Proc.local.param( "in" ).asInstanceOf[ ProcParamAudioInput ].ar ))
-      implicitAudioIn = true
-      res
+   private def getImplicitIn : GE = Proc.local.param( "in" ).asInstanceOf[ ProcParamAudioInput ].ar
+   private def getImplicitOut( sig: GE ) : GE = {
+      val rate = Rate.highest( sig.outputs.map( _.rate ): _* )
+      if( (rate == audio) || (rate == control) ) {
+         Proc.local.param( "out" ).asInstanceOf[ ProcParamAudioOutput ].ar( sig )
+      } else sig
    }
 
-   def graph( thunk: => GE ) : ProcGraph = {
+   def filter( fun: GE => Unit ) : ProcGraph = {
+      val fullFun = () => fun( getImplicitIn )
+      graph( fullFun, true, false )
+   }
+
+   def filterOutput( fun: GE => GE ) : ProcGraph = {
+      val fullFun: Function0[ Unit ] = () => {
+         val in   = getImplicitIn
+         val out  = fun( in )
+         getImplicitOut( out )
+      }
+      graph( fullFun, true, true )
+   }
+
+   def synth( fun: () => Unit ) : ProcGraph = {
+      graph( fun, false, false )
+   }
+
+   def synthOutput( fun: () => GE ) : ProcGraph = {
+      val fullFun: Function0[ Unit ] = () => getImplicitOut( fun() )
+      graph( fullFun, false, true )
+   }
+
+   private def graph( fun: () => Unit, imIn: Boolean, imOut: Boolean ) : ProcGraph = {
       requireOngoing
       require( graph.isEmpty, "Graph already defined" )
-      val res = new GraphImpl( thunk )
+      val res = new GraphImpl( fun )
       graph = Some( res )
       enter( res )
-      implicitAudioOut = true
+      implicitAudioIn   = imIn
+      implicitAudioOut  = imOut
       res
    }
 

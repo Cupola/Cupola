@@ -51,7 +51,7 @@ import geom._
 import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
 
 /**
- *    @version 0.11, 06-Jul-10
+ *    @version 0.11, 12-Jul-10
  */
 object NuagesPanel {
    var verbose = false
@@ -503,7 +503,8 @@ with ProcFactoryProvider {
    }
 
    // ---- ProcFactoryProvider ----
-   var factory: Option[ ProcFactory ] = None
+   var genFactory:    Option[ ProcFactory ] = None
+   var filterFactory: Option[ ProcFactory ] = None
    private var locHintMap = Map.empty[ Proc, Point2D ]
    def setLocationHint( p: Proc, loc: Point2D ) {
 //      println( "loc for " + p + " is " + loc )

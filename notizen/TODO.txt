@@ -29,5 +29,6 @@ useful for SMC:
 
 other:
 - gui update glide values
+- gui reflect faded values (how?)
 - selectable proc (evtl. aggregate?)
 - duplicate processes

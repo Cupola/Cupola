@@ -31,11 +31,15 @@ package de.sciss.synth.proc
 import de.sciss.synth._
 import de.sciss.scalaosc.OSCBundle
 import collection.immutable.{ IndexedSeq => IIdxSeq }
+import reflect.ClassManifest
 
 /**
  *    @version 0.12, 12-Jul-10
  */
 object DSL {
+   private val cmGE     = ClassManifest.fromClass( classOf[ GE ])
+   private val cmUnit   = ClassManifest.Unit
+
    // ---- scope : outside ----
 
    /**
@@ -43,7 +47,7 @@ object DSL {
     *    with the given name and described through
     *    the given code block.
     */
-   def gen( name: String )( thunk: => Unit ) : ProcFactory = {
+   def proc( name: String )( thunk: => Unit ) : ProcFactory = {
       val res = ProcFactoryBuilder( name )( thunk )
       // res.announce
       res
@@ -90,8 +94,27 @@ object DSL {
    def pAudioOut( name: String, default: Option[ RichAudioBus ] = None ) : ProcParamAudioOutput =
       ProcFactoryBuilder.local.pAudioOut( name, default )
 
-   def graph( thunk: => GE ) : ProcGraph = ProcFactoryBuilder.local.graph( thunk )
-   def graph( fun: GE => GE ) : ProcGraph = ProcFactoryBuilder.local.graph( fun )
+   def synth[ T ]( thunk: => T )( implicit m: ClassManifest[ T ]) : ProcGraph = {
+      val pf = ProcFactoryBuilder.local
+      if( m <:< cmGE ) {
+         val funC: Function0[ GE ] = () => thunk.asInstanceOf[ GE ]
+         pf.synthOutput( funC )
+      } else if( m <:< cmUnit ) {
+         val funC: Function0[ Unit ] = () => thunk
+         pf.synth( funC )
+      } else error( "Unsupported graph return type" )
+   }
+
+   def filter[ T ]( fun: GE => T )( implicit m: ClassManifest[ T ]) : ProcGraph = {
+      val pf = ProcFactoryBuilder.local
+      if( m <:< cmGE ) {
+         val funC: Function1[ GE, GE ] = fun.asInstanceOf[ GE => GE ]
+         pf.filterOutput( funC )
+      } else if( m <:< cmUnit ) {
+         val funC: Function1[ GE, Unit ] = fun.asInstanceOf[ GE => Unit ]
+         pf.filter( funC )
+      } else error( "Unsupported graph return type" )
+   }
 
    def bufCue( name: String, path: String ) : ProcBuffer =
       ProcFactoryBuilder.local.bufCue( name, path )

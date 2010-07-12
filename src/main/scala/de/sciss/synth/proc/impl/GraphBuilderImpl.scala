@@ -32,21 +32,8 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
    def play : ProcRunning = {
       implicit val t = tx
       ProcGraphBuilder.use( this ) {
-         val p = Proc.local
-         val g = SynthGraph {
-            val res1 = graph.fun
-            val rate = Rate.highest( res1.outputs.map( _.rate ): _* )
-            if( (rate == audio) || (rate == control) ) {
-//                  val res2 = fadeTime.map( fdt => makeFadeEnv( fdt ) * res1 ) getOrElse res1
-//                  val out = "out".kr
-//                  if( rate == audio ) {
-//                     Out.ar( out, res2 )
-//                  } else {
-//                     Out.kr( out, res2 )
-//                  }
-               (p.param( "out" ).asInstanceOf[ ProcParamAudioOutput ]).ar( res1 )
-            } else res1
-         }
+         val p             = Proc.local
+         val g             = SynthGraph( graph.fun() )
 
          val server        = p.server
          val rsd           = RichSynthDef( server, g )

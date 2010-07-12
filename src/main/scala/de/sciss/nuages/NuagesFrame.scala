@@ -32,75 +32,80 @@ import javax.swing._
 import de.sciss.synth.{Server, Model}
 import javax.swing.event.{ListSelectionListener, ListSelectionEvent}
 import java.awt.geom.Point2D
-import de.sciss.synth.proc.{Proc, ProcFactory}
 import collection.mutable.ListBuffer
 import java.awt._
 import plaf.basic.BasicPanelUI
+import de.sciss.synth.proc.{ProcTxn, Proc, ProcFactory}
 
 /**
- *    @version 0.11, 04-Jul-10
+ *    @version 0.12, 12-Jul-10
  */
-class NuagesFrame( server: Server ) extends JFrame( "Wolkenpumpe") {
-   private val ggPanel  = new NuagesPanel( server )
-   private val ggGens   = new JList( GensModel )
+class NuagesFrame( server: Server )
+extends JFrame( "Wolkenpumpe") with Wolkenpumpe.Listener {
+   frame =>
+
+   private val ggPanel     = new NuagesPanel( server )
+   private val pfPanel     = Box.createVerticalBox
+   private val genModel    = createProcFactoryView( pfPanel )( ggPanel.genFactory = _ )
+   private val filterModel = createProcFactoryView( pfPanel )( ggPanel.filterFactory = _ )
 
    // ---- constructor ----
    {
-      // XXX should query current gen list
-      // but then we need to figure out
-      // a proper synchronization
-      val font = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
-      Wolkenpumpe.addListener( GensModel.nuagesListener )
-
-//      ggGens.setFont( font ) // doesn't do anything, porque?
-
       val cp = getContentPane
       cp.setBackground( Color.black )
-      ggGens.setBackground( Color.black )
-println( "font = " + font )
-      GensRenderer.setFont( font )
-//      val rend = new GensRenderer
-//      rend.setFont( font )
-      ggGens.setCellRenderer( GensRenderer )
-//      ggGens.setCellRenderer( rend )
-      ggGens.setFixedCellWidth( 64 )
-      ggGens.setSelectionMode( ListSelectionModel.SINGLE_SELECTION )
-      ggGens.addListSelectionListener( new ListSelectionListener {
-         def valueChanged( e: ListSelectionEvent ) {
-            if( e.getValueIsAdjusting() ) return
-// this is completely wrong. first-index returns the
-// one which changed, so if you change selection, you
-// get the old + the new index in first and last index
-//            val idx = e.getFirstIndex()
-//            val pf = if( idx >= 0 && idx < GensModel.getSize() ) {
-//               Some( GensModel.getElementAt( idx ))
-//            } else {
-//               None
-//            }
-            val pf0 = ggGens.getSelectedValue()
-            val pf = if( pf0 != null ) Some( pf0.asInstanceOf[ ProcFactory ]) else None
-//println( "AQUI : " + e.getFirstIndex() + " / "  + e.getLastIndex() + " / " + pf )
-            ggPanel.factory = pf
-         }
-      })
-
-      val ggGensScroll  = new JScrollPane( ggGens, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
-         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER )
       val ggEastBox     = new JPanel( new BorderLayout() )
+      val font          = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
+      ProcFactoryCellRenderer.setFont( font )
+
       val uiPanel       = new BasicPanelUI()
       ggEastBox.setUI( uiPanel )
       ggEastBox.setBackground( Color.black )
-      ggEastBox.add( ggGensScroll, BorderLayout.CENTER )
+      ggEastBox.add( pfPanel, BorderLayout.CENTER )
       val ggTransition = new NuagesTransitionPanel( ggPanel )
       ggEastBox.add( ggTransition, BorderLayout.SOUTH )
       cp.add( BorderLayout.EAST, ggEastBox )
       cp.add( BorderLayout.CENTER, ggPanel )
 
       setDefaultCloseOperation( WindowConstants.DISPOSE_ON_CLOSE )
+
+      ProcTxn.atomic { implicit t => Wolkenpumpe.addListener( frame )}
+   }
+
+   def updated( u: Wolkenpumpe.Update ) { defer {
+      if( u.gensRemoved.nonEmpty )     genModel.remove( u.gensRemoved.toSeq: _* )
+      if( u.filtersRemoved.nonEmpty )  filterModel.remove( u.filtersRemoved.toSeq: _* )
+      if( u.gensAdded.nonEmpty )       genModel.add( u.gensAdded.toSeq: _* )
+      if( u.filtersAdded.nonEmpty )    filterModel.add( u.filtersAdded.toSeq: _* )
+   }}
+
+   private def createProcFactoryView( parent: Container )
+                                    ( fun: Option[ ProcFactory ] => Unit ) : ProcFactoryListModel = {
+      val model   = new ProcFactoryListModel
+      val ggList  = new JList( model )
+      ggList.setBackground( Color.black )
+      ggList.setCellRenderer( ProcFactoryCellRenderer )
+      ggList.setFixedCellWidth( 64 )
+      ggList.setVisibleRowCount( 10 )
+      ggList.setSelectionMode( ListSelectionModel.SINGLE_SELECTION )
+      ggList.addListSelectionListener( new ListSelectionListener {
+         def valueChanged( e: ListSelectionEvent ) {
+            if( e.getValueIsAdjusting() ) return
+            val pf0 = ggList.getSelectedValue()
+            val pf = if( pf0 != null ) Some( pf0.asInstanceOf[ ProcFactory ]) else None
+//            ggPanel.factory = pf
+            fun( pf )
+         }
+      })
+
+      val ggScroll  = new JScrollPane( ggList, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER )
+      parent.add( ggScroll )
+
+      model
    }
 
    override def dispose {
-      Wolkenpumpe.removeListener( GensModel.nuagesListener )
+      ProcTxn.atomic { implicit t => Wolkenpumpe.removeListener( frame )}
       ggPanel.dispose
       super.dispose
    }
@@ -109,7 +114,7 @@ println( "font = " + font )
       EventQueue.invokeLater( new Runnable { def run = thunk })
    }
 
-   private object GensRenderer extends DefaultListCellRenderer {
+   private object ProcFactoryCellRenderer extends DefaultListCellRenderer {
       private val colrUnfocused = new Color( 0xC0, 0xC0, 0xC0 )
 
       override def getListCellRendererComponent( list: JList, value: AnyRef, index: Int,
@@ -127,48 +132,41 @@ println( "font = " + font )
       }
    }
 
-   private object GensModel extends AbstractListModel with Ordering[ ProcFactory ] {
-//      model =>
+   private class ProcFactoryListModel extends AbstractListModel with Ordering[ ProcFactory ] {
+      model =>
 
       private var coll = Vector.empty[ ProcFactory ]
 
-      val nuagesListener : Model.Listener = {
-         case Wolkenpumpe.GensRemoved( pfs @ _* ) => defer {
-            val indices = pfs.map( Util.binarySearch( coll, _ )( GensModel )).filter( _ >= 0 )
-            coll = coll.diff( pfs )
-            val index0 = indices.min
-            val index1 = indices.max
-//            fireIntervalRemoved( model, index0, index1 )
-//            println( "removed( " + index0 + ", " + index1 + " ) --> " + coll )
-            removed( index0, index1 ) // WARNING: IllegalAccessError with fireIntervalRemoved
-         }
-         case Wolkenpumpe.GensAdded( pfs @ _* ) => defer {
-            var index0 = Int.MaxValue
-            var index1 = Int.MinValue
-            pfs.foreach( pf => {
-               val idx  = Util.binarySearch( coll, pf )( GensModel )
-               val idx0 = if( idx < 0) (-idx - 1) else idx
-               coll     = coll.patch( idx0, Vector( pf ), 0 )
-               // goddamnit
-//               if( index0 != Int.MaxValue && idx0 <= index0 ) index0 += 1
-               if( idx0 <= index1 ) index1 += 1
-               index0   = math.min( index0, idx0 )
-               index1   = math.max( index1, idx0 )
-//println( "--> idx0 " + idx0 + " / min " + index0 + " / max " + index1 )
-            })
-//println( "fireIntervalAdded( " + model + ", " + index0 + ", " + index1 +" )" )
-//            fireIntervalAdded( model, index0, index1 )
-//            println( "added( " + index0 + ", " + index1 + " ) --> " + coll )
-            if( index0 <= index1 ) added( index0, index1 ) // WARNING: IllegalAccessError with fireIntervalAdded
-         }
+      def remove( pfs: ProcFactory * ) {
+         val indices = pfs.map( Util.binarySearch( coll, _ )( model )).filter( _ >= 0 )
+         coll = coll.diff( pfs )
+         val index0 = indices.min
+         val index1 = indices.max
+         removed( index0, index1 ) // WARNING: IllegalAccessError with fireIntervalRemoved
+      }
+
+      def add( pfs: ProcFactory* ) {
+         var index0 = Int.MaxValue
+         var index1 = Int.MinValue
+         pfs.foreach( pf => {
+            val idx  = Util.binarySearch( coll, pf )( model )
+            val idx0 = if( idx < 0) (-idx - 1) else idx
+            coll     = coll.patch( idx0, Vector( pf ), 0 )
+            // goddamnit
+            if( idx0 <= index1 ) index1 += 1
+            index0   = math.min( index0, idx0 )
+            index1   = math.max( index1, idx0 )
+         })
+         // WARNING: IllegalAccessError with fireIntervalAdded
+         if( index0 <= index1 ) added( index0, index1 )
       }
 
       private def removed( index0: Int, index1: Int ) {
-         fireIntervalRemoved( GensModel, index0, index1 )
+         fireIntervalRemoved( model, index0, index1 )
       }
 
       private def added( index0: Int, index1: Int ) {
-         fireIntervalAdded( GensModel, index0, index1 )
+         fireIntervalAdded( model, index0, index1 )
       }
 
       // Ordering

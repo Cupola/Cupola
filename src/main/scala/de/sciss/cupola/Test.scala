@@ -30,12 +30,9 @@ object Test {
 
 //       println( "FUCK YOU" ) // this breakpoint _does_ work
 
-      val g1 = gen( "process1" ) {
+      val g1 = proc( "process1" ) {
           val p1 = pControl( "freq", ParamSpec(), 882 )
-
-          graph {
-              SinOsc.ar( p1.kr )
-          }
+          synth { SinOsc.ar( p1.kr )}
       }
 
       val p1 = g1.make
@@ -43,12 +40,9 @@ object Test {
       p1.control( "freq" ).v = 441
       p1.play
 
-      val g2 = gen( "process2" ) {
+      val g2 = proc( "process2" ) {
           val p1 = pControl( "freq", ParamSpec(), 1 )
-
-          graph { in =>
-              in * SinOsc.ar( p1.kr )
-          }
+          filter { _ * SinOsc.ar( p1.kr )}
       }
 
       val p2 = g2.make
@@ -56,12 +50,9 @@ object Test {
       p1 ~> p2
       p2.play
 
-      val g3 = gen( "process3" ) {
+      val g3 = proc( "process3" ) {
           val p1 = pControl( "freq", ParamSpec(), 1 )
-
-          graph { in =>
-              Pan2.ar( Mix( in ), SinOsc.ar( p1.kr ))
-          }
+          filter { in => Pan2.ar( Mix( in ), SinOsc.ar( p1.kr ))}
       }
 
       val p3 = g3.make
