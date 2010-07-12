@@ -93,6 +93,8 @@ sealed trait ProcParamAudioBus extends ProcParam {
    // ---- scope: graph ----
 // currently disabled:
 //   def numChannels : Int
+
+   def physical: Boolean
 }
 
 trait ProcParamAudioInput extends ProcParamAudioBus {

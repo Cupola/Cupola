@@ -78,7 +78,7 @@ extends ProcParamAudio {
 class ParamStringImpl( val name: String, val default: Option[ String ])
 extends ProcParamString
 
-class ParamAudioInputImpl( val name: String, val default: Option[ RichAudioBus ], physical: Boolean )
+class ParamAudioInputImpl( val name: String, val default: Option[ RichAudioBus ], val physical: Boolean )
 extends ProcParamAudioInput {
 
    def ar : GE = {
@@ -115,7 +115,7 @@ extends ProcParamAudioInput {
    private def pError( name: String ) = throw new ProcParamUnspecifiedException( name )
 }
 
-class ParamAudioOutputImpl( val name: String, val default: Option[ RichAudioBus ], physical: Boolean )
+class ParamAudioOutputImpl( val name: String, val default: Option[ RichAudioBus ], val physical: Boolean )
 extends ProcParamAudioOutput {
 
    def ar( sig: GE ) : GE = {

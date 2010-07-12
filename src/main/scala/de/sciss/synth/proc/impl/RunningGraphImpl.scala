@@ -32,7 +32,11 @@ import de.sciss.synth.AudioBus
 import collection.immutable.{ Seq => ISeq }
 import de.sciss.synth.proc._
 
-class RunningGraphImpl( rs: RichSynth, accessories: ISeq[ TxnPlayer ]) extends ProcRunning {
+class RunningGraphImpl( rs: RichSynth, accessories: ISeq[ TxnPlayer ], busMap: Map[ String, AudioBusNodeSetter ])
+extends ProcRunning {
+
+   private val busMapRef = Ref( busMap )
+
 //   import ProcRunning._
 
 //   rs.synth.onEnd {
@@ -62,9 +66,12 @@ class RunningGraphImpl( rs: RichSynth, accessories: ISeq[ TxnPlayer ]) extends P
       rs.set( true, name -> value )
    }
 
-   def busChanged( name: String, bus: AudioBus )( implicit tx: ProcTxn ) {
-      // XXX check numChannels
-      rs.set( true, name -> bus.index )
+   def busChanged( name: String, newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ) {
+      val bm = busMapRef()
+      bm.get( name ).foreach( setter => {
+         val newABus = newBus.getOrElse( error( "Bus is used and hence must be defined : " + name ))
+         busMapRef.set( bm + (name -> setter.migrateTo( newABus )))
+      })
    }
 
    def setGroup( g: RichGroup )( implicit tx: ProcTxn ) {

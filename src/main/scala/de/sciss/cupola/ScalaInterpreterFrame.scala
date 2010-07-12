@@ -64,6 +64,7 @@ val p2 = g2.make
 xfade( 30 ) { p1 ~> p2; p2.play }
 //p1 ~> p2
 //p2.play
+xfade( 30 ) { p1 ~/> p2 }
 
 val g3 = ngen( "Pan" ) {
     val p1 = pControl( "freq", ParamSpec( 0.1f, 20000, ExpWarp ), 1 )

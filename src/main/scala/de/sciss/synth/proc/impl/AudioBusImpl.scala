@@ -78,6 +78,8 @@ extends AudioBusImpl with ProcAudioInput {
 
 //      def name = param.name
 
+   def proc: ProcImpl   // be more specific
+
    def bus_=( newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ) {
 //      if( verbose ) println( "IN BUS " + proc.name + " / " + newBus )
       val oldBus = busRef.swap( newBus )
@@ -87,6 +89,7 @@ extends AudioBusImpl with ProcAudioInput {
 //         oldBus.foreach( _.removeReader( this ))
 //         newBus.foreach( _.addReader( this ))   // invokes busChanged
          edges.foreach( _.out.bus_=( newBus ))
+         proc.busChanged( this, newBus )
       }
    }
 
@@ -108,10 +111,12 @@ extends AudioBusImpl with ProcAudioInput {
    protected def edgeRemoved( e: ProcEdge )( implicit tx: ProcTxn ) {} // XXX should still fire
 }
 
-class AudioInputImpl( val proc: ProcImpl, val name: String )
+class AudioInputImpl( val proc: ProcImpl, param: ProcParamAudioInput )
 extends AbstractAudioInputImpl {
    import AudioBusImpl._
 
+   def name = param.name
+   
    override def toString = "aIn(" + proc.name + " @ " + name + ")"
 
 //      protected val edges = Ref( Set.empty[ ProcEdge ])
@@ -146,13 +151,13 @@ extends AbstractAudioInputImpl {
    }
 }
 
-class AudioOutputImpl( val proc: ProcImpl, val name: String )
+class AudioOutputImpl( val proc: ProcImpl, param: ProcParamAudioOutput )
 extends AudioBusImpl with ProcAudioOutput {
    out =>
 
    import AudioBusImpl._
 
-//      def name = param.name
+   def name = param.name
 
    override def toString = "aOut(" + proc.name + " @ " + name + ")"
 
@@ -294,10 +299,14 @@ extends AudioBusImpl with ProcAudioOutput {
       val rsd1          = RichSynthDef( server, routeGraph( numChannels ))
       val rsd2          = RichSynthDef( server, xfadeGraph( numChannels ))
       val tmpBus        = RichBus.tmpAudio( server, numChannels )
-      val rs1           = rsd1.play( proc.preGroup, List( "$dur" -> d.dur, "$done" -> doneAction.id ))
+println( "fade " + name + " -> tmpBus = " + tmpBus )
+      // bit tricky... we should place them as "innermost" as possible,
+      // so that for example a mapping synth in the post-group won't
+      // read the bus too early.
+      val rs1           = rsd1.play( proc.preGroup, List( "$dur" -> d.dur, "$done" -> doneAction.id ), addToTail )
       val rs2           = rsd2.play( proc.postGroup,
          List( "$start" -> line._1, "$stop" -> line._2, "$shape" -> shape.id,
-              "$dur" -> d.dur, "$done" -> doneAction.id ))
+              "$dur" -> d.dur, "$done" -> doneAction.id ), addToHead )
       rs1.read(      rb     -> "$in" )
       rs1.write(     tmpBus -> "$out" )
       rs2.read(      tmpBus -> "$in" )
@@ -321,6 +330,7 @@ extends AudioBusImpl with ProcAudioOutput {
 //         oldBus.foreach( _.removeWriter( this ))
 //         newBus.foreach( _.addWriter( this ))   // invokes busChanged
          edges.foreach( _.in.bus_=( newBus ))
+         proc.busChanged( this, newBus )
       }
    }
 
@@ -331,26 +341,21 @@ extends AudioBusImpl with ProcAudioOutput {
       }
    }
 
-   def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
-//      if( verbose ) println( "OUT INDEX " + proc.name + " / " + bus )
-//         indexRef.set( bus.index )
-      proc.busParamChanged( this, bus )
-   }
+//   def busChanged( bus: AudioBus )( implicit tx: ProcTxn ) {
+////      if( verbose ) println( "OUT INDEX " + proc.name + " / " + bus )
+////         indexRef.set( bus.index )
+//      proc.busParamChanged( this, bus )
+//   }
 
    def ~>( in: ProcAudioInput )( implicit tx: ProcTxn ) : Proc = {
       // handle edge
       val e = ProcEdge( out, in )
       require( !edges.contains( e ))
-//         edges.transform( _ + e )
-      val outWasPlaying = out.isPlaying
-      val inWasPlaying  = in.isPlaying
-      if( inWasPlaying )  in.stop
-      if( outWasPlaying ) out.stop
-      addEdge( e )
-      ProcDemiurg.addEdge( e )
-      finishConnect( e )
-      if( outWasPlaying ) out.play
-      if( inWasPlaying )  in.play
+//      duringStop( in ) {
+         addEdge( e )
+         ProcDemiurg.addEdge( e )
+         finishConnect( e )
+//      }
       in.proc
    }
 
@@ -359,7 +364,9 @@ extends AudioBusImpl with ProcAudioOutput {
       if( !oldSyn ) {
          synthetic = true
          bus.foreach( oldBus => {
-            bus = Some( RichBus.audio( proc.server, oldBus.numChannels ))
+            val res = RichBus.audio( proc.server, oldBus.numChannels )
+println( "finishConnect " + e + " -> bus = " + res )
+            bus = Some( res )
          })
       } else {
          // XXX correct???
@@ -386,17 +393,69 @@ if( isPlaying ) println( "WARNING: ~> ctrl : not stopped / restarted yet!" )
    def ~/>( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioOutput = {
       val e = ProcEdge( out, in )
       if( edges.contains( e )) {
+         val inWasPlaying = in.isPlaying
+         if( inWasPlaying ) in.proc.stop
          ProcDemiurg.removeEdge( e )
          removeEdge( e )
+         val outPhysical  = out.isPlaying && param.physical && edges.isEmpty
+         if( outPhysical ) {
+            bus.foreach( oldBus => {
+               val numChannels   = oldBus.numChannels
+               val newBus        = RichBus.soundOut( proc.server, numChannels )
+               tx.transit match {
+                  case d: DurationalTransition => {
+                     val g = SynthGraph {
+                        val line       = EnvGen.kr( Env( "$start".ir,
+                           List( EnvSeg( 1, "$stop".ir, varShape( "$shape".ir )))),
+                           timeScale = "$dur".ir, doneAction = "$done".ir )
+                        val wIn        = line
+                        val wOut       = (1 - line).sqrt
+                        val busOld     = "$bus1".kr
+                        val busNew     = "$bus2".kr
+                        val sigInOld   = In.ar( busOld, numChannels )
+                        val sigInNew   = In.ar( busNew, numChannels )
+                        ReplaceOut.ar( busNew, (sigInNew * wIn) + (sigInOld * wOut) )
+                        Out.ar( busOld, sigInNew * wOut )
+                     }
+                     val rsd  = RichSynthDef( proc.server, g )
+                     val rs   = rsd.play( proc.postGroup,
+                        List( "$start" -> 0, "$stop" -> 1, "$shape" -> welchShape.id, // ? welchShape
+                             "$dur" -> d.dur, "$done" -> freeSelf.id ), addToTail ) // ? addToTail
+                     rs.readWrite( oldBus -> "$bus1" )
+                     rs.readWrite( newBus -> "$bus2" )
+                  }
+                  case _ =>
+               }
+               bus = Some( newBus )
+//if( out.isPlaying ) proc.migrateAccessories( )
+//               proc.busChanged( this, newBus )
+//println( "--> MIGRATE" )
+//               oldBus.migrateTo( newBus )
+//println( "ETARGIM <--" )
+// XXX
+//error( "NEED TO SOLVE MIGRATION" )
+            })
+         }
          finishDisconnect( e )
-//      proc.disconnect( this, in )
+         if( inWasPlaying && in.bus.isDefined ) in.proc.play  // i.e. physical
       }
       this
    }
 
+//   private def duringStop( in: ProcAudioInput )( thunk: => Unit)( implicit tx: ProcTxn ) {
+//      val outWasPlaying = out.isPlaying
+//      val inWasPlaying  = in.isPlaying
+//      if( inWasPlaying )  in.proc.stop
+//      if( outWasPlaying ) out.proc.stop
+//println( "was in? " + inWasPlaying + "; was out? " + outWasPlaying )
+//      thunk // fun( tx )
+//      if( outWasPlaying ) out.proc.play
+//      if( inWasPlaying )  in.proc.play
+//   }
+
    private def finishDisconnect( e: ProcEdge )( implicit tx: ProcTxn ) {
       e.in.removeEdge( e )
-      bus = None
+      e.in.bus = None // XXX in should decide whether it is recreating a physical input
   }
 
    def ~|( insert: (ProcAudioInput, ProcAudioOutput) )( implicit tx: ProcTxn ) : ProcAudioInsertion =

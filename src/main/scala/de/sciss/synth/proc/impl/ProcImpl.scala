@@ -49,8 +49,8 @@ extends Proc {
    private val groupsRef         = Ref[ Option[ AllGroups ]]( None )
    private val pStringValues     = Ref( Map.empty[ ProcParamString, String ])
 
-   lazy val audioInputs          = fact.pAudioIns.map(  p => new AudioInputImpl(  this, p.name ))
-   lazy val audioOutputs         = fact.pAudioOuts.map( p => new AudioOutputImpl( this, p.name ))
+   lazy val audioInputs          = fact.pAudioIns.map(  p => new AudioInputImpl(  this, p ))
+   lazy val audioOutputs         = fact.pAudioOuts.map( p => new AudioOutputImpl( this, p ))
    lazy val controls             = fact.paramSeq.collect {
       case pControl: ProcParamControl  => new ControlImpl( proc, pControl, krate )
       case pAudio: ProcParamAudio      => new ControlImpl( proc, pAudio, arate )
@@ -292,6 +292,7 @@ extends Proc {
 
    private def createBackground( xfade: XFade, dispose: Boolean )( implicit tx: ProcTxn ) {
 //      if( !xfade.markSendToBack( this )) return
+println( "createBackground" + this )
 
       val main    = group           // ensures that main group exists,
       val all     = groupsRef().get // i.e. that this is valid
@@ -426,9 +427,8 @@ extends Proc {
       })
    }
 
-   private[proc] def busParamChanged( bus: ProcAudioBus, abus: AudioBus )( implicit tx: ProcTxn ) {
-//      if( verbose ) println( "PROC BUS PARAM CHANGED " + name + " / " + bus.name + " / " + abus + " / " + runningRef() )
-      runningRef().foreach( _.busChanged( bus.name, abus ))
+   private[proc] def busChanged( bus: ProcAudioBus, newBus: Option[ RichAudioBus ])( implicit tx: ProcTxn ) {
+      runningRef().foreach( _.busChanged( bus.name, newBus ))
    }
 
    override def toString = "proc(" + name + ")"

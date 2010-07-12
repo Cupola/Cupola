@@ -101,7 +101,8 @@ class FactoryBuilderImpl( val name: String ) extends ProcFactoryBuilder {
       requireOngoing
       require( entry.isDefined, "No entry point defined" )
       if( implicitAudioIn && !paramMap.contains( "in" )) {
-         pAudioIn( "in", None, true )
+//         pAudioIn( "in", None, true )
+         pAudioIn( "in", None, false )
       }
 //println( "implicitAudioOut = " + implicitAudioOut + "; params.contains( \"out\" ) = " + params.contains( "out" ))
       if( implicitAudioOut && !paramMap.contains( "out" )) {

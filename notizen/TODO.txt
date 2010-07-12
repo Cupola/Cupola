@@ -25,3 +25,4 @@ Nuages
 - control-room recorder
 - diskin based procs: track playback position
 - smc: freesound proc
+- duplicate processes

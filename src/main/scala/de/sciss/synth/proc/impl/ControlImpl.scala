@@ -298,7 +298,7 @@ extends AbstractAudioInputImpl with ControlMappingImpl with ControlABusMapping {
       val inBus   = bus.get.busOption.get
       val g       = graph( inBus )
       val rsd     = RichSynthDef( inBus.server, g )
-      val rs      = rsd.play( source.proc.postGroup, List( "$in" -> inBus.index ))
+      val rs      = rsd.play( source.proc.postGroup, List( "$in" -> inBus.index ), addToTail )
 
       val oldSynth = synth.swap( Some( rs ))
       addOutputConsumers   // requires that synth has been assigned!

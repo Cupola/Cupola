@@ -2,8 +2,12 @@ package de.sciss.synth.proc.impl
 
 import de.sciss.synth.proc._
 import de.sciss.synth._
+import collection.breakOut
 import collection.immutable.{ Queue => IQueue }
 
+/**
+ *    @version 0.11, 12-Jul-10
+ */
 class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBuilder {
 //      var controls   = Set.empty[ ControlSetMap ]
    var usedParams = Set.empty[ ProcParam ]
@@ -93,15 +97,18 @@ class GraphBuilderImpl( graph: GraphImpl, val tx: ProcTxn ) extends ProcGraphBui
          setMaps ++= bufsZipped.map( tup => SingleControlSetMap( tup._1.controlName, tup._2.buf.id ))
          val rs = rsd.play( target, setMaps, addAction, bufs )
 
-         accessories.foreach( _.play ) // XXX where's the stop??
-         audioInputs.foreach( rs.read( _ ))
-         audioOutputs.foreach( rs.write( _ ))
+         accessories.foreach( _.play ) // stop is in RunningGraphImpl
+         var busMap: Map[ String, AudioBusNodeSetter ] =
+                    audioInputs.map(  tup => tup._2 -> rs.read(  tup ))( breakOut )
+         busMap ++= audioOutputs.map( tup => tup._2 -> rs.write( tup ))
+
+println( "play " + p.name + " ; busses = " + busMap )
 
          bufsZipped.foreach( tup => {
             val (b, rb) = tup
             b.disposeWith( rb, rs )        // XXX should also go in RunningGraphImpl
          })
-         new RunningGraphImpl( rs, accessories )
+         new RunningGraphImpl( rs, accessories, busMap )
       }
    }
 }
