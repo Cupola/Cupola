@@ -1,9 +1,53 @@
+/*
+ *  FactoryBuilderImpl.scala
+ *  (ScalaCollider-Proc)
+ *
+ *  Copyright (c) 2010 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either
+ *  version 2, june 1991 of the License, or (at your option) any later version.
+ *
+ *  This software is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *  General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public
+ *  License (gpl.txt) along with this software; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ *
+ *
+ *  Changelog:
+ */
+
 package de.sciss.synth.proc.impl
 
 import de.sciss.synth.proc._
 import de.sciss.synth.{Rate, audio, control, GE}
 
-class FactoryBuilderImpl( val name: String ) extends ProcFactoryBuilder {
+/**
+ *    @version 0.11, 13-Jul-10
+ */
+object FactoryBuilderImpl {
+   def gen( name: String ) : ProcFactoryBuilder =
+      new FactoryBuilderImpl( name, ProcGen, false, true )
+
+   def filter( name: String ) : ProcFactoryBuilder =
+      new FactoryBuilderImpl( name, ProcFilter, true, true )
+
+   def diff( name: String ) : ProcFactoryBuilder =
+      new FactoryBuilderImpl( name, ProcDiff, true, false )
+}
+
+class FactoryBuilderImpl private( val name: String, val anatomy: ProcAnatomy,
+                                  implicitAudioIn: Boolean, implicitAudioOut: Boolean )
+extends ProcFactoryBuilder {
    private var finished                   = false
    private var paramMap                   = Map.empty[ String, ProcParam ]
    private var paramSeq                   = Vector.empty[ ProcParam ]
@@ -12,9 +56,6 @@ class FactoryBuilderImpl( val name: String ) extends ProcFactoryBuilder {
    private var entry: Option[ ProcEntry ] = None
    private var pAudioIns                  = Vector.empty[ ProcParamAudioInput ]
    private var pAudioOuts                 = Vector.empty[ ProcParamAudioOutput ]
-
-   private var implicitAudioIn   = false
-   private var implicitAudioOut  = false
 
    @inline private def requireOngoing = require( !finished, "ProcFactory build has finished" )
 
@@ -72,37 +113,31 @@ class FactoryBuilderImpl( val name: String ) extends ProcFactoryBuilder {
       } else sig
    }
 
-   def filter( fun: GE => Unit ) : ProcGraph = {
+   def graphIn( fun: GE => GE ) : ProcGraph = {
       val fullFun = () => fun( getImplicitIn )
-      graph( fullFun, true, false )
+      graph( fullFun )
    }
 
-   def filterOutput( fun: GE => GE ) : ProcGraph = {
-      val fullFun: Function0[ Unit ] = () => {
+   def graphInOut( fun: GE => GE ) : ProcGraph = {
+      val fullFun = () => {
          val in   = getImplicitIn
          val out  = fun( in )
          getImplicitOut( out )
       }
-      graph( fullFun, true, true )
+      graph( fullFun )
    }
 
-   def synth( fun: () => Unit ) : ProcGraph = {
-      graph( fun, false, false )
+   def graphOut( fun: () => GE ) : ProcGraph = {
+      val fullFun = () => getImplicitOut( fun() )
+      graph( fullFun )
    }
 
-   def synthOutput( fun: () => GE ) : ProcGraph = {
-      val fullFun: Function0[ Unit ] = () => getImplicitOut( fun() )
-      graph( fullFun, false, true )
-   }
-
-   private def graph( fun: () => Unit, imIn: Boolean, imOut: Boolean ) : ProcGraph = {
+   def graph( fun: () => GE ) : ProcGraph = {
       requireOngoing
       require( graph.isEmpty, "Graph already defined" )
       val res = new GraphImpl( fun )
       graph = Some( res )
       enter( res )
-      implicitAudioIn   = imIn
-      implicitAudioOut  = imOut
       res
    }
 
@@ -135,7 +170,7 @@ class FactoryBuilderImpl( val name: String ) extends ProcFactoryBuilder {
          pAudioOut( "out", None, true )
       }
       finished = true
-      new FactoryImpl( name, entry.get, paramMap, paramSeq, pAudioIns, pAudioOuts )
+      new FactoryImpl( name, anatomy, entry.get, paramMap, paramSeq, pAudioIns, pAudioOuts )
    }
 
    private def addParam( p: ProcParam ) {

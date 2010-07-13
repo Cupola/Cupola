@@ -38,11 +38,11 @@ f.setVisible( true )
 
 s.dumpOSC(1)
 
-val g1 = nproc( "Sine" ) {
+val g1 = gen( "Sine" ) {
     val pf1 = pControl( "f1", ParamSpec( 20, 20000, ExpWarp ), 333 )
     val pf2 = pControl( "f2", ParamSpec( 20, 20000, ExpWarp ), 444 )
 
-    synth { SinOsc.ar( List( pf1.kr, pf2.kr ))}
+    graph { SinOsc.ar( List( pf1.kr, pf2.kr ))}
 }
 
 val p1 = g1.make
@@ -54,10 +54,10 @@ val p1 = g1.make
 //p1( "freq" ) = 441
 //p1.play
 
-val g2 = nproc( "Mod" ) {
+val g2 = filter( "Mod" ) {
     val p1 = pControl( "freq", ParamSpec( 0.1f, 20000, ExpWarp ), 1 )
 
-    filter { _ * SinOsc.ar( p1.kr )}
+    graph { _ * SinOsc.ar( p1.kr )}
 }
 
 val p2 = g2.make
@@ -66,10 +66,10 @@ xfade( 30 ) { p1 ~> p2; p2.play }
 //p2.play
 xfade( 30 ) { p1 ~/> p2 }
 
-val g3 = nproc( "Pan" ) {
+val g3 = filter( "Pan" ) {
     val p1 = pControl( "freq", ParamSpec( 0.1f, 20000, ExpWarp ), 1 )
 
-    filter { in =>
+    graph { in =>
         Pan2.ar( Mix( in ), SinOsc.ar( p1.kr ))
     }
 }
@@ -100,12 +100,12 @@ f.setVisible( true )
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
-val h = nproc( "process2" ) {
+val h = gen( "process2" ) {
     val p1  = pControl( "speed", ParamSpec( 0.1f, 10, ExpWarp ), 1 )
     val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
     val b   = bufCue( "disk", p2 )
 
-    synth {
+    graph {
         VDiskIn.ar( b.numChannels, b.id, p1.kr * BufRateScale.ir( b.id ), loop = 1 )
     }
 }
@@ -125,23 +125,23 @@ xfade( 10 ) { p.dispose }
 
 val audioDir = "/Users/rutz/Desktop/Interface3/audio_work/"
 
-val h = nproc( "disk" ) {
+val h = gen( "disk" ) {
     val p1  = pControl( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
     val p2  = pString( "path", Some( audioDir + "unused/Dienstvergehen3Splt3Hlb.aif" ))
     val b   = bufCue( "disk", p2 )
 
-    synth {
+    graph {
         VDiskIn.ar( b.numChannels, b.id, p1.kr * BufRateScale.ir( b.id ), loop = 1 )
     }
 }
 
-val i = nproc( "freqshift" ) {
+val i = filter( "freqshift" ) {
     val p1 = pControl( "freq", ParamSpec( -2000, 2000 ), 100 )
 
-    filter { in => FreqShift.ar( in, p1.kr )}
+    graph { in => FreqShift.ar( in, p1.kr )}
 }
 
-val j = ngen( "pan" ) {
+val j = filter( "pan" ) {
     val p1 = pControl( "pan", ParamSpec( -1, 1 ), 0 )
 
     graph { in => Pan2.ar( Mix( in ), p1.kr )}
@@ -159,11 +159,11 @@ p2( "freq" ) = -200
 
 /////
 
-val pBub = nproc( "bubbles" ) {
+val pBub = gen( "bubbles" ) {
    val f1  = pControl( "f1", ParamSpec( 0.1f, 10, ExpWarp ), 0.4f )
    val f2  = pControl( "f2", ParamSpec( 0.1f, 100, ExpWarp ), 8 )
    val det = pControl( "det", ParamSpec( 0.1f, 10, ExpWarp ), 0.90375f )
-   synth {
+   graph {
       val freq2 = f2.kr
       val f = LFSaw.kr( f1.kr ).madd(24, LFSaw.kr(List( freq2, freq2 * det.kr))
          .madd(3, 80)).midicps
@@ -174,10 +174,10 @@ val pBub = nproc( "bubbles" ) {
 val procBub = pBub.make
 
 /////
-val g1 = nproc( "Noise" ) {
+val g1 = gen( "Noise" ) {
     val p1 = pControl( "freq", ParamSpec( 20, 20000, ExpWarp ), 882 )
 
-    synth { Resonz.ar( PinkNoise.ar, p1.kr, 0.25 )}
+    graph { Resonz.ar( PinkNoise.ar, p1.kr, 0.25 )}
 }
 
 val p1 = g1.make
@@ -191,20 +191,20 @@ xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 90 ) + 40).midicps }
 ////
 val audioDir = "/Users/rutz/Desktop/Cupola/audio_work/"
 
-val genAt2aSide = nproc( "at_2aside" ) {
+val genAt2aSide = gen( "at_2aside" ) {
     val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
     val b   = bufCue( "disk", audioDir + "material/2A-SideBlossCon2A-SideBloss.aif" )
 
-    synth {
+    graph {
         HPF.ar( VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 ), 30 )
     }
 }
 
-val genFFreqFilter = nproc( "f_filt" ) {
+val genFFreqFilter = filter( "f_filt" ) {
     val pfreq = pAudio( "freq", ParamSpec( -1, 1 ), 0.54 )
     val pmix  = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
 
-	filter { in =>
+	graph { in =>
 		val normFreq	= pfreq.ar
         val lowFreqN	= Lag.ar( Clip.ar( normFreq, -1, 0 ))
         val highFreqN	= Lag.ar( Clip.ar( normFreq,  0, 1 ))
@@ -231,7 +231,6 @@ import de.sciss.synth.swing._
 import de.sciss.temporal._
 import de.sciss.synth.proc._
 import de.sciss.synth.proc.DSL._
-import de.sciss.nuages.DSL._
 import support._
 """
       )

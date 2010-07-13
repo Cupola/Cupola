@@ -35,9 +35,9 @@ import de.sciss.synth.{ audio => arate, control => krate, _ }
 import ugen.Line
 
 /**
- *    @version 0.12, 09-Jul-10
+ *    @version 0.12, 13-Jul-10
  */
-class ProcImpl( fact: FactoryImpl, val server: Server, val name: String )
+class ProcImpl( fact: FactoryImpl, val server: Server )
 extends Proc {
    proc =>
 
@@ -56,6 +56,9 @@ extends Proc {
       case pAudio: ProcParamAudio      => new ControlImpl( proc, pAudio, arate )
    }
    private lazy val controlMap: Map[ String, ProcControl ] = controls.map( c => (c.name -> c) )( breakOut )
+
+   def name    = fact.name
+   def anatomy = fact.anatomy
 
    def audioInput( name: String ) : ProcAudioInput    = audioInputs.find(  _.name == name ).get
    def audioOutput( name: String ) : ProcAudioOutput  = audioOutputs.find( _.name == name ).get

@@ -33,68 +33,68 @@ import de.sciss.synth.Model
 import de.sciss.synth.proc._
 import collection.immutable.{ Set => ISet }
 
-case class NuagesUpdate( gensAdded: ISet[ ProcFactory ], gensRemoved: ISet[ ProcFactory ],
-                         filtersAdded: ISet[ ProcFactory ], filtersRemoved: ISet[ ProcFactory ])
+//case class NuagesUpdate( gensAdded: ISet[ ProcFactory ], gensRemoved: ISet[ ProcFactory ],
+//                         filtersAdded: ISet[ ProcFactory ], filtersRemoved: ISet[ ProcFactory ])
 
 /**
- *    @version 0.11, 12-Jul-10
+ *    @version 0.11, 13-Jul-10
  */
-object Wolkenpumpe extends TxnModel[ NuagesUpdate ] {
-   type Update    = NuagesUpdate
-   type Listener  = TxnModel.Listener[ Update ]
+object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
+//   type Update    = NuagesUpdate
+//   type Listener  = TxnModel.Listener[ Update ]
 
-   val gens    = Ref( Set.empty[ ProcFactory ])
-   val filters = Ref( Set.empty[ ProcFactory ])
-
-   protected def fullUpdate( implicit tx: ProcTxn ) = NuagesUpdate( gens(), Set.empty, filters(), Set.empty )
-   protected def emptyUpdate = NuagesUpdate( Set.empty, Set.empty, Set.empty, Set.empty )
-
-   def add( pf: ProcFactory )( implicit tx: ProcTxn ) {
-      touch
-      // we currently use a heuristic to determine
-      // the kind of proc factory...
-      pf.params.find( _.name == "in" ) match {
-         case Some( _: ProcParamAudioInput ) => {
-            filters.transform( _ + pf )
-            updateRef.transform( u => if( u.filtersRemoved.contains( pf )) {
-                u.copy( filtersRemoved = u.filtersRemoved - pf )
-            } else {
-                u.copy( filtersAdded = u.filtersAdded + pf )
-            })
-         }
-         case _ => {
-            gens.transform( _ + pf )
-            updateRef.transform( u => if( u.gensRemoved.contains( pf )) {
-                u.copy( gensRemoved = u.gensRemoved - pf )
-            } else {
-                u.copy( gensAdded = u.gensAdded + pf )
-            })
-         }
-      }
-   }
-
-   def remove( pf: ProcFactory )( implicit tx: ProcTxn ) {
-      val f = filters()
-      if( f.contains( pf )) {
-         touch
-         filters.set( f - pf )
-         updateRef.transform( u => if( u.filtersAdded.contains( pf )) {
-             u.copy( filtersAdded = u.filtersAdded - pf )
-         } else {
-             u.copy( filtersRemoved = u.filtersRemoved + pf )
-         })
-      } else {
-         val g = gens()
-         if( !g.contains( pf )) return
-         touch
-         gens.set( g - pf )
-         updateRef.transform( u => if( u.gensAdded.contains( pf )) {
-             u.copy( gensAdded = u.gensAdded - pf )
-         } else {
-             u.copy( gensRemoved = u.gensRemoved + pf )
-         })
-      }
-   }
+//   val gens    = Ref( Set.empty[ ProcFactory ])
+//   val filters = Ref( Set.empty[ ProcFactory ])
+//
+//   protected def fullUpdate( implicit tx: ProcTxn ) = NuagesUpdate( gens(), Set.empty, filters(), Set.empty )
+//   protected def emptyUpdate = NuagesUpdate( Set.empty, Set.empty, Set.empty, Set.empty )
+//
+//   def add( pf: ProcFactory )( implicit tx: ProcTxn ) {
+//      touch
+//      // we currently use a heuristic to determine
+//      // the kind of proc factory...
+//      pf.params.find( _.name == "in" ) match {
+//         case Some( _: ProcParamAudioInput ) => {
+//            filters.transform( _ + pf )
+//            updateRef.transform( u => if( u.filtersRemoved.contains( pf )) {
+//                u.copy( filtersRemoved = u.filtersRemoved - pf )
+//            } else {
+//                u.copy( filtersAdded = u.filtersAdded + pf )
+//            })
+//         }
+//         case _ => {
+//            gens.transform( _ + pf )
+//            updateRef.transform( u => if( u.gensRemoved.contains( pf )) {
+//                u.copy( gensRemoved = u.gensRemoved - pf )
+//            } else {
+//                u.copy( gensAdded = u.gensAdded + pf )
+//            })
+//         }
+//      }
+//   }
+//
+//   def remove( pf: ProcFactory )( implicit tx: ProcTxn ) {
+//      val f = filters()
+//      if( f.contains( pf )) {
+//         touch
+//         filters.set( f - pf )
+//         updateRef.transform( u => if( u.filtersAdded.contains( pf )) {
+//             u.copy( filtersAdded = u.filtersAdded - pf )
+//         } else {
+//             u.copy( filtersRemoved = u.filtersRemoved + pf )
+//         })
+//      } else {
+//         val g = gens()
+//         if( !g.contains( pf )) return
+//         touch
+//         gens.set( g - pf )
+//         updateRef.transform( u => if( u.gensAdded.contains( pf )) {
+//             u.copy( gensAdded = u.gensAdded - pf )
+//         } else {
+//             u.copy( gensRemoved = u.gensRemoved + pf )
+//         })
+//      }
+//   }
 
    /**
     *    A condensed font for GUI usage. This is in 12 pt size,

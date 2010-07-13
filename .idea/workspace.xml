@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" readonly="true" id="e717763b-a84e-4f65-8788-302c1ddc7aed" name="Default" comment="" />
-    <ignored path=".idea/workspace.xml" />
     <ignored path="Cupola.iws" />
+    <ignored path=".idea/workspace.xml" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,8 +81,8 @@
       <property name="field_breakpoints_groupByClasses" value="true" />
       <property name="method_breakpoints_groupByClasses" value="true" />
       <property name="exception_breakpoints_viewId" value="TABLE" />
-      <property name="exception_breakpoints_groupByClasses" value="true" />
       <property name="field_breakpoints_viewId" value="TABLE" />
+      <property name="exception_breakpoints_groupByClasses" value="true" />
       <property name="method_breakpoints_groupByMethods" value="false" />
     </ui_properties>
   </component>
@@ -92,28 +92,68 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="NuagesPanel.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesPanel.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="312" column="61" selection-start="11405" selection-end="11405" vertical-scroll-proportion="-1.3076923">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="DSL.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/DSL.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="5" column="30" selection-start="123" selection-end="123" vertical-scroll-proportion="0.0">
+            <state line="13" column="36" selection-start="346" selection-end="346" vertical-scroll-proportion="0.0">
+              <folding>
+                <marker date="1279032329000" expanded="true" signature="99:141" placeholder="/**...*/" />
+                <marker date="1279032329000" expanded="true" signature="155:346" placeholder="{...}" />
+                <marker date="1279032329000" expanded="true" signature="246:342" placeholder="{...}" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="DSL.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="83" column="0" selection-start="2612" selection-end="2612" vertical-scroll-proportion="0.94485295">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="DSL.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala">
+      <file leaf-file-name="ProcWorld.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcWorld.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="103" column="19" selection-start="3649" selection-end="3649" vertical-scroll-proportion="0.0">
+            <state line="147" column="20" selection-start="5450" selection-end="5450" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="NuagesFrame.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesFrame.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="95" column="27" selection-start="3482" selection-end="3482" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="FactoryImpl.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryImpl.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="45" column="50" selection-start="1639" selection-end="1639" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ProcImpl.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ProcImpl.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="39" column="53" selection-start="1310" selection-end="1310" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Wolkenpumpe.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/Wolkenpumpe.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="45" column="0" selection-start="1507" selection-end="1507" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -122,7 +162,7 @@
       <file leaf-file-name="Test.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Test.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="74" column="0" selection-start="1881" selection-end="1881" vertical-scroll-proportion="0.0">
+            <state line="52" column="21" selection-start="1378" selection-end="1378" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -131,16 +171,7 @@
       <file leaf-file-name="FactoryBuilderImpl.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryBuilderImpl.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="106" column="35" selection-start="3590" selection-end="3590" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="GraphImpl.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphImpl.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="36" column="21" selection-start="1163" selection-end="1163" vertical-scroll-proportion="0.0">
+            <state line="156" column="102" selection-start="5186" selection-end="5186" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -149,34 +180,7 @@
       <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="221" column="10" selection-start="6225" selection-end="6225" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="GraphBuilderImpl.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphBuilderImpl.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="38" column="23" selection-start="1113" selection-end="1113" vertical-scroll-proportion="0.39130434">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="ProcGraph.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGraph.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="47" column="6" selection-start="1411" selection-end="1411" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="ProcFactoryBuilder.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="52" column="31" selection-start="2009" selection-end="2009" vertical-scroll-proportion="0.0">
+            <state line="206" column="8" selection-start="5555" selection-end="5555" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -195,22 +199,22 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/Proc.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryImpl.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ProcImpl.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/Wolkenpumpe.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesPanel.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/ClickControl.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesFrame.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesTransitionPanel.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/DSL.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Test.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryBuilderImpl.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphImpl.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphBuilderImpl.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphImpl.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Test.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/DSL.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/Wolkenpumpe.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcWorld.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesFrame.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ProcImpl.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryImpl.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryBuilderImpl.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala" />
       </list>
     </option>
   </component>
@@ -253,9 +257,6 @@
     </navigator>
     <panes>
       <pane id="PackagesPane" />
-      <pane id="Scope">
-        <subPane subId="Problems" />
-      </pane>
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -788,40 +789,6 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="ProcFactoryBuilder.scala" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="Cupola" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="Cupola" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="main" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="scala" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="sciss" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="proc" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
               <option name="myItemId" value="Proc.scala" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
             </PATH_ELEMENT>
@@ -1305,6 +1272,9 @@
         </subPane>
       </pane>
       <pane id="Favorites" />
+      <pane id="Scope">
+        <subPane subId="Problems" />
+      </pane>
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -1320,9 +1290,9 @@
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
     <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
-    <property name="dynamic.classpath" value="false" />
-    <property name="options.searchVisible" value="true" />
     <property name="options.splitter.details.proportions" value="0.2" />
+    <property name="options.searchVisible" value="true" />
+    <property name="dynamic.classpath" value="false" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -1528,7 +1498,6 @@
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32780612" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.27040815" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
@@ -1542,6 +1511,7 @@
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23469388" sideWeight="0.9769859" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32780612" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
@@ -1581,114 +1551,114 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/SimpleToggleButtonUI.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="6" column="6" selection-start="175" selection-end="175" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/ConnectControl.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="40" column="6" selection-start="1403" selection-end="1403" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/ClickControl.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="56" column="14" selection-start="1839" selection-end="1839" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/Wolkenpumpe.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="90" column="104" selection-start="3212" selection-end="3212" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesFrame.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="76" column="19" selection-start="2816" selection-end="2816" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesTransitionPanel.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="48" column="10" selection-start="1678" selection-end="1678" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
+        <state line="48" column="10" selection-start="1678" selection-end="1678" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesPanel.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="312" column="61" selection-start="11405" selection-end="11405" vertical-scroll-proportion="-1.3076923">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/DSL.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="5" column="30" selection-start="123" selection-end="123" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="103" column="19" selection-start="3649" selection-end="3649" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Test.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="74" column="0" selection-start="1881" selection-end="1881" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="52" column="31" selection-start="2009" selection-end="2009" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryBuilderImpl.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="106" column="35" selection-start="3590" selection-end="3590" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphImpl.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="36" column="21" selection-start="1163" selection-end="1163" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="221" column="10" selection-start="6225" selection-end="6225" vertical-scroll-proportion="0.0">
+        <state line="312" column="61" selection-start="11405" selection-end="11405" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcGraph.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="47" column="6" selection-start="1411" selection-end="1411" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
+        <state line="47" column="6" selection-start="1411" selection-end="1411" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphBuilderImpl.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="38" column="23" selection-start="1113" selection-end="1113" vertical-scroll-proportion="0.39130434">
+        <state line="51" column="110" selection-start="1760" selection-end="1760" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcFactoryBuilder.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="54" column="29" selection-start="2094" selection-end="2094" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/GraphImpl.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="36" column="34" selection-start="1176" selection-end="1176" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Test.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="52" column="21" selection-start="1378" selection-end="1378" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/DSL.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="13" column="36" selection-start="346" selection-end="346" vertical-scroll-proportion="0.0">
+          <folding>
+            <marker date="1279032329000" expanded="true" signature="99:141" placeholder="/**...*/" />
+            <marker date="1279032329000" expanded="true" signature="155:346" placeholder="{...}" />
+            <marker date="1279032329000" expanded="true" signature="246:342" placeholder="{...}" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/Wolkenpumpe.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="45" column="0" selection-start="1507" selection-end="1507" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/ProcWorld.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="147" column="20" selection-start="5450" selection-end="5450" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/nuages/NuagesFrame.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="95" column="27" selection-start="3482" selection-end="3482" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/ProcImpl.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="39" column="53" selection-start="1310" selection-end="1310" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryImpl.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="45" column="50" selection-start="1639" selection-end="1639" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/impl/FactoryBuilderImpl.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="156" column="102" selection-start="5186" selection-end="5186" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ScalaInterpreterFrame.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="206" column="8" selection-start="5555" selection-end="5555" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/synth/proc/DSL.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="83" column="0" selection-start="2612" selection-end="2612" vertical-scroll-proportion="0.94485295">
           <folding />
         </state>
       </provider>

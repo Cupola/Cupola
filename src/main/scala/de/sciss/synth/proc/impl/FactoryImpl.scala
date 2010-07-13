@@ -32,19 +32,23 @@ import de.sciss.synth.proc._
 import de.sciss.synth.Server
 import collection.immutable.{ IndexedSeq => IIdxSeq }
 
-class FactoryImpl( val name: String, val entry: ProcEntry,
-                           val paramMap: Map[ String, ProcParam ],
-                           val params: IIdxSeq[ ProcParam ],
-                           val pAudioIns: IIdxSeq[ ProcParamAudioInput ],
-                           val pAudioOuts: IIdxSeq[ ProcParamAudioOutput ])
+/**
+ *    @version 0.11, 13-Jul-10
+ */
+class FactoryImpl( val name: String, val anatomy: ProcAnatomy,
+                   val entry: ProcEntry,
+                   val paramMap: Map[ String, ProcParam ],
+                   val params: IIdxSeq[ ProcParam ],
+                   val pAudioIns: IIdxSeq[ ProcParamAudioInput ],
+                   val pAudioOuts: IIdxSeq[ ProcParamAudioOutput ])
 extends ProcFactory {
    def make( implicit tx: ProcTxn ) : Proc = {
-      val res = new ProcImpl( this, Server.default, name )
+      val res = new ProcImpl( this, Server.default )
       ProcDemiurg.addVertex( res )
       res
    }
 
    def param( name: String ) : ProcParam = paramMap( name )
 
-   override def toString = "gen(" + name + ")"
+   override def toString = "fact(" + name + ")"
 }

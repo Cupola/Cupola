@@ -40,7 +40,7 @@ import ProcTransport._
 import ugen._
 
 /**
- *    @version 0.12, 12-Jul-10
+ *    @version 0.12, 13-Jul-10
  */
 trait ProcFactoryBuilder {
    def name : String
@@ -50,25 +50,31 @@ trait ProcFactoryBuilder {
    def pAudioIn( name: String, default: Option[ RichAudioBus ]) : ProcParamAudioInput
    def pAudioOut( name: String, default: Option[ RichAudioBus ]) : ProcParamAudioOutput
 
-   def synthOutput( fun: () => GE ) : ProcGraph
-   def synth( fun: () => Unit ) : ProcGraph
-   def filter( fun: GE => Unit ) : ProcGraph
-   def filterOutput( fun: GE => GE ) : ProcGraph
+   def graphOut( fun: () => GE ) : ProcGraph
+   def graph( fun: () => GE ) : ProcGraph
+   def graphIn( fun: GE => GE ) : ProcGraph
+   def graphInOut( fun: GE => GE ) : ProcGraph
 
    def bufCue( name: String, path: String ) : ProcBuffer
    def bufCue( name: String, p: ProcParamString ) : ProcBuffer
 
    def finish : ProcFactory
+
+   def anatomy: ProcAnatomy
 }
 
 object ProcFactoryBuilder extends ThreadLocalObject[ ProcFactoryBuilder ] {
-   def apply( name: String )( thunk: => Unit ) : ProcFactory = {
-      val b = new FactoryBuilderImpl( name )
-      use( b ) {
-         thunk
-         b.finish
-      }
+   def gen( name: String )( thunk: => Unit ) : ProcFactory =
+      apply( FactoryBuilderImpl.gen( name ), thunk )
+
+   def filter( name: String )( thunk: => Unit ) : ProcFactory =
+      apply( FactoryBuilderImpl.filter( name ), thunk )
+
+   def diff( name: String )( thunk: => Unit ) : ProcFactory =
+      apply( FactoryBuilderImpl.diff( name ), thunk )
+
+   private def apply( b: ProcFactoryBuilder, thunk: => Unit ) : ProcFactory = use( b ) {
+      thunk
+      b.finish
    }
-//   private def pError( name: String ) = throw new ProcParamUnspecifiedException( name )
-//   private def mError( name: String ) = error( "Bus mapping (" + name + ") must be complete at this stage" )
 }

@@ -104,8 +104,16 @@ class ProcWorld extends TxnModel[ ProcWorld.Update ] {
    }
 }
 
-object ProcDemiurg { // ( val server: Server )
+/**
+ *    @todo should also announce world creations
+ */
+case class ProcDemiurgUpdate( factoriesAdded: ISet[ ProcFactory ], factoriesRemoved: ISet[ ProcFactory ])
+
+object ProcDemiurg extends TxnModel[ ProcDemiurgUpdate ] { // ( val server: Server )
    demi =>
+
+   type Update    = ProcDemiurgUpdate
+   type Listener  = TxnModel.Listener[ Update ]
 
    private val syn = new AnyRef
    private var servers = Set.empty[ Server ]
@@ -121,6 +129,31 @@ object ProcDemiurg { // ( val server: Server )
 
    // commented out for debugging inspection
    var worlds = Map.empty[ Server, ProcWorld ] // new ProcWorld
+
+   val factories = Ref( Set.empty[ ProcFactory ])
+
+   protected def fullUpdate( implicit tx: ProcTxn ) = ProcDemiurgUpdate( factories(), Set.empty )
+   protected def emptyUpdate = ProcDemiurgUpdate( Set.empty, Set.empty )
+
+   def addFactory( pf: ProcFactory )( implicit tx: ProcTxn ) {
+      touch
+      factories.transform( _ + pf )
+      updateRef.transform( u => if( u.factoriesRemoved.contains( pf )) {
+          u.copy( factoriesRemoved = u.factoriesRemoved - pf )
+      } else {
+          u.copy( factoriesAdded = u.factoriesAdded + pf )
+      })
+   }
+
+   def removeFactory( pf: ProcFactory )( implicit tx: ProcTxn ) {
+      touch
+      factories.transform( _ - pf )
+      updateRef.transform( u => if( u.factoriesAdded.contains( pf )) {
+          u.copy( factoriesAdded = u.factoriesAdded - pf )
+      } else {
+          u.copy( factoriesRemoved = u.factoriesRemoved + pf )
+      })
+   }
 
    def addVertex( e: Proc )( implicit tx: ProcTxn ) : Unit = syn.synchronized {
       val world = worlds( e.server )

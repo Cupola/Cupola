@@ -35,13 +35,13 @@ import java.awt.geom.Point2D
 import collection.mutable.ListBuffer
 import java.awt._
 import plaf.basic.BasicPanelUI
-import de.sciss.synth.proc.{ProcTxn, Proc, ProcFactory}
+import de.sciss.synth.proc._
 
 /**
  *    @version 0.12, 12-Jul-10
  */
 class NuagesFrame( server: Server )
-extends JFrame( "Wolkenpumpe") with Wolkenpumpe.Listener {
+extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
    frame =>
 
    private val ggPanel     = new NuagesPanel( server )
@@ -68,14 +68,34 @@ extends JFrame( "Wolkenpumpe") with Wolkenpumpe.Listener {
 
       setDefaultCloseOperation( WindowConstants.DISPOSE_ON_CLOSE )
 
-      ProcTxn.atomic { implicit t => Wolkenpumpe.addListener( frame )}
+      ProcTxn.atomic { implicit t => ProcDemiurg.addListener( frame )}
    }
 
-   def updated( u: Wolkenpumpe.Update ) { defer {
-      if( u.gensRemoved.nonEmpty )     genModel.remove( u.gensRemoved.toSeq: _* )
-      if( u.filtersRemoved.nonEmpty )  filterModel.remove( u.filtersRemoved.toSeq: _* )
-      if( u.gensAdded.nonEmpty )       genModel.add( u.gensAdded.toSeq: _* )
-      if( u.filtersAdded.nonEmpty )    filterModel.add( u.filtersAdded.toSeq: _* )
+   def updated( u: ProcDemiurg.Update ) { defer {
+      if( u.factoriesRemoved.nonEmpty ) {
+         val byAnatomy = u.factoriesRemoved.groupBy( _.anatomy )
+         byAnatomy.get( ProcGen ).foreach( facts => {
+            genModel.remove( facts.toSeq: _* )
+         })
+         byAnatomy.get( ProcFilter ).foreach( facts => {
+            filterModel.remove( facts.toSeq: _* )
+         })
+//         byAnatomy.get( ProcDiff ).foreach( facts => {
+//            diffModel.remove( facts.toSeq: _* )
+//         })
+      }
+      if( u.factoriesAdded.nonEmpty ) {
+         val byAnatomy = u.factoriesAdded.groupBy( _.anatomy ) 
+         byAnatomy.get( ProcGen ).foreach( facts => {
+            genModel.add( facts.toSeq: _* )
+         })
+         byAnatomy.get( ProcFilter ).foreach( facts => {
+            filterModel.add( facts.toSeq: _* )
+         })
+//         byAnatomy.get( ProcDiff ).foreach( facts => {
+//            diffModel.add( facts.toSeq: _* )
+//         })
+      }
    }}
 
    private def createProcFactoryView( parent: Container )
@@ -105,7 +125,7 @@ extends JFrame( "Wolkenpumpe") with Wolkenpumpe.Listener {
    }
 
    override def dispose {
-      ProcTxn.atomic { implicit t => Wolkenpumpe.removeListener( frame )}
+      ProcTxn.atomic { implicit t => ProcDemiurg.removeListener( frame )}
       ggPanel.dispose
       super.dispose
    }

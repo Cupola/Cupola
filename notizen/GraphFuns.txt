@@ -35,3 +35,15 @@ def graph[ R ]( thunk: => R )( implicit m: ClassManifest[ R ]) {
 
 graph { SinOsc.ar }
 graph { SinOsc.ar; () }
+
+//////
+
+proc
+filter
+output
+
+nproc
+nfilter
+noutput
+?
+

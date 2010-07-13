@@ -43,13 +43,35 @@ object DSL {
    // ---- scope : outside ----
 
    /**
-    *    Generates a sound process factory
+    *    Generates a sound generating process factory
     *    with the given name and described through
     *    the given code block.
     */
-   def proc( name: String )( thunk: => Unit ) : ProcFactory = {
-      val res = ProcFactoryBuilder( name )( thunk )
-      // res.announce
+   def gen( name: String )( thunk: => Unit )( implicit tx: ProcTxn ) : ProcFactory = {
+      val res = ProcFactoryBuilder.gen( name )( thunk )
+      ProcDemiurg.addFactory( res )
+      res
+   }
+
+   /**
+    *    Generates a sound filtering (transformation) process factory
+    *    with the given name and described through
+    *    the given code block.
+    */
+   def filter( name: String )( thunk: => Unit )( implicit tx: ProcTxn ) : ProcFactory = {
+      val res = ProcFactoryBuilder.filter( name )( thunk )
+      ProcDemiurg.addFactory( res )
+      res
+   }
+
+   /**
+    *    Generates a sound diffusing process factory
+    *    with the given name and described through
+    *    the given code block.
+    */
+   def diff( name: String )( thunk: => Unit )( implicit tx: ProcTxn ) : ProcFactory = {
+      val res = ProcFactoryBuilder.diff( name )( thunk )
+      ProcDemiurg.addFactory( res )
       res
    }
 
@@ -94,27 +116,45 @@ object DSL {
    def pAudioOut( name: String, default: Option[ RichAudioBus ] = None ) : ProcParamAudioOutput =
       ProcFactoryBuilder.local.pAudioOut( name, default )
 
-   def synth[ T ]( thunk: => T )( implicit m: ClassManifest[ T ]) : ProcGraph = {
-      val pf = ProcFactoryBuilder.local
-      if( m <:< cmGE ) {
-         val funC: Function0[ GE ] = () => thunk.asInstanceOf[ GE ]
-         pf.synthOutput( funC )
-      } else if( m <:< cmUnit ) {
-         val funC: Function0[ Unit ] = () => thunk
-         pf.synth( funC )
-      } else error( "Unsupported graph return type" )
+   def graph( thunk: => GE ) : ProcGraph = {
+      val b = ProcFactoryBuilder.local
+      b.anatomy match {
+         case ProcGen    => b.graphOut( () => thunk )
+         case ProcFilter => b.graphInOut( in => thunk )
+         case ProcDiff   => b.graph( () => thunk )
+      }
    }
 
-   def filter[ T ]( fun: GE => T )( implicit m: ClassManifest[ T ]) : ProcGraph = {
-      val pf = ProcFactoryBuilder.local
-      if( m <:< cmGE ) {
-         val funC: Function1[ GE, GE ] = fun.asInstanceOf[ GE => GE ]
-         pf.filterOutput( funC )
-      } else if( m <:< cmUnit ) {
-         val funC: Function1[ GE, Unit ] = fun.asInstanceOf[ GE => Unit ]
-         pf.filter( funC )
-      } else error( "Unsupported graph return type" )
+   def graph( fun: GE => GE ) : ProcGraph = {
+      val b = ProcFactoryBuilder.local
+      b.anatomy match {
+         case ProcGen    => error( "Generators do not have a default input" )
+         case ProcFilter => b.graphInOut( fun )
+         case ProcDiff   => b.graphIn( fun )
+      }
    }
+
+//   def synth[ T ]( thunk: => T )( implicit m: ClassManifest[ T ]) : ProcGraph = {
+//      val pf = ProcFactoryBuilder.local
+//      if( m <:< cmGE ) {
+//         val funC: Function0[ GE ] = () => thunk.asInstanceOf[ GE ]
+//         pf.synthOutput( funC )
+//      } else if( m <:< cmUnit ) {
+//         val funC: Function0[ Unit ] = () => thunk
+//         pf.synth( funC )
+//      } else error( "Unsupported graph return type" )
+//   }
+//
+//   def filter[ T ]( fun: GE => T )( implicit m: ClassManifest[ T ]) : ProcGraph = {
+//      val pf = ProcFactoryBuilder.local
+//      if( m <:< cmGE ) {
+//         val funC: Function1[ GE, GE ] = fun.asInstanceOf[ GE => GE ]
+//         pf.filterOutput( funC )
+//      } else if( m <:< cmUnit ) {
+//         val funC: Function1[ GE, Unit ] = fun.asInstanceOf[ GE => Unit ]
+//         pf.filter( funC )
+//      } else error( "Unsupported graph return type" )
+//   }
 
    def bufCue( name: String, path: String ) : ProcBuffer =
       ProcFactoryBuilder.local.bufCue( name, path )
@@ -140,8 +180,14 @@ trait ProcBuffer {
    def numChannels : Int
 }
 
+sealed abstract class ProcAnatomy
+case object ProcGen    extends ProcAnatomy
+case object ProcFilter extends ProcAnatomy
+case object ProcDiff   extends ProcAnatomy
+
 trait ProcSpec {
    def name : String
+   def anatomy : ProcAnatomy
    def params : IIdxSeq[ ProcParam ]   // XXX change naming
    def param( name: String ) : ProcParam
 }
@@ -149,3 +195,15 @@ trait ProcSpec {
 trait ProcFactory extends ProcSpec {
    def make( implicit tx: ProcTxn ) : Proc
 }
+
+//trait ProcGenFactory extends ProcFactory {
+//   def make( implicit tx: ProcTxn ) : ProcGen
+//}
+//
+//trait ProcFilterFactory extends ProcFactory {
+//   def make( implicit tx: ProcTxn ) : ProcFilter
+//}
+//
+//trait ProcDiffFactory extends ProcFactory {
+//   def make( implicit tx: ProcTxn ) : ProcDiff
+//}
