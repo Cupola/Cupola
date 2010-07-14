@@ -200,16 +200,16 @@ object RichBus {
     */
    def tmpAudio( server: Server, numChannels: Int ) : RichAudioBus = new TempAudioImpl( server, numChannels )
 
-   def soundIn( server: Server, numChannels: Int ) : RichAudioBus = {
+   def soundIn( server: Server, numChannels: Int, offset: Int = 0 ) : RichAudioBus = {
       val o = server.options
-      require( numChannels <= o.inputBusChannels )
-      HardwareImpl( new AudioBus( server, o.outputBusChannels, numChannels ))
+      require( offset +  numChannels <= o.inputBusChannels )
+      HardwareImpl( new AudioBus( server, o.outputBusChannels, numChannels + offset ))
    }
 
-   def soundOut( server: Server, numChannels: Int ) : RichAudioBus = {
+   def soundOut( server: Server, numChannels: Int, offset: Int = 0 ) : RichAudioBus = {
       val o = server.options
-      require( numChannels <= o.outputBusChannels )
-      HardwareImpl( new AudioBus( server, 0, numChannels ))
+      require( offset + numChannels <= o.outputBusChannels )
+      HardwareImpl( new AudioBus( server, offset, numChannels ))
    }
 
 //   trait User {

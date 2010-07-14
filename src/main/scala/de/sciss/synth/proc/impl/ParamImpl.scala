@@ -123,8 +123,8 @@ extends ProcParamAudioOutput {
       val p             = Proc.local
       val pb            = ProcGraphBuilder.local
       implicit val tx   = pb.tx
-      val aout = p.audioOutput( name )
-      val b = aout.bus.getOrElse({
+      val aout          = p.audioOutput( name )
+      val b             = aout.bus getOrElse {
          if( aout.synthetic ) {
             val res = RichBus.audio( p.server, numChannels )
             aout.bus = Some( res )
@@ -133,8 +133,11 @@ extends ProcParamAudioOutput {
             val res = RichBus.soundOut( p.server, numChannels )
             aout.bus = Some( res )
             res
-         } else pError( name ) // throw e
-      })
+         } else {
+            aout.bus = default
+            default.getOrElse( pError( name ))
+         } 
+      }
       pb.includeParam( this ) // important: must be after aout.bus_= NO NOT TRUE DOES NOT MATTER
       val sig2: GE = if( b.numChannels == numChannels ) {
          sig

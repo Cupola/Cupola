@@ -33,7 +33,8 @@ import java.awt.event.MouseEvent
 import prefuse.Display
 import javax.swing.{ListModel, ListSelectionModel}
 import java.awt.geom.Point2D
-import de.sciss.synth.proc.{Proc, ProcTxn, ProcFactory}
+import de.sciss.synth.proc.{DSL, Proc, ProcTxn, ProcFactory}
+import DSL._
 
 /**
  *    Simple interface to query currently selected
@@ -43,27 +44,35 @@ import de.sciss.synth.proc.{Proc, ProcTxn, ProcFactory}
  *    Methods are guaranteed to be called in the awt
  *    event thread.
  *
- *    @version 0.11, 12-Jul-10  
+ *    @version 0.11, 14-Jul-10  
  */
 trait ProcFactoryProvider {
-   def genFactory: Option[ ProcFactory ]
-   def filterFactory: Option[ ProcFactory ]
+   def genFactory:      Option[ ProcFactory ]
+   def filterFactory:   Option[ ProcFactory ]
+   def diffFactory:     Option[ ProcFactory ]
    def setLocationHint( p: Proc, loc: Point2D )
 }
 
 class ClickControl( pfp: ProcFactoryProvider ) extends ControlAdapter {
    override def mousePressed( e: MouseEvent ) {
       if( e.getClickCount() != 2 ) return
-      pfp.genFactory match {
-         case Some( pf ) => {
+      (pfp.genFactory, pfp.diffFactory) match {
+         case (Some( genF ), Some( diffF )) => {
             val d          = getDisplay( e )
             val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
             ProcTxn.atomic { implicit tx =>
-               val p = pf.make
-               tx.beforeCommit( _ => pfp.setLocationHint( p, displayPt ))
+               val gen  = genF.make
+               val diff = diffF.make
+               gen ~> diff
+               tx.beforeCommit { _ =>
+                  val genPt  = new Point2D.Double( displayPt.getX, displayPt.getY - 30 )
+                  val diffPt = new Point2D.Double( displayPt.getX, displayPt.getY + 30 )
+                  pfp.setLocationHint( gen, genPt )
+                  pfp.setLocationHint( diff, diffPt )
+               }
             }
          }
-         case None =>
+         case _ =>
       }
    }
 

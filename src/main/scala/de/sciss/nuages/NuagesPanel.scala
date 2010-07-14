@@ -505,6 +505,7 @@ with ProcFactoryProvider {
    // ---- ProcFactoryProvider ----
    var genFactory:    Option[ ProcFactory ] = None
    var filterFactory: Option[ ProcFactory ] = None
+   var diffFactory:   Option[ ProcFactory ] = None
    private var locHintMap = Map.empty[ Proc, Point2D ]
    def setLocationHint( p: Proc, loc: Point2D ) {
 //      println( "loc for " + p + " is " + loc )

@@ -46,8 +46,10 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
 
    private val ggPanel     = new NuagesPanel( server )
    private val pfPanel     = Box.createVerticalBox
-   private val genModel    = createProcFactoryView( pfPanel )( ggPanel.genFactory = _ )
-   private val filterModel = createProcFactoryView( pfPanel )( ggPanel.filterFactory = _ )
+   private val models      = Map[ ProcAnatomy, ProcFactoryListModel ](
+      ProcGen     -> createProcFactoryView( pfPanel )( ggPanel.genFactory = _ ),
+      ProcFilter  -> createProcFactoryView( pfPanel )( ggPanel.filterFactory = _ ),
+      ProcDiff    -> createProcFactoryView( pfPanel )( ggPanel.diffFactory = _ ))
 
    // ---- constructor ----
    {
@@ -74,27 +76,17 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
    def updated( u: ProcDemiurg.Update ) { defer {
       if( u.factoriesRemoved.nonEmpty ) {
          val byAnatomy = u.factoriesRemoved.groupBy( _.anatomy )
-         byAnatomy.get( ProcGen ).foreach( facts => {
-            genModel.remove( facts.toSeq: _* )
-         })
-         byAnatomy.get( ProcFilter ).foreach( facts => {
-            filterModel.remove( facts.toSeq: _* )
-         })
-//         byAnatomy.get( ProcDiff ).foreach( facts => {
-//            diffModel.remove( facts.toSeq: _* )
-//         })
+         byAnatomy foreach { tup =>
+            val (ana, facts) = tup
+            models.get( ana ).foreach( _.remove( facts.toSeq: _* ))
+         }
       }
       if( u.factoriesAdded.nonEmpty ) {
          val byAnatomy = u.factoriesAdded.groupBy( _.anatomy ) 
-         byAnatomy.get( ProcGen ).foreach( facts => {
-            genModel.add( facts.toSeq: _* )
-         })
-         byAnatomy.get( ProcFilter ).foreach( facts => {
-            filterModel.add( facts.toSeq: _* )
-         })
-//         byAnatomy.get( ProcDiff ).foreach( facts => {
-//            diffModel.add( facts.toSeq: _* )
-//         })
+         byAnatomy foreach { tup =>
+            val (ana, facts) = tup
+            models.get( ana ).foreach( _.add( facts.toSeq: _* ))
+         }
       }
    }}
 

@@ -45,7 +45,7 @@ val g1 = gen( "Sine" ) {
     graph { SinOsc.ar( List( pf1.kr, pf2.kr ))}
 }
 
-val p1 = g1.make
+//val p1 = g1.make
 // xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 100 ) + 40).midicps }
 
 // glide( 20 ) { p1( "freq" ) = 441 }; p1.play
@@ -60,19 +60,22 @@ val g2 = filter( "Mod" ) {
     graph { _ * SinOsc.ar( p1.kr )}
 }
 
-val p2 = g2.make
-xfade( 30 ) { p1 ~> p2; p2.play }
+//val p2 = g2.make
+//xfade( 30 ) { p1 ~> p2; p2.play }
 //p1 ~> p2
 //p2.play
-xfade( 30 ) { p1 ~/> p2 }
+//xfade( 30 ) { p1 ~/> p2 }
 
-val g3 = filter( "Pan" ) {
-    val p1 = pControl( "freq", ParamSpec( 0.1f, 20000, ExpWarp ), 1 )
+val g3 = diff( "Pan" ) {
+    val pfreq = pControl( "freq", ParamSpec( 0.1, 20000, ExpWarp ), 1 )
+    val pamp  = pControl( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
+    val pout  = pAudioOut( "out", Some( RichBus.soundOut( s, 2 )))
 
     graph { in =>
-        Pan2.ar( Mix( in ), SinOsc.ar( p1.kr ))
+        pout.ar( Pan2.ar( Mix( in ) * pamp.kr, SinOsc.ar( pfreq.kr )))
     }
 }
+
 
 val p3 = g3.make
 p2 ~> p3
