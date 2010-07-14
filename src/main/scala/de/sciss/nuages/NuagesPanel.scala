@@ -51,7 +51,7 @@ import geom._
 import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
 
 /**
- *    @version 0.11, 12-Jul-10
+ *    @version 0.11, 14-Jul-10
  */
 object NuagesPanel {
    var verbose = false
@@ -470,7 +470,7 @@ with ProcFactoryProvider {
       display.addControlListener( new WheelZoomControl() )
       display.addControlListener( new PanControl() )
       display.addControlListener( new DragControl( vis ))
-      display.addControlListener( new ClickControl( this ))
+      display.addControlListener( new ClickControl( vis, this ))
 ////      val dragTgtHandle = vg.addNode().asInstanceOf[ NodeItem ]
 //      val dummy = g.addNode()
 //      val dragTgtHandle = vis.getVisualItem( GROUP_GRAPH, dummy ).asInstanceOf[ NodeItem ]

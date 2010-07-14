@@ -2,12 +2,12 @@ package de.sciss.nuages
 
 import prefuse.controls.ControlAdapter
 import javax.swing.SwingUtilities
-import prefuse.visual.{AggregateItem, VisualItem}
 import java.awt.Cursor
 import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 import prefuse.{Visualization, Display}
 import prefuse.render.EdgeRenderer
+import prefuse.visual.{EdgeItem, NodeItem, AggregateItem, VisualItem}
 
 object DragControl {
    private val csrHand     = Cursor.getPredefinedCursor( Cursor.HAND_CURSOR )
@@ -40,7 +40,16 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
       }
       e.getComponent().setCursor( csrHand )
       hoverItem = Some( vi )
-      if( !vi.isInstanceOf[ AggregateItem ]) setFixed( vi, true )
+      vi match {
+         case ni: NodeItem => {
+            setFixed( ni, true )
+         }
+         case ei: EdgeItem => {
+            setFixed( ei.getSourceItem, true )
+            setFixed( ei.getTargetItem, true )
+         }
+         case _ =>
+      }
    }
 
    @inline private def getDisplay( e: MouseEvent ) = e.getComponent().asInstanceOf[ Display ]
@@ -59,7 +68,16 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
          case _ =>
       }
       hoverItem = None
-      setFixed( vi, false )
+      vi match {
+         case ni: NodeItem => {
+            setFixed( ni, false )
+         }
+         case ei: EdgeItem => {
+            setFixed( ei.getSourceItem, false )
+            setFixed( ei.getTargetItem, false )
+         }
+         case _ =>
+      }
       e.getComponent().setCursor( csrDefault )
    }
 
@@ -75,7 +93,7 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
             }
          }
          case er: EdgeRenderer => {
-            println( "EDGE ")
+//            println( "EDGE ")
          }
          case _ =>
       }

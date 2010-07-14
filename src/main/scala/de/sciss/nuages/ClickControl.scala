@@ -30,10 +30,11 @@ package de.sciss.nuages
 
 import prefuse.controls.ControlAdapter
 import java.awt.event.MouseEvent
-import prefuse.Display
 import javax.swing.{ListModel, ListSelectionModel}
 import java.awt.geom.Point2D
-import de.sciss.synth.proc.{DSL, Proc, ProcTxn, ProcFactory}
+import prefuse.visual.{VisualItem, EdgeItem}
+import prefuse.{Visualization, Display}
+import de.sciss.synth.proc._
 import DSL._
 
 /**
@@ -53,26 +54,71 @@ trait ProcFactoryProvider {
    def setLocationHint( p: Proc, loc: Point2D )
 }
 
-class ClickControl( pfp: ProcFactoryProvider ) extends ControlAdapter {
+class ClickControl( vis: Visualization, pfp: ProcFactoryProvider ) extends ControlAdapter {
+   import NuagesPanel._
+
    override def mousePressed( e: MouseEvent ) {
       if( e.getClickCount() != 2 ) return
       (pfp.genFactory, pfp.diffFactory) match {
          case (Some( genF ), Some( diffF )) => {
             val d          = getDisplay( e )
             val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
-            ProcTxn.atomic { implicit tx =>
-               val gen  = genF.make
-               val diff = diffF.make
-               gen ~> diff
-               tx.beforeCommit { _ =>
-                  val genPt  = new Point2D.Double( displayPt.getX, displayPt.getY - 30 )
-                  val diffPt = new Point2D.Double( displayPt.getX, displayPt.getY + 30 )
-                  pfp.setLocationHint( gen, genPt )
-                  pfp.setLocationHint( diff, diffPt )
+            createProc( genF, diffF, displayPt )
+         }
+         case _ =>
+      }
+   }
+
+   private def createProc( genF: ProcFactory, diffF: ProcFactory, pt: Point2D ) {
+      ProcTxn.atomic { implicit tx =>
+         val gen  = genF.make
+         val diff = diffF.make
+         gen ~> diff
+         tx.beforeCommit { _ =>
+            val genPt  = new Point2D.Double( pt.getX, pt.getY - 30 )
+            val diffPt = new Point2D.Double( pt.getX, pt.getY + 30 )
+            pfp.setLocationHint( gen, genPt )
+            pfp.setLocationHint( diff, diffPt )
+         }
+      }
+   }
+
+   override def itemPressed( vi: VisualItem, e: MouseEvent ) {
+      if( e.getClickCount() != 2 ) return
+      vi match {
+         case ei: EdgeItem => {
+            val nSrc = ei.getSourceItem
+            val nTgt = ei.getTargetItem
+            (vis.getRenderer( nSrc ), vis.getRenderer( nTgt )) match {
+               case (_: NuagesProcRenderer, _: NuagesProcRenderer) => {
+                  val srcData = nSrc.get( COL_NUAGES ).asInstanceOf[ VisualData ]
+                  val tgtData = nTgt.get( COL_NUAGES ).asInstanceOf[ VisualData ]
+                  if( srcData != null && tgtData != null ) {
+                     (srcData, tgtData) match {
+                        case (vOut: VisualAudioOutput, vIn: VisualAudioInput) => pfp.filterFactory foreach { filterF =>
+                           val d          = getDisplay( e )
+                           val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
+                           createFilter( vOut.bus, vIn.bus, filterF, displayPt )
+                        }
+                        case _ =>
+                     }
+                  }
                }
+               case _ =>
             }
          }
          case _ =>
+      }
+   }
+
+   private def createFilter( out: ProcAudioOutput, in: ProcAudioInput, filterF: ProcFactory, pt: Point2D ) {
+//      println( "CREATE FILTER " + vOut.bus.name + " -> " + filterF.name + " -> " + vIn.bus.name )
+      ProcTxn.atomic { implicit tx =>
+         val filter  = filterF.make
+         out ~|filter|> in
+         tx.beforeCommit { _ =>
+            pfp.setLocationHint( filter, pt )
+         }
       }
    }
 

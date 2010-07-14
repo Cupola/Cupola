@@ -34,7 +34,7 @@ import collection.immutable.{ IndexedSeq => IIdxSeq }
 import reflect.ClassManifest
 
 /**
- *    @version 0.12, 12-Jul-10
+ *    @version 0.12, 14-Jul-10
  */
 object DSL {
    private val cmGE     = ClassManifest.fromClass( classOf[ GE ])
@@ -168,6 +168,8 @@ object DSL {
 
    implicit def procToAudioInput( p: Proc ) : ProcAudioInput   = p.audioInput( "in" )
    implicit def procToAudioOutput( p: Proc ) : ProcAudioOutput = p.audioOutput( "out" )
+   implicit def procToAudioInOut( p: Proc ) : (ProcAudioInput, ProcAudioOutput) =
+      p.audioInput( "in" ) -> p.audioOutput( "out" )
 }
 
 trait ProcBuffer {
