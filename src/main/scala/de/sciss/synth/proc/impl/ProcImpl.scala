@@ -284,18 +284,18 @@ extends Proc {
 //      }
 //   }
 
-   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) {
-      error( "NOT YET IMPLEMENTED" )
-   }
-
-   private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput,
-                             insert: (ProcAudioInput, ProcAudioOutput) ) {
-      error( "NOT YET IMPLEMENTED" )
-   }
+//   private[proc] def disconnect( out: ProcAudioOutput, in: ProcAudioInput ) {
+//      error( "NOT YET IMPLEMENTED" )
+//   }
+//
+//   private[proc] def insert( out: ProcAudioOutput, in: ProcAudioInput,
+//                             insert: (ProcAudioInput, ProcAudioOutput) ) {
+//      error( "NOT YET IMPLEMENTED" )
+//   }
 
    private def createBackground( xfade: XFade, dispose: Boolean )( implicit tx: ProcTxn ) {
 //      if( !xfade.markSendToBack( this )) return
-println( "createBackground" + this )
+//println( "createBackground" + this )
 
       val main    = group           // ensures that main group exists,
       val all     = groupsRef().get // i.e. that this is valid

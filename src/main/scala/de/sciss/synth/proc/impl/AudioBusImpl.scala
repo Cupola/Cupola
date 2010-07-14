@@ -435,7 +435,7 @@ if( isPlaying ) println( "WARNING: ~> ctrl : not stopped / restarted yet!" )
                   }
                   case _ =>
                }
-println( "SETTING BUS FROM " + oldBus + " TO " + newBus )
+//println( "SETTING BUS FROM " + oldBus + " TO " + newBus )
                bus = Some( newBus )
             })
          }
@@ -461,8 +461,26 @@ println( "SETTING BUS FROM " + oldBus + " TO " + newBus )
       e.in.bus = None // XXX in should decide whether it is recreating a physical input
   }
 
-   def ~|( insert: (ProcAudioInput, ProcAudioOutput) )( implicit tx: ProcTxn ) : ProcAudioInsertion =
-      new AudioInsertionImpl( proc, this, insert )
+   def ~|( insert: (ProcAudioInput, ProcAudioOutput) )( implicit tx: ProcTxn ) : ProcAudioInsertion = {
+// ... well... we don't actually *require* that, it would just be logical ...
+//      require( insert._1.proc == insert._2.proc )
+      new AudioInsertionImpl( this, insert )
+   }
+
+   private[proc] def insert( in: ProcAudioInput, insert: (ProcAudioInput, ProcAudioOutput) )
+                           ( implicit tx: ProcTxn ) {
+      val outWasPlaying = out.isPlaying
+      val inWasPlaying  = in.isPlaying
+      // XXX eventually we wouldn't want to stop and re-start the
+      // processes but introduce smart fading
+      if( inWasPlaying )   in.proc.stop
+      if( outWasPlaying )  out.proc.stop
+      out ~/> in
+      out ~> insert._1
+      insert._2 ~> in
+      if( inWasPlaying )   in.proc.play
+      if( outWasPlaying )  out.proc.play
+   }
 }
 
 //   private class AudioInputMapImpl( control: ProcControl )
@@ -470,11 +488,11 @@ println( "SETTING BUS FROM " + oldBus + " TO " + newBus )
 //
 //   }
 
-class AudioInsertionImpl( proc: ProcImpl, out: ProcAudioOutput, insert: (ProcAudioInput, ProcAudioOutput) )
-                                ( implicit tx: ProcTxn )
+class AudioInsertionImpl( /*proc: ProcImpl, */ out: AudioOutputImpl, insert: (ProcAudioInput, ProcAudioOutput) )
 extends ProcAudioInsertion {
-   def |>( in: ProcAudioInput ) : ProcAudioInput = {
-      proc.insert( out, in, insert )
+   def |>( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioInput = {
+//      proc.insert( out, in, insert )
+      out.insert( in, insert )
       in
    }
 }

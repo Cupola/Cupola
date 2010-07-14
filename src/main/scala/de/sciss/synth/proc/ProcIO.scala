@@ -71,7 +71,7 @@ trait ProcAudioInput extends ProcAudioBus {
 }
 
 trait ProcAudioInsertion {
-   def |> ( in: ProcAudioInput ) : ProcAudioInput
+   def |> ( in: ProcAudioInput )( implicit tx: ProcTxn ) : ProcAudioInput
 }
 
 trait ProcControl {

@@ -470,7 +470,7 @@ with ProcFactoryProvider {
       display.addControlListener( new WheelZoomControl() )
       display.addControlListener( new PanControl() )
       display.addControlListener( new DragControl( vis ))
-      display.addControlListener( new ClickControl( vis, this ))
+      display.addControlListener( new ClickControl( this ))
 ////      val dragTgtHandle = vg.addNode().asInstanceOf[ NodeItem ]
 //      val dummy = g.addNode()
 //      val dragTgtHandle = vis.getVisualItem( GROUP_GRAPH, dummy ).asInstanceOf[ NodeItem ]

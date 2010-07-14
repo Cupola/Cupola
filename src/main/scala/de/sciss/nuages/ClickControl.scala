@@ -54,12 +54,12 @@ trait ProcFactoryProvider {
    def setLocationHint( p: Proc, loc: Point2D )
 }
 
-class ClickControl( vis: Visualization, pfp: ProcFactoryProvider ) extends ControlAdapter {
+class ClickControl( main: NuagesPanel ) extends ControlAdapter {
    import NuagesPanel._
 
    override def mousePressed( e: MouseEvent ) {
       if( e.getClickCount() != 2 ) return
-      (pfp.genFactory, pfp.diffFactory) match {
+      (main.genFactory, main.diffFactory) match {
          case (Some( genF ), Some( diffF )) => {
             val d          = getDisplay( e )
             val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
@@ -77,8 +77,8 @@ class ClickControl( vis: Visualization, pfp: ProcFactoryProvider ) extends Contr
          tx.beforeCommit { _ =>
             val genPt  = new Point2D.Double( pt.getX, pt.getY - 30 )
             val diffPt = new Point2D.Double( pt.getX, pt.getY + 30 )
-            pfp.setLocationHint( gen, genPt )
-            pfp.setLocationHint( diff, diffPt )
+            main.setLocationHint( gen, genPt )
+            main.setLocationHint( diff, diffPt )
          }
       }
    }
@@ -89,13 +89,13 @@ class ClickControl( vis: Visualization, pfp: ProcFactoryProvider ) extends Contr
          case ei: EdgeItem => {
             val nSrc = ei.getSourceItem
             val nTgt = ei.getTargetItem
-            (vis.getRenderer( nSrc ), vis.getRenderer( nTgt )) match {
+            (main.vis.getRenderer( nSrc ), main.vis.getRenderer( nTgt )) match {
                case (_: NuagesProcRenderer, _: NuagesProcRenderer) => {
                   val srcData = nSrc.get( COL_NUAGES ).asInstanceOf[ VisualData ]
                   val tgtData = nTgt.get( COL_NUAGES ).asInstanceOf[ VisualData ]
                   if( srcData != null && tgtData != null ) {
                      (srcData, tgtData) match {
-                        case (vOut: VisualAudioOutput, vIn: VisualAudioInput) => pfp.filterFactory foreach { filterF =>
+                        case (vOut: VisualAudioOutput, vIn: VisualAudioInput) => main.filterFactory foreach { filterF =>
                            val d          = getDisplay( e )
                            val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
                            createFilter( vOut.bus, vIn.bus, filterF, displayPt )
@@ -112,12 +112,14 @@ class ClickControl( vis: Visualization, pfp: ProcFactoryProvider ) extends Contr
    }
 
    private def createFilter( out: ProcAudioOutput, in: ProcAudioInput, filterF: ProcFactory, pt: Point2D ) {
-//      println( "CREATE FILTER " + vOut.bus.name + " -> " + filterF.name + " -> " + vIn.bus.name )
+//      println( "CREATE FILTER " + out.name + " ~| " + filterF.name + " |> " + in.bus.name )
       ProcTxn.atomic { implicit tx =>
-         val filter  = filterF.make
-         out ~|filter|> in
-         tx.beforeCommit { _ =>
-            pfp.setLocationHint( filter, pt )
+         tx.withTransition( main.transition( tx.time )) {
+            val filter  = filterF.make
+            out ~|filter|> in
+            tx.beforeCommit { _ =>
+               main.setLocationHint( filter, pt )
+            }
          }
       }
    }
