@@ -103,6 +103,7 @@ object NuagesPanel {
          g.fill( outline )
          val atOrig = g.getTransform
          g.translate( r.getX(), r.getY() )
+//         g.setRenderingHint( RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON )
          renderDetail( g, vi )
          g.setTransform( atOrig )
       }
@@ -114,14 +115,28 @@ object NuagesPanel {
       def itemDragged( vi: VisualItem, e: MouseEvent, pt: Point2D ) {}
 
       protected def drawName( g: Graphics2D, vi: VisualItem, font: Font ) {
-         val cx   = r.getWidth() / 2
-         val cy   = r.getHeight() / 2
-         g.setFont( font )
-         val fm   = g.getFontMetrics()
+//         val cx   = r.getWidth() / 2
+//         val cy   = r.getHeight() / 2
+//         g.setFont( font )
+//         val fm   = g.getFontMetrics()
          g.setColor( ColorLib.getColor( vi.getTextColor() ))
          val n    = name
-         g.drawString( n, (cx - (fm.stringWidth( n ) * 0.5)).toFloat,
-                          (cy + ((fm.getAscent() - fm.getLeading()) * 0.5)).toFloat )
+//         g.drawString( n, (cx - (fm.stringWidth( n ) * 0.5)).toFloat,
+//                          (cy + ((fm.getAscent() - fm.getLeading()) * 0.5)).toFloat )
+         val v = font.createGlyphVector( g.getFontRenderContext(), n )
+//         val vb = v.getVisualBounds()
+         val vvb = v.getVisualBounds()
+         val vlb = v.getLogicalBounds()
+
+         // for PDF output, drawGlyphVector gives correct font rendering,
+         // while drawString only does with particular fonts. 
+//         g.drawGlyphVector( v, ((r.getWidth() - vb.getWidth()) * 0.5).toFloat,
+//                           ((r.getHeight() + (fm.getAscent() - fm.getLeading())) * 0.5).toFloat )
+//         g.drawGlyphVector( v, ((r.getWidth() - vb.getWidth()) * 0.5).toFloat,
+//                               ((r.getHeight() - vb.getHeight()) * 0.5).toFloat )
+         val shp = v.getOutline( ((r.getWidth() - vvb.getWidth()) * 0.5).toFloat,
+                                 ((r.getHeight() + vvb.getHeight()) * 0.5).toFloat )
+         g.fill( shp )
       }
 
       def name : String
@@ -327,7 +342,12 @@ with ProcFactoryProvider {
 
    val vis     = new Visualization()
    val world   = ProcDemiurg.worlds( server )
-   val display = new Display( vis )
+   val display = new Display( vis ) {
+//      override protected def setRenderingHints( g: Graphics2D ) {
+//         super.setRenderingHints( g )
+//         g.setRenderingHint( RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON )
+//      }
+   }
 
    private val AGGR_PROC            = "aggr"
    private val GROUP_GRAPH          = "graph"

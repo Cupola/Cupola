@@ -100,7 +100,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
     *    A condensed font for GUI usage. This is in 12 pt size,
     *    so consumers must rescale.
     */
-   lazy val condensedFont : Font = {
+   /*lazy val*/ var condensedFont : Font = {
 // createFont doesn't properly create the spacing. fucking hell...
 //      val is   = Wolkenpumpe.getClass.getResourceAsStream( "BellySansCondensed.ttf" )
 //      val res  = Font.createFont( Font.TRUETYPE_FONT, is )

@@ -11,7 +11,7 @@
 
 needed for SMC:
 - bypass filter
-- insert filter (a: new; b: existing via drag)
+[KIND OF WORKING] - insert filter (a: new)
 - dispose proc
 - lazy slider for xfade/ glide
 - how to implement NuagesULoop?
@@ -26,6 +26,7 @@ useful for SMC:
 - control-room recorder
 - diskin based procs: track playback position
 - meter
+- insert filter (b: existing via drag)
 
 other:
 - gui update glide values
