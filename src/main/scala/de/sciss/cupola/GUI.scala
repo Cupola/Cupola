@@ -21,7 +21,7 @@ class GUI {
             val gg = new Cell
             gg.addMouseListener( new MouseAdapter {
                override def mousePressed( e: MouseEvent ) {
-                  simulate( OSCMessage( "/cupola", "state", lvl.id, sec.id ))
+//                  simulate( OSCMessage( "/cupola", "state", lvl.id, sec.id ))
                }
             })
             levelPane.add( gg )

@@ -59,18 +59,18 @@ object Cupola extends Actor {
    
    private var level: Level      = UnknownLevel
    private var section: Section  = Section1
-   private val tracking          = {
-      val rcv = OSCReceiver( UDP, trackingPort )
-      rcv.action = messageReceived
-      rcv.start
-      rcv
-   }
-   private val simulator         = {
-      val trns = OSCTransmitter( UDP )
-      trns.target = tracking.localAddress
-      trns.connect
-      trns
-   }
+//   private val tracking          = {
+//      val rcv = OSCReceiver( UDP, trackingPort )
+//      rcv.action = messageReceived
+//      rcv.start
+//      rcv
+//   }
+//   private val simulator         = {
+//      val trns = OSCTransmitter( UDP )
+//      trns.target = tracking.localAddress
+//      trns.connect
+//      trns
+//   }
    private val listeners         = new MHashSet[ OutputChannel[ Any ]]
 
    def main( args: Array[ String ]) {
@@ -139,7 +139,7 @@ object Cupola extends Actor {
       EventQueue.invokeLater( new Runnable { def run = code })
    }
 
-   def simulate( msg: OSCMessage ) { simulator.send( msg )}
+//   def simulate( msg: OSCMessage ) { simulator.send( msg )}
 
    private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) = msg match {
       case OSCMessage( "/cupola", "state", levelID: Int, sectionID: Int ) => levelChange( levelID, sectionID )
@@ -176,13 +176,13 @@ object Cupola extends Actor {
       println( "Server booted. Starting Cupola..." )
 //      (new ProcessManager).start
       s.dumpOSC(1)
-      Test.run
+//      Test.run
    }
 
    def quit {
       s.quit
       s.dispose
-      tracking.dispose
+//      tracking.dispose
       System.exit( 0 )
    }
 }

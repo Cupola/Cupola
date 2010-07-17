@@ -2,7 +2,7 @@ import xml._
 import sbt.{ FileUtilities => FU, _}
 
 /**
- *    @version 0.11, 05-May-10
+ *    @version 0.12, 17-Jul-10
  */
 class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    // stupidly, we need to redefine the dependancy here, because
@@ -14,13 +14,16 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    val dep5 = "de.sciss" %% "scalainterpreterpane" % "0.16"
    val dep6 = "prefuse" % "prefuse" % "beta-20071021" from "http://github.com/downloads/Sciss/ScalaColliderSwing/prefuse-beta-20071021.jar"
    val dep7 = "de.sciss" %% "scalacolliderswing" % "0.17"
-   val dep8 = "de.sciss" %% "temporalobjects" % "0.13"
+//   val dep8 = "de.sciss" %% "temporalobjects" % "0.13"
    val dep9 = "Stanford CS - Pervasive Parallelism Laboratory" %% "ccstm" % "0.2"
+   val dep10 = "de.sciss" %% "soundprocesses" % "0.12"
+   val dep11 = "de.sciss" %% "wolkenpumpe" % "0.12"
 
    // ---- ccstm dependancies ----
    val scalatest = crossScalaVersionString match {
-     case "2.8.0.Beta1" => "org.scalatest" % "scalatest" % "1.0.1-for-scala-2.8.0.Beta1-with-test-interfaces-0.3-SNAPSHOT"
-     case "2.8.0.RC1" => "org.scalatest" % "scalatest" % "1.0.1-for-scala-2.8.0.RC1-SNAPSHOT"
+     // RC7 is the same as the release, but scalatest against the release is not
+     // yet available
+     case "2.8.0" => "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC7-SNAPSHOT"
      case _ => "org.scalatest" % "scalatest" % ("1.2-for-scala-" + crossScalaVersionString + "-SNAPSHOT")
    }
    val scalaToolsSnapshots = "Scala-Tools Maven2 Snapshots Repository" at "http://scala-tools.org/repo-snapshots"
