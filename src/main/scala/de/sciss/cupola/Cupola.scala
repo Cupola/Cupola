@@ -36,6 +36,7 @@ import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter, UDP }
 import de.sciss.synth.{ BootingServer, Server }
 import collection.mutable.{ HashSet => MHashSet }
 import de.sciss.synth.proc.ProcDemiurg
+import de.sciss.smc.SMC
 
 /**
  *    @version 0.11, 21-Jun-10
@@ -53,8 +54,6 @@ object Cupola extends Actor {
    // messages sent out by this object to listeners
    case class LevelChanged( newLevel: Level, newSection: Section )
 
-   @volatile var s: Server       = _
-   @volatile var booting: BootingServer = _
    val trackingPort              = 0x6375
    
    private var level: Level      = UnknownLevel
@@ -77,51 +76,10 @@ object Cupola extends Actor {
 //      s.options.programPath.value = "/Users/rutz/Documents/devel/fromSVN/SuperCollider3/common/build/scsynth"
 //      s.addDoWhenBooted( this ! Run ) // important: PlainServer executes this in the OSC receiver thread, so fork!
 //      start
-      guiRun { init }
+//      guiRun { init }
+      guiRun { SMC.run }
    }
 
-   private def init {
-      val support = new REPLSupport
-      val sif  = new ScalaInterpreterFrame( support /* ntp */ )
-      val ssp  = new ServerStatusPanel()
-      val sspw = ssp.makeWindow
-      val ntp  = new NodeTreePanel()
-      val ntpw = ntp.makeWindow
-      ntpw.setLocation( sspw.getX, sspw.getY + sspw.getHeight + 32 )
-      sspw.setVisible( true )
-      ntpw.setVisible( true )
-      sif.setLocation( sspw.getX + sspw.getWidth + 32, sif.getY )
-      sif.setVisible( true )
-      booting = Server.boot()
-      booting.addListener {
-         case BootingServer.Preparing( srv ) => {
-            ssp.server = Some( srv )
-            ntp.server = Some( srv )
-         }
-         case BootingServer.Running( srv ) => {
-            ProcDemiurg.addServer( srv )
-            s = srv
-            support.s = srv
-//println( "HERE" )
-//            sif.withInterpreter( _.bind( "s", classOf[ Server ].getName, srv ))
-//            Test.run2
-         }
-      }
-      Runtime.getRuntime().addShutdownHook( new Thread { override def run = shutDown })
-      booting.start
-   }
-
-   private def shutDown { // sync.synchronized { }
-      if( (s != null) && (s.condition != Server.Offline) ) {
-         s.quit
-         s = null
-      }
-      if( booting != null ) {
-         booting.abort
-         booting = null
-      }
-   }
-   
 //   private def initGUI {
 //      val sspw = new ServerStatusPanel( s ).makeWindow
 //      val ntp  = new NodeTreePanel( s )
@@ -164,25 +122,25 @@ object Cupola extends Actor {
             dispatch( msg )
          }
          case QueryLevel      => () // reply( LevelChanged( level, section ))
-         case Run             => run
-         case Quit            => quit
+//         case Run             => run
+//         case Quit            => quit
          case AddListener     => listeners += sender
          case RemoveListener  => listeners -= sender 
          case x               => println( "Cupola: Ignoring actor message '" + x + "'" )
       }
    }
 
-   def run {
-      println( "Server booted. Starting Cupola..." )
-//      (new ProcessManager).start
-      s.dumpOSC(1)
-//      Test.run
-   }
-
-   def quit {
-      s.quit
-      s.dispose
-//      tracking.dispose
-      System.exit( 0 )
-   }
+//   def run {
+//      println( "Server booted. Starting Cupola..." )
+////      (new ProcessManager).start
+//      s.dumpOSC(1)
+////      Test.run
+//   }
+//
+//   def quit {
+//      s.quit
+//      s.dispose
+////      tracking.dispose
+//      System.exit( 0 )
+//   }
 }

@@ -52,11 +52,13 @@
 			<string>$JAVAROOT/scalaaudiofile.jar</string>
 			<string>$JAVAROOT/scalacollider.jar</string>
 			<string>$JAVAROOT/scalacolliderswing.jar</string>
+			<string>$JAVAROOT/scalafreesound.jar</string>
+			<string>$JAVAROOT/scalafreesoundswing.jar</string>
 			<string>$JAVAROOT/scalainterpreterpane.jar</string>
 			<string>$JAVAROOT/scalaosc.jar</string>
 			<string>$JAVAROOT/scisslib.jar</string>
-			<string>$JAVAROOT/sonogramoverview.jar</string>
-			<string>$JAVAROOT/temporalobjects.jar</string>
+			<string>$JAVAROOT/soundprocesses.jar</string>
+			<string>$JAVAROOT/wolkenpumpe.jar</string>
 		</array>
 	</dict>
 </dict>
