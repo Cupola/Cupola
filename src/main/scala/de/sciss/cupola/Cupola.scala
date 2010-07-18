@@ -36,7 +36,8 @@ import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter, UDP }
 import de.sciss.synth.{ BootingServer, Server }
 import collection.mutable.{ HashSet => MHashSet }
 import de.sciss.synth.proc.ProcDemiurg
-import de.sciss.smc.SMC
+import de.sciss.smc.{SMCNuages, SMC}
+import com.jhlabs.jnitablet.TabletWrapper
 
 /**
  *    @version 0.11, 21-Jun-10
@@ -77,6 +78,11 @@ object Cupola extends Actor {
 //      s.addDoWhenBooted( this ! Run ) // important: PlainServer executes this in the OSC receiver thread, so fork!
 //      start
 //      guiRun { init }
+
+      // there is something tricky about the point of time
+      // at which the JNI lib gets loaded... seems the safest
+      // is to do that before AWT initializes...
+      if( SMCNuages.USE_TABLET ) TabletWrapper.getInstance()
       guiRun { SMC.run }
    }
 

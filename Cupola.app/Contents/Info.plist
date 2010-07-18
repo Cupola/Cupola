@@ -56,8 +56,8 @@
 			<string>$JAVAROOT/scalafreesoundswing.jar</string>
 			<string>$JAVAROOT/scalainterpreterpane.jar</string>
 			<string>$JAVAROOT/scalaosc.jar</string>
-			<string>$JAVAROOT/scisslib.jar</string>
 			<string>$JAVAROOT/soundprocesses.jar</string>
+			<string>$JAVAROOT/tabletwrapper.jar</string>
 			<string>$JAVAROOT/wolkenpumpe.jar</string>
 		</array>
 	</dict>
