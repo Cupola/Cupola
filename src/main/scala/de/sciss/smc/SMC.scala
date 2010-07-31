@@ -30,31 +30,38 @@ package de.sciss.smc
 
 import de.sciss.synth.swing.{NodeTreePanel, ServerStatusPanel}
 import de.sciss.synth.proc.ProcDemiurg
-import java.io.RandomAccessFile
+import collection.breakOut
+import collection.immutable.{ IndexedSeq => IIdxSeq }
 import javax.swing.WindowConstants
-import de.sciss.freesound.SampleInfoCache
-import de.sciss.freesound.swing.{SearchResultFrame, SearchQueryFrame, LoginFrame}
 import de.sciss.synth.io.AudioFile
 import java.awt.GraphicsEnvironment
 import de.sciss.nuages.{NuagesConfig, NuagesFrame}
 import de.sciss.synth._
+import de.sciss.freesound.swing.{SearchProgressFrame, SearchResultFrame, SearchQueryFrame, LoginFrame}
+import de.sciss.freesound.{Search, Login, Sample, SampleInfoCache}
+import actors.DaemonActor
+import java.io.{FilenameFilter, File, RandomAccessFile}
 
 /**
- *    @version 0.11, 19-Jul-10
+ *    @version 0.11, 21-Jul-10
  */
 object SMC {
    val BASE_PATH           = "/Users/rutz/Desktop/freesound/"
    val AUTO_LOGIN          = true
    val NUAGES_ANTIALIAS    = false
-   val INTERNAL_AUDIO      = true // false
-   val MASTER_NUMCHANNELS  = 4
+   val INTERNAL_AUDIO      = false
+   val MASTER_NUMCHANNELS  = 8 // 4
+   val MASTER_OFFSET       = 0
+   val MIC_OFFSET          = 0
+   val FREESOUND_OFFLINE   = true
+   var masterBus : AudioBus = null
 
    val options          = {
       val o = new ServerOptionsBuilder()
       if( INTERNAL_AUDIO ) {
          o.deviceNames        = Some( "Built-in Microphone" -> "Built-in Output" )
       } else {
-         o.deviceName         = Some( "MOTU 828 mk2" )
+         o.deviceName         = Some( "MOTU 828mk2" )
       }
       o.inputBusChannels   = 10
       o.outputBusChannels  = 10
@@ -115,10 +122,10 @@ object SMC {
    }
 
    private def initNuages {
-      val masterBus  = if( INTERNAL_AUDIO ) {
+      masterBus  = if( INTERNAL_AUDIO ) {
          new AudioBus( s, 0, 2 )
       } else {
-         new AudioBus( s, 2, MASTER_NUMCHANNELS )
+         new AudioBus( s, MASTER_OFFSET, MASTER_NUMCHANNELS )
       }
       val soloBus    = Bus.audio( s, 2 )
       val recordPath = BASE_PATH + "rec"
@@ -131,8 +138,36 @@ object SMC {
       SMCNuages.init( s, f )
    }
 
+   private def newFreesoundResultsFrame( title: String, samples: IIdxSeq[ Sample ], login: Option[ Login ],
+                                          icache: Option[ SampleInfoCache ], downloadPath: Option[ String ]) {
+      val srf = new SearchResultFrame( samples, login, title, icache, downloadPath )
+      srf.setLocationRelativeTo( null )
+      srf.setVisible( true )
+      var checked = Set.empty[ String ]
+      srf.addListener {
+         case SearchResultFrame.SelectionChanged( sel @ _* ) => {
+//println( "SELECTION = " + sel )
+            val pathO = sel.headOption.flatMap( _.download.flatMap( path => {
+//println( "AQUI " + path )
+               if( checked.contains( path )) Some( path ) else {
+                  try {
+                     val spec = AudioFile.readSpec( path )
+                     if( spec.numChannels > 0 && spec.numChannels <= 2 ) {
+                        checked += path
+                        Some( path )
+                     } else None
+                  } catch { case e => None }
+               }
+            }))
+println( "FS PATH = " + pathO )
+            SMCNuages.freesoundFile = pathO
+         }
+      }
+   }
+
    private def initFreesound( username: String, password: String ) {
-      val icache = Some( SampleInfoCache.persistent( BASE_PATH + "infos" ))
+      val icachePath = BASE_PATH + "infos"
+      val icache = Some( SampleInfoCache.persistent( icachePath ))
       val downloadPath = Some( BASE_PATH + "samples" )
       val f = new LoginFrame()
 
@@ -155,33 +190,32 @@ object SMC {
                         val kw = search.options.keyword
                         if( kw.size < 24 ) kw else kw.take( 23 ) + "…"
                      } + ")"
-                  val srf = new SearchResultFrame( sqf, search, title, icache, downloadPath )
-                  srf.setLocationRelativeTo( null )
-                  srf.setVisible( true )
-                  var checked = Set.empty[ String ]
-                  srf.addListener {
-                     case SearchResultFrame.SelectionChanged( sel @ _* ) => {
-//println( "SELECTION = " + sel )
-                        val pathO = sel.headOption.flatMap( _.download.flatMap( path => {
-//println( "AQUI " + path )
-                           if( checked.contains( path )) Some( path ) else {
-                              try {
-                                 val spec = AudioFile.readSpec( path )
-                                 if( spec.numChannels > 0 && spec.numChannels <= 2 ) {
-                                    checked += path
-                                    Some( path )
-                                 } else None
-                              } catch { case e => None }
-                           }
-                        }))
-println( "FS PATH = " + pathO )
-                        SMCNuages.freesoundFile = pathO
+                  val spf = new SearchProgressFrame( sqf, search, title )
+                  spf.setLocationRelativeTo( null )
+                  spf.setVisible( true )
+                  spf.addListener {
+                     case Search.SearchDone( samples ) => {
+                        newFreesoundResultsFrame( title, samples, Some( login ), icache, downloadPath )
                      }
                   }
                }
             }
          }
       }
+      if( FREESOUND_OFFLINE ) {
+         val samples: IIdxSeq[ Sample ] = new File( icachePath ).listFiles().map({ f =>
+            val n = f.getName()
+            if( n.startsWith( "info" ) && n.endsWith( ".xml" )) {
+               val mid = n.substring( 4, n.length() - 4 )
+               try {
+                  Some( mid.toLong )
+               }
+               catch { case e => None }
+            } else None
+         }).collect({ case Some( id ) => Sample( id )})( breakOut )
+         newFreesoundResultsFrame( "Freesound Cache", samples, None, icache, downloadPath )
+      }
+
       if( AUTO_LOGIN ) f.performLogin
    }
 

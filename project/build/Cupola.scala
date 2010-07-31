@@ -2,7 +2,7 @@ import xml._
 import sbt.{ FileUtilities => FU, _}
 
 /**
- *    @version 0.12, 17-Jul-10
+ *    @version 0.12, 21-Jul-10
  */
 class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    // stupidly, we need to redefine the dependancy here, because
@@ -14,12 +14,12 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    val dep5 = "de.sciss" %% "scalainterpreterpane" % "0.16"
    val dep6 = "prefuse" % "prefuse" % "beta-20071021" from "http://github.com/downloads/Sciss/ScalaColliderSwing/prefuse-beta-20071021.jar"
    val dep7 = "de.sciss" %% "scalacolliderswing" % "0.17"
-//   val dep8 = "de.sciss" %% "temporalobjects" % "0.13"
+   val dep8 = "de.sciss" %% "temporalobjects" % "0.13"
    val dep9 = "Stanford CS - Pervasive Parallelism Laboratory" %% "ccstm" % "0.2"
-   val dep10 = "de.sciss" %% "soundprocesses" % "0.12"
+   val dep10 = "de.sciss" %% "soundprocesses" % "0.13"
    val dep11 = "de.sciss" %% "wolkenpumpe" % "0.12"
    val dep12 = "de.sciss" %% "scalafreesound" % "0.10"
-   val dep13 = "de.sciss" %% "scalafreesoundswing" % "0.10"
+   val dep13 = "de.sciss" %% "scalafreesoundswing" % "0.11"
 
    // ---- ccstm dependancies ----
    val scalatest = crossScalaVersionString match {

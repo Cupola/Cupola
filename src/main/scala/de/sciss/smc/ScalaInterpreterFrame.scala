@@ -195,13 +195,13 @@ xfade( 10 ) { p1( "freq" ) = (util.Random.nextInt( 90 ) + 40).midicps }
 val audioDir = "/Users/rutz/Desktop/Cupola/audio_work/"
 
 val genAt2aSide = gen( "at_2aside" ) {
-    val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
-    val b   = bufCue( "disk", audioDir + "material/2A-SideBlossCon2A-SideBloss.aif" )
-
-    graph {
-        HPF.ar( VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 ), 30 )
-    }
+   val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
+   graph {
+      val b   = bufCue( audioDir + "material/2A-SideBlossCon2A-SideBloss.aif" )
+      HPF.ar( VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 ), 30 )
+   }
 }
+
 
 val genFFreqFilter = filter( "f_filt" ) {
     val pfreq = pAudio( "freq", ParamSpec( -1, 1 ), 0.54 )
