@@ -38,7 +38,7 @@ import ugen._
 import java.io.File
 
 /**
- *    @version 0.11, 19-Jul-10
+ *    @version 0.12, 01-Aug-10
  */
 object CupolaNuages extends {
    import DSL._
@@ -48,13 +48,89 @@ object CupolaNuages extends {
 
    var f : NuagesFrame = null
 
-   def init( s: Server, f: NuagesFrame ) = ProcTxn.atomic { implicit tx =>
-      // -------------- GENERATORS --------------
+   var meditProcs : Seq[ Proc ] = Nil
 
-      // XXX TO-DO
-      // 2A-SideBlossCon2A-SideBloss.aif
-      // London100304_173556OKM_SaatchiGalleryCut.aif
-      // ChicagoAirportGate2_090605Cut.aif
+   def init( s: Server, f: NuagesFrame ) = ProcTxn.atomic { implicit tx =>
+
+      // -------------- DIFFUSIONS --------------
+
+      val goAll = diff( "O-all" ) {
+         val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
+         val pout  = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
+
+         graph { in =>
+            val sig          = (in * Lag.ar( pamp.ar, 0.1 )).outputs
+            val inChannels   = sig.size
+            val outChannels  = Cupola.MASTER_NUMCHANNELS
+            val sig1         = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
+            pout.ar( sig1 )
+         }
+      }
+
+      diff( "O-pan" ) {
+         val pspread = pControl( "spr",  ParamSpec( 0.0, 1.0 ), 0.25 ) // XXX rand
+         val prota   = pControl( "rota", ParamSpec( 0.0, 1.0 ), 0.0 )
+         val pbase   = pControl( "azi",  ParamSpec( 0.0, 360.0 ), 0.0 )
+         val pamp    = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
+         val pout    = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
+
+         graph { in =>
+            val baseAzi       = Lag.kr( pbase.kr, 0.5 ) + IRand( 0, 360 )
+            val rotaAmt       = Lag.kr( prota.kr, 0.1 )
+            val spread        = Lag.kr( pspread.kr, 0.5 )
+            val inChannels   = in.numOutputs
+            val outChannels  = Cupola.MASTER_NUMCHANNELS
+//            val sig1         = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
+            val rotaSpeed     = 0.1
+            val inSig         = (in * Lag.ar( pamp.ar, 0.1 )).outputs
+            val noise         = LFDNoise1.kr( rotaSpeed ) * rotaAmt * 2
+            val outSig: Array[ GE ] = Array.fill( outChannels )( 0 )
+            val altern        = false
+            for( inCh <- 0 until inChannels ) {
+               val pos0 = if( altern ) {
+                  (baseAzi / 180) + (inCh / outChannels * 2);
+               } else {
+                  (baseAzi / 180) + (inCh / inChannels * 2);
+               }
+               val pos = pos0 + noise
+
+             // + rota
+//				   w	 = inCh / (inChannels -1);
+//				   level = ((1 - levelMod) * w) + (1 - w);
+               val level   = 1   // (1 - w);
+               val width   = (spread * (outChannels - 2)) + 2
+               val pan     = PanAz.ar( outChannels, inSig( inCh ), pos, level, width, 0 )
+               pan.outputs.zipWithIndex.foreach( tup => {
+                  val (chanSig, i) = tup
+                  outSig( i ) = outSig( i ) + chanSig
+               })
+            }
+            pout.ar( outSig.toSeq )
+         }
+      }
+
+      diff( "O-rnd" ) {
+         val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
+         val pfreq = pControl( "freq", ParamSpec( 0.01, 10, ExpWarp ), 0.1 )
+         val ppow  = pControl( "pow", ParamSpec( 1, 10 ), 2 )
+         val plag  = pControl( "lag", ParamSpec( 0.1, 10 ), 1 )
+         val pout  = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
+
+         graph { in =>
+            val sig          = (in * Lag.ar( pamp.ar, 0.1 )).outputs
+            val inChannels   = sig.size
+            val outChannels  = Cupola.MASTER_NUMCHANNELS
+            val sig1: GE     = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
+            val freq         = pfreq.kr
+            val lag          = plag.kr
+            val pw           = ppow.kr
+            val rands        = Lag.ar( TRand.ar( 0, 1, Dust.ar( List.fill( outChannels )( freq ))).pow( pw ), lag )
+            val outSig       = sig1 * rands
+            pout.ar( outSig )
+         }
+      }
+
+      // -------------- GENERATORS --------------
 
       // NuagesUMic
       val loopFrames = (LOOP_DUR * s.sampleRate).toInt
@@ -78,13 +154,23 @@ object CupolaNuages extends {
 //         }
 //      })
 
-//      gen( "at_2aside" ) {
-//         val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
-//         graph {
-//            val b   = bufCue( SMC.BASE_PATH + "sciss/2A-SideBlossCon2A-SideBloss.aif" )
-//            HPF.ar( VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 ), 30 )
-//         }
-//      }
+      meditProcs = List( ("tp_2aside", "2A-SideBlossCon2A-SideBloss.aif", 0.0),
+            ("tp_saatchi", "London100304_173556OKM_SaatchiGalleryCut.aif", 1.0),
+            ("tp_chicago", "ChicagoAirportGate2_090605Cut.aif", 2.0) ) flatMap { tup =>
+         val (name, path, defaultGain) = tup
+         val g = gen( name ) {
+            val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), defaultGain.dbamp )
+            graph {
+               val b   = bufCue( Cupola.BASE_PATH + "audio_work/material/" + path )
+               HPF.ar( VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 ), 30 )
+            }
+         }
+         val pg = g.make
+         val po = goAll.make
+         pg ~> po
+         //po.play
+         List( pg, po )
+      }
 
       gen( "loop" ) {
          val pbuf    = pControl( "buf",   ParamSpec( 0, NUM_LOOPS - 1, LinWarp, 1 ), 0 )
@@ -453,84 +539,6 @@ object CupolaNuages extends {
             val flt		= in * pulse
             mix( in, flt, pmix )
          }
-      }
-
-      // -------------- DIFFUSIONS --------------
-
-      diff( "O-all" ) {
-          val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-          val pout  = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
-
-          graph { in =>
-             val sig          = (in * Lag.ar( pamp.ar, 0.1 )).outputs
-             val inChannels   = sig.size
-             val outChannels  = Cupola.MASTER_NUMCHANNELS
-             val sig1         = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
-             pout.ar( sig1 )
-          }
-      }
-
-      diff( "O-pan" ) {
-         val pspread = pControl( "spr",  ParamSpec( 0.0, 1.0 ), 0.25 ) // XXX rand
-         val prota   = pControl( "rota", ParamSpec( 0.0, 1.0 ), 0.0 )
-         val pbase   = pControl( "azi",  ParamSpec( 0.0, 360.0 ), 0.0 )
-         val pamp    = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-         val pout    = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
-
-         graph { in =>
-            val baseAzi       = Lag.kr( pbase.kr, 0.5 ) + IRand( 0, 360 )
-            val rotaAmt       = Lag.kr( prota.kr, 0.1 )
-            val spread        = Lag.kr( pspread.kr, 0.5 )
-            val inChannels   = in.numOutputs
-            val outChannels  = Cupola.MASTER_NUMCHANNELS
-//            val sig1         = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
-            val rotaSpeed     = 0.1
-            val inSig         = (in * Lag.ar( pamp.ar, 0.1 )).outputs
-            val noise         = LFDNoise1.kr( rotaSpeed ) * rotaAmt * 2
-            val outSig: Array[ GE ] = Array.fill( outChannels )( 0 )
-            val altern        = false
-            for( inCh <- 0 until inChannels ) {
-               val pos0 = if( altern ) {
-                  (baseAzi / 180) + (inCh / outChannels * 2);
-               } else {
-                  (baseAzi / 180) + (inCh / inChannels * 2);
-               }
-               val pos = pos0 + noise
-
-               // + rota
-//				   w	 = inCh / (inChannels -1);
-//				   level = ((1 - levelMod) * w) + (1 - w);
-               val level   = 1   // (1 - w);
-               val width   = (spread * (outChannels - 2)) + 2
-               val pan     = PanAz.ar( outChannels, inSig( inCh ), pos, level, width, 0 )
-               pan.outputs.zipWithIndex.foreach( tup => {
-                  val (chanSig, i) = tup
-                  outSig( i ) = outSig( i ) + chanSig
-               })
-            }
-            pout.ar( outSig.toSeq )
-         }
-      }
-
-      diff( "O-rnd" ) {
-          val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-          val pfreq = pControl( "freq", ParamSpec( 0.01, 10, ExpWarp ), 0.1 )
-          val ppow  = pControl( "pow", ParamSpec( 1, 10 ), 2 )
-          val plag  = pControl( "lag", ParamSpec( 0.1, 10 ), 1 )
-          val pout  = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
-
-          graph { in =>
-             val sig          = (in * Lag.ar( pamp.ar, 0.1 )).outputs
-             val inChannels   = sig.size
-             val outChannels  = Cupola.MASTER_NUMCHANNELS
-             val sig1: GE     = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
-             val freq         = pfreq.kr
-             val lag          = plag.kr
-             val pw           = ppow.kr
-             val rands        = Lag.ar( TRand.ar( 0, 1, Dust.ar( List.fill( outChannels )( freq ))).pow( pw ), lag )
-             val outSig       = sig1 * rands
-             pout.ar( outSig )
-          }
       }
 
       // tablet

@@ -33,33 +33,39 @@ import de.sciss.synth.swing.{ NodeTreePanel, ServerStatusPanel }
 import actors.{ Actor, DaemonActor, OutputChannel }
 import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter, UDP }
 import collection.mutable.{ HashSet => MHashSet }
-import de.sciss.synth.proc.ProcDemiurg
 import java.awt.{GraphicsEnvironment, EventQueue}
 import de.sciss.synth._
 import de.sciss.nuages.{NuagesFrame, NuagesConfig}
 import java.io.RandomAccessFile
+import proc.{ DSL, ProcDemiurg, ProcTxn, Ref, TxnModel }
+import DSL._
+
+case class CupolaUpdate( stage: Option[ (Level, Section) ])
 
 /**
- *    @version 0.11, 21-Jun-10
+ *    @version 0.12, 01-Aug-10
  */
-object Cupola extends Actor {
-   import Actor._
+object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
+//   import Actor._
 
-   // messages received by this object
-   case object Run
-   case object Quit
-   case object AddListener
-   case object RemoveListener
-   case object QueryLevel
+   type Update    = CupolaUpdate
+   type Listener  = L
 
-   // messages sent out by this object to listeners
-   case class LevelChanged( newLevel: Level, newSection: Section )
+//   // messages received by this object
+//   case object Run
+//   case object Quit
+//   case object AddListener
+//   case object RemoveListener
+//   case object QueryLevel
 
-   val BASE_PATH           = "/Users/rutz/Desktop/freesound/"
+//   // messages sent out by this object to listeners
+//   case class LevelChanged( newLevel: Level, newSection: Section )
+
+   val BASE_PATH           = "/Users/rutz/Desktop/Cupola/"
    val AUTO_LOGIN          = true
    val NUAGES_ANTIALIAS    = false
    val INTERNAL_AUDIO      = false
-   val MASTER_NUMCHANNELS  = 8 // 4
+   val MASTER_NUMCHANNELS  = 2 // 4
    val MASTER_OFFSET       = 0
    val MIC_OFFSET          = 0
    val FREESOUND_OFFLINE   = true
@@ -70,21 +76,20 @@ object Cupola extends Actor {
    lazy val SCREEN_BOUNDS =
          GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration.getBounds
 
-   private var level: Level      = UnknownLevel
-   private var section: Section  = Section1
-//   private val tracking          = {
-//      val rcv = OSCReceiver( UDP, trackingPort )
-//      rcv.action = messageReceived
-//      rcv.start
-//      rcv
-//   }
-//   private val simulator         = {
-//      val trns = OSCTransmitter( UDP )
-//      trns.target = tracking.localAddress
-//      trns.connect
-//      trns
-//   }
-   private val listeners         = new MHashSet[ OutputChannel[ Any ]]
+   private var stageRef = Ref[ (Level, Section) ]( UnknownLevel -> Section1 )
+   private val tracking          = {
+      val rcv = OSCReceiver( UDP, trackingPort )
+      rcv.action = messageReceived
+      rcv.start
+      rcv
+   }
+   private val simulator         = {
+      val trns = OSCTransmitter( UDP )
+      trns.target = tracking.localAddress
+      trns.connect
+      trns
+   }
+//   private val listeners         = new MHashSet[ OutputChannel[ Any ]]
 
    val options          = {
       val o = new ServerOptionsBuilder()
@@ -103,6 +108,7 @@ object Cupola extends Actor {
    }
 
    val support = new REPLSupport
+   val pm      = new ProcessManager
 
    @volatile var s: Server       = _
    @volatile var booting: BootingServer = _
@@ -128,26 +134,36 @@ object Cupola extends Actor {
 //      sif.setVisible( true )
 //   }
 
+   protected def emptyUpdate = CupolaUpdate( None )
+   protected def fullUpdate( implicit tx: ProcTxn ) = CupolaUpdate( Some( stageRef() ))
+
    def guiRun( code: => Unit ) {
       EventQueue.invokeLater( new Runnable { def run = code })
    }
 
-//   def simulate( msg: OSCMessage ) { simulator.send( msg )}
+   def simulate( msg: OSCMessage ) { simulator.send( msg )}
 
    private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) = msg match {
-      case OSCMessage( "/cupola", "state", levelID: Int, sectionID: Int ) => levelChange( levelID, sectionID )
+      case OSCMessage( "/cupola", "state", levelID: Int, sectionID: Int ) => stageChange( levelID, sectionID )
       case x => println( "Cupola: Ignoring OSC message '" + x + "'" )
    }
 
-   private def levelChange( levelID: Int, sectionID: Int ) {
-      val newLevel   = Level.all( levelID )
-      val newSection = Section.all( sectionID )
-      this ! LevelChanged( newLevel, newSection )
+   private def stageChange( levelID: Int, sectionID: Int ) {
+      ProcTxn.atomic { implicit tx =>
+         val newStage: (Level, Section) = Level.all( levelID ) -> Section.all( sectionID )
+         val oldStage = stageRef.swap( newStage )
+         if( oldStage != newStage ) {
+            touch
+            val u = updateRef()
+            updateRef.set( u.copy( stage = Some( newStage )))
+            pm.stageChange( oldStage, newStage )
+         }
+      }
    }
 
-   private def dispatch( msg: AnyRef ) {
-      listeners.foreach( _ ! msg )
-   }
+//   private def dispatch( msg: AnyRef ) {
+//      listeners.foreach( _ ! msg )
+//   }
 
    def init {
       // prevent actor starvation!!!
@@ -177,6 +193,7 @@ object Cupola extends Actor {
 
             // nuages
             initNuages
+            new GUI
 
 //            // freesound
 //            val cred  = new RandomAccessFile( BASE_PATH + "cred.txt", "r" )
@@ -201,35 +218,40 @@ object Cupola extends Actor {
       val f          = new NuagesFrame( config )
       f.panel.display.setHighQuality( NUAGES_ANTIALIAS )
       f.setSize( 640, 480 )
+      f.setLocation( ((SCREEN_BOUNDS.width - f.getWidth()) >> 1) + 100, 10 )
       f.setVisible( true )
       support.nuages = f
       CupolaNuages.init( s, f )
    }
 
-   def act = loop {
-      react {
-         case msg: LevelChanged => {
-            level    = msg.newLevel
-            section  = msg.newSection
-            dispatch( msg )
-         }
-         case QueryLevel      => () // reply( LevelChanged( level, section ))
-//         case Run             => run
-//         case Quit            => quit
-         case AddListener     => listeners += sender
-         case RemoveListener  => listeners -= sender 
-         case x               => println( "Cupola: Ignoring actor message '" + x + "'" )
-      }
-   }
+//   def act = loop {
+//      react {
+//         case msg: LevelChanged => {
+//            level    = msg.newLevel
+//            section  = msg.newSection
+//            dispatch( msg )
+//         }
+//         case QueryLevel      => () // reply( LevelChanged( level, section ))
+////         case Run             => run
+////         case Quit            => quit
+//         case AddListener     => listeners += sender
+//         case RemoveListener  => listeners -= sender
+//         case x               => println( "Cupola: Ignoring actor message '" + x + "'" )
+//      }
+//   }
+
+   def quit { System.exit( 0 )}
 
    private def shutDown { // sync.synchronized { }
-       if( (s != null) && (s.condition != Server.Offline) ) {
-          s.quit
-          s = null
-       }
-       if( booting != null ) {
-          booting.abort
-          booting = null
-       }
+      if( (s != null) && (s.condition != Server.Offline) ) {
+         s.quit
+         s = null
+      }
+      if( booting != null ) {
+         booting.abort
+         booting = null
+      }
+      simulator.dispose
+      tracking.dispose
     }
 }
