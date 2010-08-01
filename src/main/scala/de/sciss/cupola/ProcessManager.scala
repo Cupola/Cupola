@@ -39,11 +39,20 @@ import DSL._
 class ProcessManager {
    def stageChange( oldStage: (Level, Section), newStage: (Level, Section) )( implicit tx: ProcTxn ) {
       if( oldStage._1 != newStage._1 ) xfade( 10 ) {
-         if( oldStage._1 == Meditation ) {
-            CupolaNuages.meditProcs.foreach( _.stop )
-         } else if( newStage._1 == Meditation ) {
-            CupolaNuages.meditProcs.foreach( _.play )
+         val psOff = oldStage._1 match {
+            case Meditation  => CupolaNuages.meditProcs
+            case Equilibrium => CupolaNuages.equivProcs
+            case Chaos       => CupolaNuages.chaosProcs
+            case _           => Nil
          }
+         psOff.foreach( _.stop )
+         val psOn = newStage._1 match {
+            case Meditation  => CupolaNuages.meditProcs
+            case Equilibrium => CupolaNuages.equivProcs
+            case Chaos       => CupolaNuages.chaosProcs
+            case _           => Nil
+         }
+         psOn.foreach( _.play )
       }
    }
 }

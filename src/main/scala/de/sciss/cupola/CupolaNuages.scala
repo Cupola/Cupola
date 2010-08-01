@@ -49,6 +49,8 @@ object CupolaNuages extends {
    var f : NuagesFrame = null
 
    var meditProcs : Seq[ Proc ] = Nil
+   var equivProcs : Seq[ Proc ] = Nil
+   var chaosProcs : Seq[ Proc ] = Nil
 
    def init( s: Server, f: NuagesFrame ) = ProcTxn.atomic { implicit tx =>
 
@@ -154,23 +156,40 @@ object CupolaNuages extends {
 //         }
 //      })
 
-      meditProcs = List( ("tp_2aside", "2A-SideBlossCon2A-SideBloss.aif", 0.0),
-            ("tp_saatchi", "London100304_173556OKM_SaatchiGalleryCut.aif", 1.0),
-            ("tp_chicago", "ChicagoAirportGate2_090605Cut.aif", 2.0) ) flatMap { tup =>
-         val (name, path, defaultGain) = tup
-         val g = gen( name ) {
-            val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), defaultGain.dbamp )
-            graph {
-               val b   = bufCue( Cupola.BASE_PATH + "audio_work/material/" + path )
-               HPF.ar( VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 ), 30 )
+      def createTapeProcs( descs: (String, String, Double, Double)* ) : Seq[ Proc ] = {
+         descs flatMap { tup =>
+            val (name, path, defaultGain, defaultSpeed) = tup
+            val g = gen( name ) {
+               val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), defaultSpeed )
+               graph {
+                  val b   = bufCue( Cupola.BASE_PATH + "audio_work/material/" + path )
+                  HPF.ar( VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 ), 30 )
+               }
             }
+            val pg = g.make
+            val po = goAll.make
+            po.control( "amp" ).v = defaultGain.dbamp
+            pg ~> po
+            //po.play
+            List( pg, po )
          }
-         val pg = g.make
-         val po = goAll.make
-         pg ~> po
-         //po.play
-         List( pg, po )
       }
+
+      meditProcs = createTapeProcs(
+         ("tp_2aside", "2A-SideBlossCon2A-SideBloss.aif", 0.0, 1.0),
+         ("tp_saatchi", "London100304_173556OKM_SaatchiGalleryCut.aif", 1.0, 1.0),
+         ("tp_chicago", "ChicagoAirportGate2_090605Cut.aif", 2.0, 1.0) )
+
+      equivProcs = createTapeProcs(
+         ("tp_1conlp", "AT_1Cut1Conlp1k.aif", 2.0, 1.0),
+         ("tp_hmssjena", "HMSS_Jena_ScissOnly_081107Cut1Loop.aif", 0.0, 1.0),
+         ("tp_lala", "lalaConlalaQuadNoAtkSt.aif", 0.0, 1.0) )
+
+      chaosProcs = createTapeProcs(
+         ("tp_magma", "Magma1BackConMgm1F'pOpFTMagAboveIchStCutLoop.aif", 3.5, 1.0),
+         ("tp_rc60", "rc060'nlp2kOprc060'2kWrpCut.aif", -2.0, 1.0),
+         ("tp_phylet", "PhyletischesMuseumGlass080929HPF.aif", 2.0, 0.25) )
+
 
       gen( "loop" ) {
          val pbuf    = pControl( "buf",   ParamSpec( 0, NUM_LOOPS - 1, LinWarp, 1 ), 0 )
