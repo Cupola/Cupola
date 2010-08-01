@@ -1,4 +1,4 @@
-package de.sciss.smc
+package de.sciss.cupola
 
 import de.sciss.scalainterpreter.{ LogPane, ScalaInterpreterPane }
 import de.sciss.synth.Server

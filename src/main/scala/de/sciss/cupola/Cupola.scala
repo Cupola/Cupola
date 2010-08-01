@@ -29,15 +29,15 @@
 package de.sciss.cupola
 
 import java.net.SocketAddress
-import java.awt.EventQueue
 import de.sciss.synth.swing.{ NodeTreePanel, ServerStatusPanel }
 import actors.{ Actor, DaemonActor, OutputChannel }
 import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter, UDP }
-import de.sciss.synth.{ BootingServer, Server }
 import collection.mutable.{ HashSet => MHashSet }
 import de.sciss.synth.proc.ProcDemiurg
-import de.sciss.smc.{SMCNuages, SMC}
-import com.jhlabs.jnitablet.TabletWrapper
+import java.awt.{GraphicsEnvironment, EventQueue}
+import de.sciss.synth._
+import de.sciss.nuages.{NuagesFrame, NuagesConfig}
+import java.io.RandomAccessFile
 
 /**
  *    @version 0.11, 21-Jun-10
@@ -55,8 +55,21 @@ object Cupola extends Actor {
    // messages sent out by this object to listeners
    case class LevelChanged( newLevel: Level, newSection: Section )
 
+   val BASE_PATH           = "/Users/rutz/Desktop/freesound/"
+   val AUTO_LOGIN          = true
+   val NUAGES_ANTIALIAS    = false
+   val INTERNAL_AUDIO      = false
+   val MASTER_NUMCHANNELS  = 8 // 4
+   val MASTER_OFFSET       = 0
+   val MIC_OFFSET          = 0
+   val FREESOUND_OFFLINE   = true
+   var masterBus : AudioBus = null
+
    val trackingPort              = 0x6375
-   
+
+   lazy val SCREEN_BOUNDS =
+         GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration.getBounds
+
    private var level: Level      = UnknownLevel
    private var section: Section  = Section1
 //   private val tracking          = {
@@ -73,17 +86,33 @@ object Cupola extends Actor {
 //   }
    private val listeners         = new MHashSet[ OutputChannel[ Any ]]
 
+   val options          = {
+      val o = new ServerOptionsBuilder()
+      if( INTERNAL_AUDIO ) {
+         o.deviceNames        = Some( "Built-in Microphone" -> "Built-in Output" )
+      } else {
+         o.deviceName         = Some( "MOTU 828mk2" )
+      }
+      o.inputBusChannels   = 10
+      o.outputBusChannels  = 10
+      o.audioBusChannels   = 512
+      o.loadSynthDefs      = false
+      o.memorySize         = 65536
+      o.zeroConf           = false
+      o.build
+   }
+
+   val support = new REPLSupport
+
+   @volatile var s: Server       = _
+   @volatile var booting: BootingServer = _
+   @volatile var config: NuagesConfig = _
+
    def main( args: Array[ String ]) {
 //      s.options.programPath.value = "/Users/rutz/Documents/devel/fromSVN/SuperCollider3/common/build/scsynth"
 //      s.addDoWhenBooted( this ! Run ) // important: PlainServer executes this in the OSC receiver thread, so fork!
 //      start
-//      guiRun { init }
-
-      // there is something tricky about the point of time
-      // at which the JNI lib gets loaded... seems the safest
-      // is to do that before AWT initializes...
-      if( SMCNuages.USE_TABLET ) TabletWrapper.getInstance()
-      guiRun { SMC.run }
+      guiRun { init }
    }
 
 //   private def initGUI {
@@ -120,6 +149,63 @@ object Cupola extends Actor {
       listeners.foreach( _ ! msg )
    }
 
+   def init {
+      // prevent actor starvation!!!
+      // --> http://scala-programming-language.1934581.n4.nabble.com/Scala-Actors-Starvation-td2281657.html
+      System.setProperty( "actors.enableForkJoin", "false" )
+
+      val sif  = new ScalaInterpreterFrame( support /* ntp */ )
+      val ssp  = new ServerStatusPanel()
+      val sspw = ssp.makeWindow
+      val ntp  = new NodeTreePanel()
+      val ntpw = ntp.makeWindow
+      ntpw.setLocation( sspw.getX, sspw.getY + sspw.getHeight + 32 )
+      sspw.setVisible( true )
+      ntpw.setVisible( true )
+      sif.setLocation( sspw.getX + sspw.getWidth + 32, sif.getY )
+      sif.setVisible( true )
+      booting = Server.boot( options = options )
+      booting.addListener {
+         case BootingServer.Preparing( srv ) => {
+            ssp.server = Some( srv )
+            ntp.server = Some( srv )
+         }
+         case BootingServer.Running( srv ) => {
+            ProcDemiurg.addServer( srv )
+            s = srv
+            support.s = srv
+
+            // nuages
+            initNuages
+
+//            // freesound
+//            val cred  = new RandomAccessFile( BASE_PATH + "cred.txt", "r" )
+//            val credL = cred.readLine().split( ":" )
+//            cred.close()
+//            initFreesound( credL( 0 ), credL( 1 ))
+         }
+      }
+      Runtime.getRuntime().addShutdownHook( new Thread { override def run = shutDown })
+      booting.start
+   }
+
+   private def initNuages {
+      masterBus  = if( INTERNAL_AUDIO ) {
+         new AudioBus( s, 0, 2 )
+      } else {
+         new AudioBus( s, MASTER_OFFSET, MASTER_NUMCHANNELS )
+      }
+      val soloBus    = Bus.audio( s, 2 )
+      val recordPath = BASE_PATH + "rec"
+      config         = NuagesConfig( s, Some( masterBus ), Some( soloBus ), Some( recordPath ))
+      val f          = new NuagesFrame( config )
+      f.panel.display.setHighQuality( NUAGES_ANTIALIAS )
+      f.setSize( 640, 480 )
+      f.setVisible( true )
+      support.nuages = f
+      CupolaNuages.init( s, f )
+   }
+
    def act = loop {
       react {
          case msg: LevelChanged => {
@@ -136,17 +222,14 @@ object Cupola extends Actor {
       }
    }
 
-//   def run {
-//      println( "Server booted. Starting Cupola..." )
-////      (new ProcessManager).start
-//      s.dumpOSC(1)
-////      Test.run
-//   }
-//
-//   def quit {
-//      s.quit
-//      s.dispose
-////      tracking.dispose
-//      System.exit( 0 )
-//   }
+   private def shutDown { // sync.synchronized { }
+       if( (s != null) && (s.condition != Server.Offline) ) {
+          s.quit
+          s = null
+       }
+       if( booting != null ) {
+          booting.abort
+          booting = null
+       }
+    }
 }

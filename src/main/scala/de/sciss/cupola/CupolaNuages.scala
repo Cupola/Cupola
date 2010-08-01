@@ -1,5 +1,5 @@
 /*
- *  SMCNuages.scala
+ *  CupolaNuages.scala
  *  (Cupola)
  *
  *  Copyright (c) 2010 Hanns Holger Rutz. All rights reserved.
@@ -26,12 +26,11 @@
  *  Changelog:
  */
 
-package de.sciss.smc
+package de.sciss.cupola
 
 import de.sciss.synth.{ EnvSeg => S, _ }
 import de.sciss.synth.proc._
 import de.sciss.nuages.NuagesFrame
-import com.jhlabs.jnitablet.{TabletProximityEvent, TabletEvent, TabletListener, TabletWrapper}
 import java.util.TimerTask
 import java.awt.event.MouseEvent
 import collection.breakOut
@@ -41,52 +40,43 @@ import java.io.File
 /**
  *    @version 0.11, 19-Jul-10
  */
-object SMCNuages extends TabletListener {
+object CupolaNuages extends {
    import DSL._
 
-   val USE_TABLET       = true
-   val DEBUG_PROXIMITY  = false
    val NUM_LOOPS        = 7
    val LOOP_DUR         = 30
 
-   var freesoundFile : Option[ String ] = None
    var f : NuagesFrame = null
 
    def init( s: Server, f: NuagesFrame ) = ProcTxn.atomic { implicit tx =>
       // -------------- GENERATORS --------------
+
+      // XXX TO-DO
+      // 2A-SideBlossCon2A-SideBloss.aif
+      // London100304_173556OKM_SaatchiGalleryCut.aif
+      // ChicagoAirportGate2_090605Cut.aif
 
       // NuagesUMic
       val loopFrames = (LOOP_DUR * s.sampleRate).toInt
       val loopBufs   = Array.fill[ Buffer ]( NUM_LOOPS )( Buffer.alloc( s, loopFrames, 2 ))
       val loopBufIDs: Seq[ Int ] = loopBufs.map( _.id )( breakOut )
 
-      gen( "free" ) {
-         val pspeed  = pAudio( "speed", ParamSpec( 0.1f, 10, ExpWarp ), 1 )
-         val ploop   = pControl( "loop", ParamSpec( 0, 1, LinWarp, 1 ), 0 )
-          graph {
-             val b       = bufCue( freesoundFile.getOrElse( error( "No freesound file selected" )))
-             val numCh  = b.numChannels
-             val sig    = VDiskIn.ar( numCh, b.id, pspeed.ar * BufRateScale.ir( b.id ), loop = ploop.kr ).outputs.take(2)
-             if( numCh == 1 ) List( sig( 0 ), sig( 0 )) else sig
-          }
-      }
-
-      new File( SMC.BASE_PATH + "sciss" ).listFiles().filter( _.getName.endsWith( ".aif" )).foreach( f => {
-         val name0   = f.getName
-         val i       = name0.indexOf( '.' )
-         val name    = if( i >= 0 ) name0.substring( 0, i ) else name0
-         val path    = f.getCanonicalPath
-
-         gen( name ) {
-            val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
-            graph {
-               val b    = bufCue( path )
-               val disk = VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 )
-               // HPF.ar( disk, 30 )
-               disk
-            }
-         }
-      })
+//      new File( SMC.BASE_PATH + "sciss" ).listFiles().filter( _.getName.endsWith( ".aif" )).foreach( f => {
+//         val name0   = f.getName
+//         val i       = name0.indexOf( '.' )
+//         val name    = if( i >= 0 ) name0.substring( 0, i ) else name0
+//         val path    = f.getCanonicalPath
+//
+//         gen( name ) {
+//            val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
+//            graph {
+//               val b    = bufCue( path )
+//               val disk = VDiskIn.ar( b.numChannels, b.id, p1.ar * BufRateScale.ir( b.id ), loop = 1 )
+//               // HPF.ar( disk, 30 )
+//               disk
+//            }
+//         }
+//      })
 
 //      gen( "at_2aside" ) {
 //         val p1  = pAudio( "speed", ParamSpec( 0.1f, 10f, ExpWarp ), 1 )
@@ -129,7 +119,7 @@ object SMCNuages extends TabletListener {
          val pboost  = pAudio( "gain", ParamSpec( 0.1, 10, ExpWarp ), 0.1 /* 1 */)
          val pfeed   = pAudio( "feed", ParamSpec( 0, 1 ), 0 )
          graph {
-            val off        = if( SMC.INTERNAL_AUDIO ) 0 else SMC.MIC_OFFSET
+            val off        = if( Cupola.INTERNAL_AUDIO ) 0 else Cupola.MIC_OFFSET
             val boost      = pboost.ar
             val pureIn	   = In.ar( NumOutputBuses.ir + off, 2 ) * boost
             val bandFreqs	= List( 150, 800, 3000 )
@@ -160,7 +150,7 @@ object SMCNuages extends TabletListener {
          val pfeed   = pControl( "feed", ParamSpec( 0, 1 ), 0 )
          val ploop   = pControl( "loop", ParamSpec( 0, 1, LinWarp, 1 ), 0 )
          graph {
-            val in      = InFeedback.ar( SMC.masterBus.index, SMC.masterBus.numChannels )
+            val in      = InFeedback.ar( Cupola.masterBus.index, Cupola.masterBus.numChannels )
             val w       = 2.0 / in.numOutputs
             var sig     = Array[ GE ]( 0, 0 )
             in.outputs.zipWithIndex.foreach( tup => {
@@ -469,12 +459,12 @@ object SMCNuages extends TabletListener {
 
       diff( "O-all" ) {
           val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-          val pout  = pAudioOut( "out", SMC.config.masterBus.map( RichBus.wrap( _ )))
+          val pout  = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
 
           graph { in =>
              val sig          = (in * Lag.ar( pamp.ar, 0.1 )).outputs
              val inChannels   = sig.size
-             val outChannels  = SMC.MASTER_NUMCHANNELS
+             val outChannels  = Cupola.MASTER_NUMCHANNELS
              val sig1         = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
              pout.ar( sig1 )
           }
@@ -485,14 +475,14 @@ object SMCNuages extends TabletListener {
          val prota   = pControl( "rota", ParamSpec( 0.0, 1.0 ), 0.0 )
          val pbase   = pControl( "azi",  ParamSpec( 0.0, 360.0 ), 0.0 )
          val pamp    = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-         val pout    = pAudioOut( "out", SMC.config.masterBus.map( RichBus.wrap( _ )))
+         val pout    = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
 
          graph { in =>
             val baseAzi       = Lag.kr( pbase.kr, 0.5 ) + IRand( 0, 360 )
             val rotaAmt       = Lag.kr( prota.kr, 0.1 )
             val spread        = Lag.kr( pspread.kr, 0.5 )
             val inChannels   = in.numOutputs
-            val outChannels  = SMC.MASTER_NUMCHANNELS
+            val outChannels  = Cupola.MASTER_NUMCHANNELS
 //            val sig1         = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
             val rotaSpeed     = 0.1
             val inSig         = (in * Lag.ar( pamp.ar, 0.1 )).outputs
@@ -527,12 +517,12 @@ object SMCNuages extends TabletListener {
           val pfreq = pControl( "freq", ParamSpec( 0.01, 10, ExpWarp ), 0.1 )
           val ppow  = pControl( "pow", ParamSpec( 1, 10 ), 2 )
           val plag  = pControl( "lag", ParamSpec( 0.1, 10 ), 1 )
-          val pout  = pAudioOut( "out", SMC.config.masterBus.map( RichBus.wrap( _ )))
+          val pout  = pAudioOut( "out", Cupola.config.masterBus.map( RichBus.wrap( _ )))
 
           graph { in =>
              val sig          = (in * Lag.ar( pamp.ar, 0.1 )).outputs
              val inChannels   = sig.size
-             val outChannels  = SMC.MASTER_NUMCHANNELS
+             val outChannels  = Cupola.MASTER_NUMCHANNELS
              val sig1: GE     = List.tabulate( outChannels )( ch => sig( ch % inChannels ))
              val freq         = pfreq.kr
              val lag          = plag.kr
@@ -545,114 +535,5 @@ object SMCNuages extends TabletListener {
 
       // tablet
       this.f = f
-      if( USE_TABLET ) {
-//         new java.util.Timer().schedule( new TimerTask {
-//            def run {
-               val inst = TabletWrapper.getInstance
-               inst.addTabletListener( SMCNuages )
-//               inst.removeTabletListener( this )
-//               inst.addTabletListener( this )
-      println(" TABLET ")
-//            }
-//         }, 5000 )
-      }
-   }
-
-//	 ---------------- TabletListener interface ----------------
-
-   private var wasInstant = false
-
-   def tabletEvent( e: TabletEvent ) {
-      if( !f.isActive() ) return
-//      println( e.getTiltY )
-
-      if( (e.getButtonMask() & 0x02) != 0 ) {
-         if( e.getID() != MouseEvent.MOUSE_RELEASED ) {
-            f.transition.setTransition( 2, e.getTiltY() * -0.5 + 0.5 )
-            wasInstant = false
-         }
-      } else {
-         if( !wasInstant ) {
-            f.transition.setTransition( 0, 0 )
-            wasInstant = true
-         }
-      }
-
-
-//      switch( e.getID() ) {
-//      case MouseEvent.MOUSE_DRAGGED:
-//         // ignore messages that originate from drags that started outside the view
-//         if( !pressed ) return;
-//         break;
-//      case MouseEvent.MOUSE_MOVED:
-//         // ignore messages that originate from moves that left the view
-//         if( !inside ) return;
-//         break;
-//      case MouseEvent.MOUSE_PRESSED:
-//         // ignore messages that originate from clicking outside the view
-//         if( !inside ) return;
-//         break;
-//      case MouseEvent.MOUSE_RELEASED:
-//         // ignore messages that originate from clicking outside the view
-//         if( !pressed ) return;
-//         break;
-//      default:
-//         break;
-//      }
-
-//      for( Iterator iter = listeners.iterator(); iter.hasNext(); ) {
-//         ((TabletListener) iter.next()).tabletEvent( e );
-//      }
-
-//		println( "TabletEvent" )
-//		System.out.println( "  id                         " + e.getID() );
-//		System.out.println( "  x                          " + e.getX() );
-//		System.out.println( "  y                          " + e.getY() );
-//		System.out.println( "  absoluteY                  " + e.getAbsoluteY() );
-//		System.out.println( "  absoluteX                  " + e.getAbsoluteX() );
-//		System.out.println( "  absoluteZ                  " + e.getAbsoluteZ() );
-//		System.out.println( "  buttonMask                 " + e.getButtonMask() );
-//		System.out.println( "  pressure                   " + e.getPressure() );
-//		System.out.println( "  rotation                   " + e.getRotation() );
-//		System.out.println( "  tiltX                      " + e.getTiltX() );
-//		System.out.println( "  tiltY                      " + e.getTiltY() );
-//		System.out.println( "  tangentialPressure         " + e.getTangentialPressure() );
-//		System.out.println( "  vendorDefined1             " + e.getVendorDefined1() );
-//		System.out.println( "  vendorDefined2             " + e.getVendorDefined2() );
-//		System.out.println( "  vendorDefined3             " + e.getVendorDefined3() );
-//		System.out.println();
-   }
-
-   def tabletProximity( e: TabletProximityEvent ) {
-//      if( e.isEnteringProximity() ) {
-//         if( inside ) {
-//            lastEnterEvent	= null;
-//            dispatch( e );
-//            dispatchExit	= true;
-//         } else {
-//            lastEnterEvent	= e;
-//         }
-//      } else {
-//         if( dispatchExit ) {
-//            dispatchExit	= false;
-//            dispatch( e );
-//         }
-//      }
-
-      if( DEBUG_PROXIMITY ) {
-         println( "TabletProximityEvent" )
-         println( "  capabilityMask             " + e.getCapabilityMask )
-         println( "  deviceID                   " + e.getDeviceID )
-         println( "  enteringProximity          " + e.isEnteringProximity )
-         println( "  pointingDeviceID           " + e.getPointingDeviceID )
-         println( "  pointingDeviceSerialNumber " + e.getPointingDeviceSerialNumber )
-         println( "  pointingDeviceType         " + e.getPointingDeviceType )
-         println( "  systemTabletID             " + e.getSystemTabletID )
-         println( "  tabletID                   " + e.getTabletID )
-         println( "  uniqueID                   " + e.getUniqueID )
-         println( "  vendorID                   " + e.getVendorID )
-         println( "  vendorPointingDeviceType   " + e.getVendorPointingDeviceType )
-         println()
-      }
    }
 }
