@@ -92,22 +92,13 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Cupola.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="Cupola.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/project/build/Cupola.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="16" column="39" selection-start="885" selection-end="885" vertical-scroll-proportion="0.0">
+            <state line="16" column="124" selection-start="902" selection-end="902" vertical-scroll-proportion="0.36048526">
               <folding>
-                <marker date="1280622482000" expanded="true" signature="848:902" placeholder="..." />
+                <marker date="1280623688000" expanded="true" signature="848:902" placeholder="..." />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="CupolaNuages.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="56" column="42" selection-start="1682" selection-end="1682" vertical-scroll-proportion="0.6042403">
-              <folding />
             </state>
           </provider>
         </entry>
@@ -173,11 +164,11 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/smc/ScalaInterpreterFrame.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/smc/SMCNuages.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/REPLSupport.scala" />
-        <option value="$PROJECT_DIR$/project/build/Cupola.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/SMCNuages.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/smc/SMC.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala" />
+        <option value="$PROJECT_DIR$/project/build/Cupola.scala" />
       </list>
     </option>
   </component>
@@ -711,15 +702,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/project/build/Cupola.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="16" column="39" selection-start="885" selection-end="885" vertical-scroll-proportion="0.0">
-          <folding>
-            <marker date="1280622482000" expanded="true" signature="848:902" placeholder="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="205" column="12" selection-start="6974" selection-end="6974" vertical-scroll-proportion="0.0">
@@ -731,6 +713,15 @@
       <provider selected="true" editor-type-id="text-editor">
         <state line="56" column="42" selection-start="1682" selection-end="1682" vertical-scroll-proportion="0.6042403">
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/project/build/Cupola.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="16" column="124" selection-start="902" selection-end="902" vertical-scroll-proportion="0.36048526">
+          <folding>
+            <marker date="1280623688000" expanded="true" signature="848:902" placeholder="..." />
+          </folding>
         </state>
       </provider>
     </entry>

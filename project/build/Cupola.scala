@@ -20,7 +20,7 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    val dep11 = "de.sciss" %% "wolkenpumpe" % "0.12"
 //   val dep12 = "de.sciss" %% "scalafreesound" % "0.10"
 //   val dep13 = "de.sciss" %% "scalafreesoundswing" % "0.11"
-   val dep14 = "tabletwrapper" % "tabletwrapper" % "0.12" from "http://github.com/downloads/Sciss/JNITablet/tabletwrapper-0.12.jar"
+//   val dep14 = "tabletwrapper" % "tabletwrapper" % "0.12" from "http://github.com/downloads/Sciss/JNITablet/tabletwrapper-0.12.jar"
 
    // ---- ccstm dependancies ----
    val scalatest = crossScalaVersionString match {
