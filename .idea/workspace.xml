@@ -92,13 +92,20 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Cupola.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="Cupola.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="158" column="38" selection-start="5468" selection-end="5468" vertical-scroll-proportion="0.0">
-              <folding>
-                <marker date="1280697401000" expanded="true" signature="2630:2934" placeholder="..." />
-              </folding>
+            <state line="219" column="57" selection-start="7531" selection-end="7531" vertical-scroll-proportion="0.18367347">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Cupola.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/project/build/Cupola.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="33" column="59" selection-start="1941" selection-end="1941" vertical-scroll-proportion="0.0">
+              <folding />
             </state>
           </provider>
         </entry>
@@ -112,10 +119,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="CupolaNuages.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="CupolaNuages.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="471" column="1" selection-start="18833" selection-end="19883" vertical-scroll-proportion="0.81643355">
+            <state line="548" column="49" selection-start="23096" selection-end="23096" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -184,9 +191,9 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/smc/SMC.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/GUI.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala" />
-        <option value="$PROJECT_DIR$/project/build/Cupola.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala" />
+        <option value="$PROJECT_DIR$/project/build/Cupola.scala" />
       </list>
     </option>
   </component>
@@ -228,6 +235,9 @@
       <sortByType />
     </navigator>
     <panes>
+      <pane id="Scope">
+        <subPane subId="Problems" />
+      </pane>
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -425,9 +435,6 @@
         </subPane>
       </pane>
       <pane id="Favorites" />
-      <pane id="Scope">
-        <subPane subId="Problems" />
-      </pane>
       <pane id="PackagesPane" />
     </panes>
   </component>
@@ -667,7 +674,7 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2746845" sideWeight="0.79209185" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.19897959" sideWeight="0.9769859" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.19897959" sideWeight="0.9769859" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32780612" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -737,17 +744,17 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/project/build/Cupola.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="19" column="50" selection-start="1090" selection-end="1090" vertical-scroll-proportion="0.12295082" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="158" column="38" selection-start="5468" selection-end="5468" vertical-scroll-proportion="0.0" />
+        <state line="33" column="59" selection-start="1941" selection-end="1941" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Level.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="17" column="22" selection-start="533" selection-end="543" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="548" column="49" selection-start="23096" selection-end="23096" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/GUI.scala">
@@ -770,9 +777,9 @@
         <state line="16" column="6" selection-start="421" selection-end="421" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="471" column="1" selection-start="18833" selection-end="19883" vertical-scroll-proportion="0.81643355">
+        <state line="219" column="57" selection-start="7531" selection-end="7531" vertical-scroll-proportion="0.18367347">
           <folding />
         </state>
       </provider>

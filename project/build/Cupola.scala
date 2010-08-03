@@ -26,7 +26,8 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    val scalatest = crossScalaVersionString match {
      // RC7 is the same as the release, but scalatest against the release is not
      // yet available
-     case "2.8.0" => "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC7-SNAPSHOT"
+//      case "2.8.0" => "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC7-SNAPSHOT"
+     case "2.8.0" => "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.final-SNAPSHOT"
      case _ => "org.scalatest" % "scalatest" % ("1.2-for-scala-" + crossScalaVersionString + "-SNAPSHOT")
    }
    val scalaToolsSnapshots = "Scala-Tools Maven2 Snapshots Repository" at "http://scala-tools.org/repo-snapshots"
