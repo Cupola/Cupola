@@ -448,8 +448,6 @@ object CupolaNuages extends {
          }
       }
 
-// XXX currently crashes scsynth
-/*
       filter( "m-above" ) {
          val pthresh = pControl( "thresh", ParamSpec( 1.0e-3, 1.0e-1, ExpWarp ), 1.0e-2 )
          val pmix = pMix
@@ -468,10 +466,10 @@ object CupolaNuages extends {
             val env2          = Env( 0.0, List( S( BufDur.kr( bufIDs ) * 2, 0.0, stepShape ), S( 0.2, 1, linShape )))
             val wet			   = EnvGen.kr( env2 )
             val sig			   = (in * (1 - wet).sqrt) + (flt * wet)
-            mix( in, flt, pmix )
+            mix( in, sig, pmix )
          }
       }
-*/
+
       filter( "pitch" ) {
          val ptrans  = pControl( "shift", ParamSpec( 0.125, 4, ExpWarp ), 1 )
          val ptime   = pControl( "time",  ParamSpec( 0.01, 1, ExpWarp ), 0.1 )
@@ -530,18 +528,15 @@ object CupolaNuages extends {
       }
 */
    
-// XXX THIS CURRENTLY CRASHES SCSYNTH
-/*
       filter( "verb" ) {
-         val pextent = pControl( "size", ParamSpec( 0, 1 ), 0.5 ) // XXX pScalar
+         val pextent = pScalar( "size", ParamSpec( 0, 1 ), 0.5 )
          val pcolor  = pControl( "color", ParamSpec( 0, 1 ), 0.5 )
          val pmix    = pMix
          graph { in =>
-            val extent     = pextent.kr
+            val extent     = pextent.ir
             val color	   = Lag.kr( pcolor.kr, 0.1 )
-            val i_trig     = Impulse.kr( 0 )
-            val i_roomSize	= Latch.kr( LinExp.kr( extent, 0, 1, 1, 100 ), i_trig ) // XXX bit stupid
-            val i_revTime  = Latch.kr( LinExp.kr( extent, 0, 1, 0.3, 20 ), i_trig )
+            val i_roomSize	= LinExp.ir( extent, 0, 1, 1, 100 )
+            val i_revTime  = LinExp.ir( extent, 0, 1, 0.3, 20 )
             val spread	   = 15
             val numChannels= in.numOutputs
             val ins        = in.outputs
@@ -554,7 +549,6 @@ object CupolaNuages extends {
             mix( in, flt, pmix )
          }
       }
-*/
 
       filter( "zero" ) {
          val pwidth	= pAudio( "width", ParamSpec( 0, 1 ), 0.5 )
