@@ -40,29 +40,29 @@ import DSL._
 class ProcessManager {
    private val rnd = new Random()
 
-   def stageChange( oldStage: (Level, Section), newStage: (Level, Section) )( implicit tx: ProcTxn ) {
-      if( oldStage._1 != newStage._1 ) {
-         val psOff = oldStage._1 match {
-            case Meditation  => CupolaNuages.meditProcs
-            case Equilibrium => CupolaNuages.equivProcs
-            case Chaos       => CupolaNuages.chaosProcs
-            case _           => Nil
-         }
-         psOff.foreach( p => xfade( exprand( 7, 21 )) { p.stop })
-         val psOn = newStage._1 match {
-            case Meditation  => CupolaNuages.meditProcs
-            case Equilibrium => CupolaNuages.equivProcs
-            case Chaos       => CupolaNuages.chaosProcs
-            case _           => Nil
-         }
-         psOn.foreach( p => xfade( exprand( 7, 21 )) {
-            p.anatomy match {
-               case ProcGen => p.control( "pos" ).v = rrand( 0, 1 )
-               case _ =>
-            }
-            p.play
-         })
-      }
+   def stageChange( oldStage: Option[ Double ], newStage: Option[ Double ])( implicit tx: ProcTxn ) {
+//      if( oldStage._1 != newStage._1 ) {
+//         val psOff = oldStage._1 match {
+//            case Meditation  => CupolaNuages.meditProcs
+//            case Equilibrium => CupolaNuages.equivProcs
+//            case Chaos       => CupolaNuages.chaosProcs
+//            case _           => Nil
+//         }
+//         psOff.foreach( p => xfade( exprand( 7, 21 )) { p.stop })
+//         val psOn = newStage._1 match {
+//            case Meditation  => CupolaNuages.meditProcs
+//            case Equilibrium => CupolaNuages.equivProcs
+//            case Chaos       => CupolaNuages.chaosProcs
+//            case _           => Nil
+//         }
+//         psOn.foreach( p => xfade( exprand( 7, 21 )) {
+//            p.anatomy match {
+//               case ProcGen => p.control( "pos" ).v = rrand( 0, 1 )
+//               case _ =>
+//            }
+//            p.play
+//         })
+//      }
    }
 
    private def exprand( lo: Double, hi: Double ) : Double = {

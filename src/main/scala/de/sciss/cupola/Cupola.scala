@@ -40,7 +40,8 @@ import java.io.RandomAccessFile
 import proc.{ DSL, ProcDemiurg, ProcTxn, Ref, TxnModel }
 import DSL._
 
-case class CupolaUpdate( stage: Option[ (Level, Section) ])
+//case class CupolaUpdate( stage: Option[ (Level, Section) ])
+case class CupolaUpdate( stage: Option[ Double ])
 
 /**
  *    @version 0.12, 01-Aug-10
@@ -76,7 +77,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    lazy val SCREEN_BOUNDS =
          GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration.getBounds
 
-   private var stageRef = Ref[ (Level, Section) ]( UnknownLevel -> Section1 )
+   private var stageRef: Ref[ Option[ Double ]] = Ref( None ) // Ref[ (Level, Section) ]( UnknownLevel -> Section1 )
    private val tracking          = {
       val rcv = OSCReceiver( UDP, trackingPort )
       rcv.action = messageReceived
@@ -135,27 +136,27 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
 //   }
 
    protected def emptyUpdate = CupolaUpdate( None )
-   protected def fullUpdate( implicit tx: ProcTxn ) = CupolaUpdate( Some( stageRef() ))
+   protected def fullUpdate( implicit tx: ProcTxn ) = CupolaUpdate( stageRef() )
 
    def guiRun( code: => Unit ) {
       EventQueue.invokeLater( new Runnable { def run = code })
    }
 
-   def simulate( msg: OSCMessage ) { simulator.send( msg )}
+   def simulate( msg: OSCMessage ) { simulator ! msg }
 
    private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) = msg match {
-      case OSCMessage( "/cupola", "state", levelID: Int, sectionID: Int ) => stageChange( levelID, sectionID )
+      case OSCMessage( "/cupola", "state", scale: Float ) => stageChange( Some( scale.toDouble ))
       case x => println( "Cupola: Ignoring OSC message '" + x + "'" )
    }
 
-   private def stageChange( levelID: Int, sectionID: Int ) {
+   private def stageChange( newStage: Option[ Double ]) {
       ProcTxn.atomic { implicit tx =>
-         val newStage: (Level, Section) = Level.all( levelID ) -> Section.all( sectionID )
+//         val newStage: (Level, Section) = Level.all( levelID ) -> Section.all( sectionID )
          val oldStage = stageRef.swap( newStage )
          if( oldStage != newStage ) {
             touch
             val u = updateRef()
-            updateRef.set( u.copy( stage = Some( newStage )))
+            updateRef.set( u.copy( stage = newStage ))
             pm.stageChange( oldStage, newStage )
          }
       }
