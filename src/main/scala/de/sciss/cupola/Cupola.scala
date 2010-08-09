@@ -87,6 +87,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    private val simulator         = {
       val trns = OSCTransmitter( UDP )
       trns.target = tracking.localAddress
+//      trns.dumpOSC( 1, System.out )
       trns.connect
       trns
    }
@@ -144,15 +145,19 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
 
    def simulate( msg: OSCMessage ) { simulator ! msg }
 
-   private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) = msg match {
-      case OSCMessage( "/cupola", "state", scale: Float ) => stageChange( Some( scale.toDouble ))
-      case x => println( "Cupola: Ignoring OSC message '" + x + "'" )
+   private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) = {
+//      println( "GOT: " + msg )
+      msg match {
+         case OSCMessage( "/cupola", "state", scale: Float ) => stageChange( Some( scale.toDouble ))
+         case x => println( "Cupola: Ignoring OSC message '" + x + "'" )
+      }
    }
 
    private def stageChange( newStage: Option[ Double ]) {
       ProcTxn.atomic { implicit tx =>
 //         val newStage: (Level, Section) = Level.all( levelID ) -> Section.all( sectionID )
          val oldStage = stageRef.swap( newStage )
+//println( "OLD " + oldStage + " / " + newStage )
          if( oldStage != newStage ) {
             touch
             val u = updateRef()

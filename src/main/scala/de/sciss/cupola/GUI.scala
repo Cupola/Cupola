@@ -36,7 +36,7 @@ import collection.breakOut
 import de.sciss.scalaosc.OSCMessage
 import de.sciss.synth.proc.ProcTxn
 import javax.swing._
-import event.{ChangeEvent, ChangeListener}
+import event.{MouseInputAdapter, ChangeEvent, ChangeListener}
 
 /**
  *    @version 0.10, 01-Aug-10
@@ -59,15 +59,35 @@ class GUI extends Cupola.Listener {
 //         (lvl, sec) -> gg
 //      })
 //   }): _* )
-   val ggLevel = {
-      val res = new JSlider( 0, 0x1000 )
-      res.addChangeListener( new ChangeListener {
-         def stateChanged( e: ChangeEvent ) {
-            val scale = res.getValue().toDouble / 0x1000
-            if( valid ) Cupola.simulate( OSCMessage( "/cupola", "state", scale.toFloat ))
+   val ggLevel = new JComponent {
+      private var scaleVar = 0.0
+      def scale = scaleVar
+      def scale_=( newVal: Double ) {
+         if( newVal != scaleVar ) {
+            scaleVar = newVal
+            repaint()
          }
-      })
-      res
+      }
+      val adapter = new MouseInputAdapter {
+         override def mousePressed( e: MouseEvent ) { adjust( e )}
+         override def mouseDragged( e: MouseEvent ) { adjust( e )}
+         def adjust( e: MouseEvent ) {
+            scale = math.max( 0.0, math.min( 1.0, e.getX().toDouble / getWidth() ))
+            /* if( valid ) */ Cupola.simulate( OSCMessage( "/cupola", "state", scale.toFloat ))
+         }
+      }
+      addMouseListener( adapter )
+      addMouseMotionListener( adapter ) 
+      setPreferredSize( new Dimension( 320, 32 ))
+
+      override def paintComponent( g: Graphics ) {
+         g.setColor( Color.black )
+         g.fillRect( 0, 0, getWidth(), getHeight() )
+         g.setColor( Color.white )
+         g.drawRect( 0, 0, getWidth() - 1, getHeight() - 1 )
+         val x = (scale * getWidth()).toInt
+         g.fillRect( 0, 0, x, getHeight() )
+      }
    }
 
    // ---- constructor ----
@@ -96,8 +116,9 @@ class GUI extends Cupola.Listener {
       Cupola.guiRun {
          u.stage foreach { scale =>
             valid = true
-            val i = (scale * 0x1000).toInt
-            if( ggLevel.getValue() != i ) ggLevel.setValue( i )
+//            val i = (scale * 0x1000).toInt
+//            if( ggLevel.getValue() != i ) ggLevel.setValue( i )
+            ggLevel.scale = scale
 //            selectedCell.foreach( _.deselect )
 //            selectedCell = map.get( tup )
 //            selectedCell.foreach( _.select )
