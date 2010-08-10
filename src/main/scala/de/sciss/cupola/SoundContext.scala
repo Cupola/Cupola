@@ -4,27 +4,17 @@ import collection.{ Set => ISet }
 import de.sciss.synth._
 import de.sciss.synth.ugen._
 import de.sciss.synth.proc._
+import Util._
 
 case class SoundContext( name: String, settings: SoundSettings,
                          scaleStart: Double, scaleStop: Double, weight: Double,
                          minConc: Int, maxConc: Int,
-                         mutex: ISet[ String ]) {
-//   def toXML : Node =
-//<context>
-//   <proc>{proc}</proc>
-//   <settings>{settings.toXML}</settings>
-//   <scaleStart>{scaleStart}</scaleStart>
-//   <scaleStop>{scaleStop}</scaleStop>
-//   <weight>{weight}</weight>
-//   <minConc>{minConc}</minConc>
-//   <maxConc>{maxConc}</maxConc>
-//   <mutex>{mutex.map( s => <entry>{s}</entry> )}</mutex>
-//</context>
-}
+                         mutex: ISet[ String ])
 
 sealed abstract class SoundSettings {
 //   def toXML : Node
    def createProcFactory( name: String )( implicit tx: ProcTxn ) : ProcFactory
+   def prepareForPlay( proc: Proc )( implicit tx: ProcTxn ) : Unit
 }
 
 case class TapeSoundSettings( file: String, gain: Double, speed: Double )
@@ -52,5 +42,9 @@ extends SoundSettings {
             d * pamp.kr
          }
       }
+   }
+
+   def prepareForPlay( proc: Proc )( implicit tx: ProcTxn ) {
+      proc.control( "pos" ).v = rand( 0.95 )
    }
 }

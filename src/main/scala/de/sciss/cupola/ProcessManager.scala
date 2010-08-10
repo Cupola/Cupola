@@ -39,7 +39,8 @@ import java.util.{TimerTask, Timer}
  *    @version 0.12, 09-Aug-10
  */
 class ProcessManager {
-   private val rnd            = new Random()
+   import Util._
+   
    private val startTimeRef   = Ref( 0.0 )
    private val lastTimeRef    = Ref( 0.0 )
    private val lastScaleRef   = Ref( 0.0 )
@@ -106,6 +107,7 @@ println( "STOPPING (CROWDED) " + rp )
             val c    = wchoose( notRunning ) { _.weight / weightSum }
             val f    = c.settings.createProcFactory( c.name )
             val proc = f.make
+            c.settings.prepareForPlay( proc )
             val rp   = RunningProc( proc, c )
 println( "STARTING (SPARSE) " + rp )
             xfade( exprand( 7, 21 )) { proc.play }
@@ -113,12 +115,6 @@ println( "STARTING (SPARSE) " + rp )
          }
       }
       procsRunningRef.set( newRunning )
-   }
-
-   def wchoose[ T ]( seq: Traversable[ T ])( fun: T => Double ) : T = {
-      val i    = rnd.nextDouble
-      var sum  = 0.0
-      seq find { e => sum += fun( e ); sum >= i } getOrElse seq.last   
    }
 
    def stageChange( oldStage: Option[ Double ], newStage: Option[ Double ])( implicit tx: ProcTxn ) {
@@ -158,14 +154,6 @@ println( "STARTING (SPARSE) " + rp )
 //            p.play
 //         })
 //      }
-   }
-
-   private def exprand( lo: Double, hi: Double ) : Double = {
-      lo * math.exp( math.log( hi / lo ) * rnd.nextDouble )
-   }
-
-   private def rrand( lo: Double, hi: Double ) : Double = {
-      rnd.nextDouble() * (hi - lo) + lo
    }
 
    case class RunningProc( proc: Proc, context: SoundContext )

@@ -18,7 +18,7 @@ class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    val dep9 = "Stanford CS - Pervasive Parallelism Laboratory" %% "ccstm" % "0.2"
    val dep10 = "de.sciss" %% "soundprocesses" % "0.14"
    val dep11 = "de.sciss" %% "wolkenpumpe" % "0.13"
-//   val dep12 = "de.sciss" %% "scalafreesound" % "0.10"
+//   val dep12 = "de.sciss" % "netutil" % "0.38" from "http://github.com/downloads/Sciss/Cupola/netutil-0.38.jar"
 //   val dep13 = "de.sciss" %% "scalafreesoundswing" % "0.11"
 //   val dep14 = "tabletwrapper" % "tabletwrapper" % "0.12" from "http://github.com/downloads/Sciss/JNITablet/tabletwrapper-0.12.jar"
 

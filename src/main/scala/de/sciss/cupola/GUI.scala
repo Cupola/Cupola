@@ -30,13 +30,13 @@ package de.sciss.cupola
 
 import Cupola._
 import java.awt.{ BorderLayout, Color, Dimension, Graphics, GridLayout }
-import java.awt.event.{ MouseAdapter, MouseEvent, WindowAdapter, WindowEvent }
 import actors.Actor
 import collection.breakOut
 import de.sciss.scalaosc.OSCMessage
 import de.sciss.synth.proc.ProcTxn
 import javax.swing._
 import event.{MouseInputAdapter, ChangeEvent, ChangeListener}
+import java.awt.event._
 
 /**
  *    @version 0.10, 01-Aug-10
@@ -90,6 +90,17 @@ class GUI extends Cupola.Listener {
       }
    }
 
+   val ggDumpOSC = {
+      val res = new JCheckBox()
+      res.addActionListener( new ActionListener {
+         def actionPerformed( e: ActionEvent ) {
+            Cupola.simulate( OSCMessage( "/dumpOSC", if( res.isSelected ) 1 else 0 ))
+         }
+      })
+      res.setFocusable( false )
+      res
+   }
+
    // ---- constructor ----
    {
       val f    = new JFrame( "Cupola" )
@@ -106,6 +117,7 @@ class GUI extends Cupola.Listener {
       })
 //      cp.add( levelPane, BorderLayout.CENTER )
       cp.add( ggLevel, BorderLayout.CENTER )
+      cp.add( ggDumpOSC, BorderLayout.EAST )
       f.setResizable( false )
       f.pack
       f.setLocation( 10, Cupola.SCREEN_BOUNDS.height - f.getHeight() - 10 )

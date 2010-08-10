@@ -28,10 +28,8 @@
 
 package de.sciss.cupola
 
-import java.net.SocketAddress
 import de.sciss.synth.swing.{ NodeTreePanel, ServerStatusPanel }
 import actors.{ Actor, DaemonActor, OutputChannel }
-import de.sciss.scalaosc.{ OSCMessage, OSCReceiver, OSCTransmitter, UDP }
 import collection.mutable.{ HashSet => MHashSet }
 import java.awt.{GraphicsEnvironment, EventQueue}
 import de.sciss.synth._
@@ -39,6 +37,8 @@ import de.sciss.nuages.{NuagesFrame, NuagesConfig}
 import java.io.RandomAccessFile
 import proc.{ DSL, ProcDemiurg, ProcTxn, Ref, TxnModel }
 import DSL._
+import de.sciss.scalaosc._
+import java.net.{InetSocketAddress, SocketAddress}
 
 //case class CupolaUpdate( stage: Option[ (Level, Section) ])
 case class CupolaUpdate( stage: Option[ Double ])
@@ -70,27 +70,45 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    val MASTER_OFFSET       = 0
    val MIC_OFFSET          = 0
    val FREESOUND_OFFLINE   = true
+   val TRACKING_PORT       = 1201
+   val TRACKING_PROTO      = TCP
+   val TRACKING_LOOP       = true
    var masterBus : AudioBus = null
-
-   val trackingPort              = 0x6375
 
    lazy val SCREEN_BOUNDS =
          GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration.getBounds
 
    private var stageRef: Ref[ Option[ Double ]] = Ref( None ) // Ref[ (Level, Section) ]( UnknownLevel -> Section1 )
    private val tracking          = {
-      val rcv = OSCReceiver( UDP, trackingPort )
-      rcv.action = messageReceived
-      rcv.start
-      rcv
+      val res = OSCClient( TRACKING_PROTO, 0, TRACKING_LOOP )
+      res.action = messageReceived
+      res.target = new InetSocketAddress( "127.0.0.1", TRACKING_PORT )
+      res.start
+      res
+//      val res = JOSCServer.newUsing( TRACKING_PROTO, TRACKING_PORT, TRACKING_LOOP )
+//      res.addOSCListener( new JOSCListener {
+//         def messageReceived( jmsg: JOSCMessage, addr: SocketAddress, time: Long ) {
+//            val args = (0 until jmsg.getArgCount()) map { i => jmsg.getArg( i ) /* match {
+//               case f: java.lang.Float    => f.floatValue
+//               case i: java.lang.Integer  => i.intValue
+//               case x => x
+//            } */
+//            }
+//            val msg  = OSCMessage( jmsg.getName(), args: _* )
+//            Cupola.messageReceived( msg, addr, time )
+//         }
+//      })
+//      res.dumpOSC( 1, System.out )
+//      res.start()
+//      res
    }
-   private val simulator         = {
-      val trns = OSCTransmitter( UDP )
-      trns.target = tracking.localAddress
-//      trns.dumpOSC( 1, System.out )
-      trns.connect
-      trns
-   }
+//   private val simulator         = {
+//      val trns = OSCTransmitter( TRACKING_PROTO )
+//      trns.target = tracking.getLocalAddress() // tracking.localAddress
+////      trns.dumpOSC( 1, System.out )
+//      trns.connect
+//      trns
+//   }
 //   private val listeners         = new MHashSet[ OutputChannel[ Any ]]
 
    val options          = {
@@ -143,12 +161,16 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
       EventQueue.invokeLater( new Runnable { def run = code })
    }
 
-   def simulate( msg: OSCMessage ) { simulator ! msg }
+//   def simulate( msg: OSCMessage ) { simulator ! msg }
+   def simulate( msg: OSCMessage ) { tracking ! msg }
 
    private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) = {
 //      println( "GOT: " + msg )
       msg match {
          case OSCMessage( "/cupola", "state", scale: Float ) => stageChange( Some( scale.toDouble ))
+         case OSCMessage( "/t", _, _, _, _, _, _, _, _, _, _, blink1, blink2, state: Int ) => {
+            stageChange( Some( state.toDouble / 8.0 ))
+         }
          case x => println( "Cupola: Ignoring OSC message '" + x + "'" )
       }
    }
@@ -200,6 +222,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
             // nuages
             initNuages
             new GUI
+            tracking ! OSCMessage( "/notify", 1 )
 
 //            // freesound
 //            val cred  = new RandomAccessFile( BASE_PATH + "cred.txt", "r" )
@@ -257,7 +280,13 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
          booting.abort
          booting = null
       }
-      simulator.dispose
+//      simulator.dispose
+      if( tracking.isActive ) {
+         try {
+            tracking ! OSCMessage( "/notify", 0 )
+            tracking ! OSCMessage( "/dumpOSC", 0 )
+         } catch { case _ => }
+      }
       tracking.dispose
     }
 }
