@@ -7,7 +7,7 @@
 //import de.sciss.synth.ugen._
 //import de.sciss.trees.{ Interval => TInterval, LongManager, ManagedLong, Rect, RTree, Shaped }
 //import math._
-//import de.sciss.scalaosc.OSCBundle
+//import de.sciss.osc.OSCBundle
 //import proc.{ProcTxn, DSL, ParamSpec}
 //
 //object Test {

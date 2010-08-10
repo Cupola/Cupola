@@ -120,7 +120,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/scalaosc_2.8.0-0.18.jar!/" />
+          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/scalaosc_2.8.0-0.19.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

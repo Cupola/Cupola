@@ -37,7 +37,7 @@ import de.sciss.nuages.{NuagesFrame, NuagesConfig}
 import java.io.RandomAccessFile
 import proc.{ DSL, ProcDemiurg, ProcTxn, Ref, TxnModel }
 import DSL._
-import de.sciss.scalaosc._
+import de.sciss.osc._
 import java.net.{InetSocketAddress, SocketAddress}
 
 //case class CupolaUpdate( stage: Option[ (Level, Section) ])
@@ -78,9 +78,12 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    lazy val SCREEN_BOUNDS =
          GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration.getBounds
 
+   private var vis: TrackingVis = null
+   @volatile private var trackingDefeated = false
+
    private var stageRef: Ref[ Option[ Double ]] = Ref( None ) // Ref[ (Level, Section) ]( UnknownLevel -> Section1 )
    private val tracking          = {
-      val res = OSCClient( TRACKING_PROTO, 0, TRACKING_LOOP )
+      val res = OSCClient( TRACKING_PROTO, 0, TRACKING_LOOP, OSCTrackingCodec )
       res.action = messageReceived
       res.target = new InetSocketAddress( "127.0.0.1", TRACKING_PORT )
       res.start
@@ -163,13 +166,15 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
 
 //   def simulate( msg: OSCMessage ) { simulator ! msg }
    def simulate( msg: OSCMessage ) { tracking ! msg }
+   def defeatTracking( defeat: Boolean ) { trackingDefeated = defeat }
+   def dumpOSC( mode: Int ) { tracking.dumpIncomingOSC( mode )}
 
-   private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) = {
-//      println( "GOT: " + msg )
+   private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) {
+      if( trackingDefeated && (addr != tracking.localAddress) ) return
       msg match {
-         case OSCMessage( "/cupola", "state", scale: Float ) => stageChange( Some( scale.toDouble ))
-         case OSCMessage( "/t", _, _, _, _, _, _, _, _, _, _, blink1, blink2, state: Int ) => {
-            stageChange( Some( state.toDouble / 8.0 ))
+         case t: OSCTrackingMessage => {
+            stageChange( Some( t.state / 8.0 ))
+            if( vis != null ) vis.update( t )
          }
          case x => println( "Cupola: Ignoring OSC message '" + x + "'" )
       }
@@ -222,6 +227,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
             // nuages
             initNuages
             new GUI
+            vis = new TrackingVis
             tracking ! OSCMessage( "/notify", 1 )
 
 //            // freesound

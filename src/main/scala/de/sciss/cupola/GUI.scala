@@ -32,7 +32,7 @@ import Cupola._
 import java.awt.{ BorderLayout, Color, Dimension, Graphics, GridLayout }
 import actors.Actor
 import collection.breakOut
-import de.sciss.scalaosc.OSCMessage
+import de.sciss.osc.OSCMessage
 import de.sciss.synth.proc.ProcTxn
 import javax.swing._
 import event.{MouseInputAdapter, ChangeEvent, ChangeListener}
@@ -73,7 +73,8 @@ class GUI extends Cupola.Listener {
          override def mouseDragged( e: MouseEvent ) { adjust( e )}
          def adjust( e: MouseEvent ) {
             scale = math.max( 0.0, math.min( 1.0, e.getX().toDouble / getWidth() ))
-            /* if( valid ) */ Cupola.simulate( OSCMessage( "/cupola", "state", scale.toFloat ))
+//            /* if( valid ) */ Cupola.simulate( OSCMessage( "/cupola", "state", scale.toFloat ))
+            Cupola.simulate( OSCTrackingMessage( 50f, 50f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ))
          }
       }
       addMouseListener( adapter )
@@ -100,6 +101,16 @@ class GUI extends Cupola.Listener {
       res.setFocusable( false )
       res
    }
+   val ggDumpOSC2 = {
+      val res = new JCheckBox()
+      res.addActionListener( new ActionListener {
+         def actionPerformed( e: ActionEvent ) {
+            Cupola.dumpOSC( if( res.isSelected ) 1 else 0 )
+         }
+      })
+      res.setFocusable( false )
+      res
+   }
 
    // ---- constructor ----
    {
@@ -117,7 +128,10 @@ class GUI extends Cupola.Listener {
       })
 //      cp.add( levelPane, BorderLayout.CENTER )
       cp.add( ggLevel, BorderLayout.CENTER )
-      cp.add( ggDumpOSC, BorderLayout.EAST )
+      val box = Box.createHorizontalBox()
+      box.add( ggDumpOSC )
+      box.add( ggDumpOSC2 )
+      cp.add( box, BorderLayout.EAST )
       f.setResizable( false )
       f.pack
       f.setLocation( 10, Cupola.SCREEN_BOUNDS.height - f.getHeight() - 10 )
