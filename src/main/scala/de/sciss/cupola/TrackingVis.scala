@@ -54,9 +54,9 @@ class TrackingVis extends JComponent {
          fileOption foreach { file =>
             val player = new OSCPlayer( file, OSCTrackingCodec )
             player.action = _ match {
-               case msg: OSCMessage => {
-//println( "DOING : " + msg )
-                  Cupola.simulate( msg )
+               case b: OSCBundle=> {
+//println( "DOING : " + b )
+                  b.packets.foreach( Cupola.simulateLocal( _ ))
                }
                case _ =>
             }

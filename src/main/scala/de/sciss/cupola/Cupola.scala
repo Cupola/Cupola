@@ -82,10 +82,11 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    @volatile private var trackingDefeated = false
 
    private var stageRef: Ref[ Option[ Double ]] = Ref( None ) // Ref[ (Level, Section) ]( UnknownLevel -> Section1 )
+   private val trackingAddr      = new InetSocketAddress( "127.0.0.1", TRACKING_PORT )
    private val tracking          = {
       val res = OSCClient( TRACKING_PROTO, 0, TRACKING_LOOP, OSCTrackingCodec )
       res.action = messageReceived
-      res.target = new InetSocketAddress( "127.0.0.1", TRACKING_PORT )
+      res.target = trackingAddr
       res.start
       res
 //      val res = JOSCServer.newUsing( TRACKING_PROTO, TRACKING_PORT, TRACKING_LOOP )
@@ -105,6 +106,8 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
 //      res.start()
 //      res
    }
+   private val trackingLocalAddr = tracking.localAddress
+
 //   private val simulator         = {
 //      val trns = OSCTransmitter( TRACKING_PROTO )
 //      trns.target = tracking.getLocalAddress() // tracking.localAddress
@@ -165,12 +168,25 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    }
 
 //   def simulate( msg: OSCMessage ) { simulator ! msg }
-   def simulate( msg: OSCMessage ) { tracking ! msg }
+   def simulate( p: OSCPacket ) { tracking ! p }
+   def simulateLocal( p: OSCPacket ) {
+      simulateLocal( p, trackingLocalAddr, System.currentTimeMillis )
+   }
+   private def simulateLocal( p: OSCPacket, addr: SocketAddress, time: Long ) {
+      p match {
+         case m: OSCMessage => messageReceived( m, addr, time )
+         case b: OSCBundle => b.packets.foreach( simulateLocal( _, addr, b.timetag ))
+      }
+   }
+
    def defeatTracking( defeat: Boolean ) { trackingDefeated = defeat }
    def dumpOSC( mode: Int ) { tracking.dumpIncomingOSC( mode )}
 
    private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) {
-      if( trackingDefeated && (addr != tracking.localAddress) ) return
+      if( trackingDefeated && (addr != trackingLocalAddr) ) {
+         println( "defeated : " + addr + " != " + trackingLocalAddr )
+         return
+      }
       msg match {
          case t: OSCTrackingMessage => {
             stageChange( Some( t.state / 8.0 ))

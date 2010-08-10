@@ -17,7 +17,8 @@ class OSCPlayer( file: File, codec: OSCPacketCodec ) {
    var action: OSCPacket => Unit = p => ()
 
    private var nextBundle: OSCBundle = null
-   private var startTime = 0L
+   private var startSysTime = 0L
+   private var startBndlTime = 0L
 
 //   def add( p: OSCPacket ) {
 //      sync.synchronized {
@@ -33,7 +34,8 @@ class OSCPlayer( file: File, codec: OSCPacketCodec ) {
       sync.synchronized {
          raf.seek( 0L )
          nextBundle = readBundle
-         startTime  = OSCBundle.timetagToMillis( nextBundle.timetag )
+         startBndlTime  = OSCBundle.timetagToMillis( nextBundle.timetag )
+         startSysTime   = System.currentTimeMillis
          sched( 0L )
       }
    }
@@ -43,7 +45,7 @@ class OSCPlayer( file: File, codec: OSCPacketCodec ) {
    }
 
    private def sched( dt: Long ) {
-println( "DT = " + dt )
+//println( "DT = " + dt )
       timer.schedule( new TimerTask {
          def run = sync.synchronized {
             try {
@@ -51,7 +53,11 @@ println( "DT = " + dt )
                do {
                   action( nextBundle )
                   nextBundle = readBundle // may throw EOF
-                  delta = math.max( 0L, OSCBundle.timetagToMillis( nextBundle.timetag ) - startTime )
+//println( "nextBundle = " + nextBundle )
+                  val dtBndl = OSCBundle.timetagToMillis( nextBundle.timetag ) - startBndlTime
+                  val dtSys  = System.currentTimeMillis - startSysTime
+                  delta = math.max( 0L, dtBndl - dtSys )
+//                  delta = math.max( 0L, OSCBundle.timetagToMillis( nextBundle.timetag ) - startTime )
                } while( delta == 0L )
                sched( delta )
             }
