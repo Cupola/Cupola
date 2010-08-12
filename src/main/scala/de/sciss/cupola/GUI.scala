@@ -75,7 +75,7 @@ class GUI extends Cupola.Listener {
             scale = math.max( 0.0, math.min( 1.0, e.getX().toDouble / getWidth() ))
 //            /* if( valid ) */ Cupola.simulate( OSCMessage( "/cupola", "state", scale.toFloat ))
             val stage = (scale * 8 + 0.5).toInt
-            Cupola.simulate( OSCTrackingMessage( 50f, 50f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, stage ))
+            Cupola.simulate( OSCTrackingMessage( 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, stage ))
             Cupola.simulateLocal( OSCMessage( "/cupola", "state", scale.toFloat ))
          }
       }

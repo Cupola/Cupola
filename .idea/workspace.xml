@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" readonly="true" id="e717763b-a84e-4f65-8788-302c1ddc7aed" name="Default" comment="" />
-    <ignored path="Cupola.iws" />
     <ignored path=".idea/workspace.xml" />
+    <ignored path="Cupola.iws" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,8 +81,8 @@
       <property name="field_breakpoints_groupByClasses" value="true" />
       <property name="method_breakpoints_groupByClasses" value="true" />
       <property name="exception_breakpoints_viewId" value="TABLE" />
-      <property name="field_breakpoints_viewId" value="TABLE" />
       <property name="exception_breakpoints_groupByClasses" value="true" />
+      <property name="field_breakpoints_viewId" value="TABLE" />
       <property name="method_breakpoints_groupByMethods" value="false" />
     </ui_properties>
   </component>
@@ -101,10 +101,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="CupolaNuages.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="CupolaNuages.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="505" column="50" selection-start="21018" selection-end="21018" vertical-scroll-proportion="0.9139785">
+            <state line="475" column="7" selection-start="19837" selection-end="19837" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -119,10 +119,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="GUI.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="GUI.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/GUI.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="126" column="44" selection-start="4402" selection-end="4402" vertical-scroll-proportion="0.0">
+            <state line="74" column="38" selection-start="2519" selection-end="2519" vertical-scroll-proportion="0.21291448">
               <folding />
             </state>
           </provider>
@@ -131,7 +131,16 @@
       <file leaf-file-name="TrackingVis.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/TrackingVis.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="86" column="92" selection-start="2679" selection-end="2679" vertical-scroll-proportion="0.0">
+            <state line="29" column="14" selection-start="959" selection-end="959" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="OSCTrackingMessage.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/OSCTrackingMessage.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="11" column="55" selection-start="597" selection-end="597" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -183,17 +192,17 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/TrackingMessage.scala" />
         <option value="$PROJECT_DIR$/project/build/Cupola.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/OSCRecorder.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/OSCTrackingMessage.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Test.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/OSCPlayer.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/TrackingVis.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/GUI.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Util.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/SoundContext.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Material.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/OSCTrackingMessage.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/GUI.scala" />
       </list>
     </option>
   </component>
@@ -235,7 +244,6 @@
       <sortByType />
     </navigator>
     <panes>
-      <pane id="Favorites" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -341,6 +349,40 @@
               <option name="myItemId" value="main" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="sciss" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="cupola" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="OSCTrackingMessage.scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="Cupola" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="Cupola" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="main" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
           </PATH>
           <PATH>
             <PATH_ELEMENT>
@@ -419,6 +461,7 @@
       <pane id="Scope">
         <subPane subId="Problems" />
       </pane>
+      <pane id="Favorites" />
       <pane id="PackagesPane" />
     </panes>
   </component>
@@ -435,9 +478,9 @@
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
     <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
-    <property name="options.splitter.details.proportions" value="0.2" />
-    <property name="options.searchVisible" value="true" />
     <property name="dynamic.classpath" value="false" />
+    <property name="options.searchVisible" value="true" />
+    <property name="options.splitter.details.proportions" value="0.2" />
   </component>
   <component name="RecentsManager">
     <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
@@ -656,7 +699,7 @@
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.26596543" sideWeight="0.18239796" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32907587" sideWeight="0.6658163" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32962137" sideWeight="0.7933673" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.3199703" sideWeight="0.7933673" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.19770408" sideWeight="0.9769859" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -726,70 +769,60 @@
         <state line="4" column="16" selection-start="108" selection-end="108" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/OSCTrackingMessage.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="3" column="16" selection-start="68" selection-end="68" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/OSCPlayer.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="53" column="49" selection-start="1427" selection-end="1427" vertical-scroll-proportion="0.2244898">
+        <state line="53" column="49" selection-start="1427" selection-end="1427" vertical-scroll-proportion="0.2244898" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="171" column="63" selection-start="6075" selection-end="6075" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Material.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="35" column="65" selection-start="1486" selection-end="1486" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="104" column="33" selection-start="3539" selection-end="3539" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Util.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="21" column="4" selection-start="487" selection-end="487" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/SoundContext.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="12" column="58" selection-start="468" selection-end="468" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="475" column="7" selection-start="19837" selection-end="19837" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/TrackingVis.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="86" column="92" selection-start="2679" selection-end="2679" vertical-scroll-proportion="0.0">
+        <state line="29" column="14" selection-start="959" selection-end="959" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/OSCTrackingMessage.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="11" column="55" selection-start="597" selection-end="597" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/GUI.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="126" column="44" selection-start="4402" selection-end="4402" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Util.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="21" column="4" selection-start="487" selection-end="487" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/SoundContext.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="12" column="58" selection-start="468" selection-end="468" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="104" column="33" selection-start="3539" selection-end="3539" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Material.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="35" column="65" selection-start="1486" selection-end="1486" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="171" column="63" selection-start="6075" selection-end="6075" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="505" column="50" selection-start="21018" selection-end="21018" vertical-scroll-proportion="0.9139785">
+        <state line="74" column="38" selection-start="2519" selection-end="2519" vertical-scroll-proportion="0.21291448">
           <folding />
         </state>
       </provider>
