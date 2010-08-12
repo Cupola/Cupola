@@ -47,6 +47,7 @@ object CupolaNuages extends {
    val LOOP_DUR         = 30
 
    var f : NuagesFrame = null
+   var masterSynth : Synth  = null
 
    def init( s: Server, f: NuagesFrame ) = ProcTxn.atomic { implicit tx =>
 
@@ -497,6 +498,15 @@ object CupolaNuages extends {
             mix( in, flt, pmix )
          }
       }
+
+      // ---- master synth ----
+      val df = SynthDef( "cupola-master" ) {
+         val sig  = In.ar( 0, 2 )
+         val ctrl = HPF.ar( sig, 50 )
+         val cmp  = Compander.ar( sig, ctrl, (-12).dbamp, 1, 1.0/3.0 ) * 2
+         ReplaceOut.ar( 0, cmp )
+      }
+      masterSynth = df.play( s, addAction = addToTail )
 
       // tablet
       this.f = f

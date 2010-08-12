@@ -84,38 +84,52 @@ class ProcessManager {
       if( verbose ) println( "MEAN SCALE = " + scale )
 
       val procsRunning = procsRunningRef()
-      val toStop = procsRunning filter { rp => rp.context.scaleStart > scale || rp.context.scaleStop < scale }
+      val now = System.currentTimeMillis
+      val toStop = procsRunning filter { rp =>
+         rp.deathTime <= now || rp.context.scaleStart > scale || rp.context.scaleStop < scale
+      }
       var newRunning = procsRunning -- toStop
-      toStop foreach { rp => xfade( exprand( 7, 21 )) {
+      toStop foreach { rp => xfade( exprand( rp.context.minFade, rp.context.maxFade )) {
          if( verbose ) println( "STOPPING OBSOLETE " + rp )
          rp.proc.dispose // stop
       }}
-      val (minProcs, maxProcs) = newRunning.foldLeft( (1, Int.MaxValue) ) { (v, rp) =>
+      val (minProcs0, maxProcs0) = newRunning.foldLeft( (1, Int.MaxValue) ) { (v, rp) =>
          val (min, max) = v
          (math.max( min, rp.context.minConc ), math.min( max, rp.context.maxConc ))
       }
+      val (minProcs, maxProcs) = if( toStop.nonEmpty ) {
+         val num = rrand( math.min( minProcs0, maxProcs0 ), maxProcs0 )
+         (rrand( minProcs0, num ), rrand( num, maxProcs0 ))
+      } else (math.min( minProcs0, maxProcs0 ), maxProcs0)
       if( verbose ) println( "MIN = " + minProcs + " / MAX = " +maxProcs + " / CURRENT = " + newRunning.size )
-      while( newRunning.size > maxProcs ) {
-         val weightSum = newRunning.foldLeft( 0.0 ) { (sum, rp) => sum + rp.context.weight }
-         val rp = wchoose( newRunning ) { rp => rp.context.weight / weightSum }
-         if( verbose ) println( "STOPPING (CROWDED) " + rp )
-         xfade( exprand( 7, 21 )) { rp.proc.dispose /* stop */}
-         newRunning -= rp
-      }
       var keepGoing = true
+      while( (newRunning.size > maxProcs) && keepGoing ) {
+         val filtered = newRunning filter { rp => (now - rp.startTime) * 0.001 > rp.context.minDur }
+         if( filtered.nonEmpty ) {
+            val weightSum = newRunning.foldLeft( 0.0 ) { (sum, rp) => sum + rp.context.weight }
+            val rp = wchoose( newRunning ) { rp => rp.context.weight / weightSum }
+            if( verbose ) println( "STOPPING (CROWDED) " + rp )
+            xfade( exprand( rp.context.minFade, rp.context.maxFade )) { rp.proc.dispose /* stop */}
+            newRunning -= rp
+         } else {
+            keepGoing = false
+         }
+      }
+      keepGoing = true
       while( (newRunning.size < minProcs) && keepGoing ) {
          val notRunning = (Material.all.toSet -- newRunning.map( _.context )).filter( c =>
             c.scaleStart <= scale && c.scaleStop >= scale )
          keepGoing = notRunning.nonEmpty
          if( keepGoing ) {
             val weightSum  = notRunning.foldLeft( 0.0 ) { (sum, c) => sum + c.weight }
-            val c    = wchoose( notRunning ) { _.weight / weightSum }
-            val f    = c.settings.createProcFactory( c.name )
-            val proc = f.make
+            val c       = wchoose( notRunning ) { _.weight / weightSum }
+            val f       = c.settings.createProcFactory( c.name )
+            val death   = (exprand( c.minDur, c.maxDur ) * 1000).toLong + now
+            val proc    = f.make
             c.settings.prepareForPlay( proc )
-            val rp   = RunningProc( proc, c )
+            val rp      = RunningProc( proc, c, now, death )
             if( verbose ) println( "STARTING (SPARSE) " + rp )
-            xfade( exprand( 7, 21 )) { proc.play }
+            xfade( exprand( rp.context.minFade, rp.context.maxFade )) { proc.play }
             newRunning += rp
          }
       }
@@ -161,5 +175,5 @@ class ProcessManager {
 //      }
    }
 
-   case class RunningProc( proc: Proc, context: SoundContext )
+   case class RunningProc( proc: Proc, context: SoundContext, startTime: Long, deathTime: Long )
 }

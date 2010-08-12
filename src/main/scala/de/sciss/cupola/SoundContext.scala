@@ -9,6 +9,8 @@ import Util._
 case class SoundContext( name: String, settings: SoundSettings,
                          scaleStart: Double, scaleStop: Double, weight: Double,
                          minConc: Int, maxConc: Int,
+                         minDur: Double, maxDur: Double,
+                         minFade: Double, maxFade: Double,
                          mutex: ISet[ String ])
 
 sealed abstract class SoundSettings {

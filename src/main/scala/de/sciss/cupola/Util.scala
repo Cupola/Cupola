@@ -13,6 +13,14 @@ object Util {
       rnd.nextDouble() * (hi - lo) + lo
    }
 
+   def rrand( lo: Int, hi: Int ) : Int = {
+      if( lo <= hi ) {
+         rnd.nextInt( hi - lo + 1 ) + lo
+      } else {
+         rnd.nextInt( lo - hi + 1 ) + hi
+      }
+   }
+
    def rand( d: Double ) : Double = rnd.nextDouble() * d
 
    def wchoose[ T ]( seq: Traversable[ T ])( fun: T => Double ) : T = {
