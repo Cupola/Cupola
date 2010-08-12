@@ -61,7 +61,7 @@ class TrackingVis extends JComponent {
                case _ =>
             }
             playerOption = Some( player )
-            Cupola.defeatTracking( true )
+            Cupola.trackingDefeated = true
             player.start
             ggStop.setEnabled( true )
             ggPlay.setEnabled( false )
@@ -74,7 +74,7 @@ class TrackingVis extends JComponent {
          recorderOption.foreach( _.close )
          recorderOption = None
          playerOption foreach { player =>
-            Cupola.defeatTracking( false )
+            Cupola.trackingDefeated = false
             player.close
             playerOption = None
          }

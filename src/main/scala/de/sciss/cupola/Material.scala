@@ -17,7 +17,7 @@ object Material {
          0.0, 0.5, 1.0, 2, 6, Set.empty
       ),
       SoundContext( "tp_1conlp",
-         TapeSoundSettings( "AT_1Cut1Conlp1k.aif", 2.0, 1.0 ),
+         TapeSoundSettings( "AT_1Cut1Conlp1kLoop.aif", 2.0, 1.0 ),
          0.25, 0.75, 1.0, 2, 6, Set.empty
       ),
       SoundContext( "tp_hmssjena",
@@ -33,11 +33,11 @@ object Material {
          0.5, 1.0, 1.0, 2, 6, Set.empty
       ),
       SoundContext( "tp_rc60",
-         TapeSoundSettings( "rc060'nlp2kOprc060'2kWrpCut.aif", -2.0, 1.0 ),
+         TapeSoundSettings( "rc060'nlp2kOprc060'2kWrpCutLoop.aif", -2.0, 1.0 ),
          0.5, 1.0, 1.0, 2, 6, Set.empty
       ),
       SoundContext( "tp_phylet",
-         TapeSoundSettings( "PhyletischesMuseumGlass080929HPF.aif", 2.0, 0.25 ),
+         TapeSoundSettings( "PhyletischesMuseumGlass080929HPFLoop.aif", 2.0, 0.25 ),
          0.5, 1.0, 1.0, 2, 6, Set.empty
       )
    )

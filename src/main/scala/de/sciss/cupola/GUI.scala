@@ -74,7 +74,9 @@ class GUI extends Cupola.Listener {
          def adjust( e: MouseEvent ) {
             scale = math.max( 0.0, math.min( 1.0, e.getX().toDouble / getWidth() ))
 //            /* if( valid ) */ Cupola.simulate( OSCMessage( "/cupola", "state", scale.toFloat ))
-            Cupola.simulate( OSCTrackingMessage( 50f, 50f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ))
+            val stage = (scale * 8 + 0.5).toInt
+            Cupola.simulate( OSCTrackingMessage( 50f, 50f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, stage ))
+            Cupola.simulateLocal( OSCMessage( "/cupola", "state", scale.toFloat ))
          }
       }
       addMouseListener( adapter )
@@ -99,6 +101,7 @@ class GUI extends Cupola.Listener {
          }
       })
       res.setFocusable( false )
+      res.setToolTipText( "Dump relais OSC" )
       res
    }
    val ggDumpOSC2 = {
@@ -109,6 +112,19 @@ class GUI extends Cupola.Listener {
          }
       })
       res.setFocusable( false )
+      res.setToolTipText( "Dump local OSC" )
+      res
+   }
+   val ggConnect = {
+      val res = new JCheckBox()
+      res.addActionListener( new ActionListener {
+         def actionPerformed( e: ActionEvent ) {
+            Cupola.trackingConnected = res.isSelected
+         }
+      })
+      res.setFocusable( false )
+      res.setSelected( Cupola.trackingConnected )
+      res.setToolTipText( "Connect to relais" )
       res
    }
 
@@ -131,6 +147,7 @@ class GUI extends Cupola.Listener {
       val box = Box.createHorizontalBox()
       box.add( ggDumpOSC )
       box.add( ggDumpOSC2 )
+      box.add( ggConnect )
       cp.add( box, BorderLayout.EAST )
       f.setResizable( false )
       f.pack

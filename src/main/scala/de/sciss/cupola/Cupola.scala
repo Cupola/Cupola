@@ -73,13 +73,14 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    val TRACKING_PORT       = 1201
    val TRACKING_PROTO      = TCP
    val TRACKING_LOOP       = true
+   val TRACKING_CONNECT    = false
    var masterBus : AudioBus = null
 
    lazy val SCREEN_BOUNDS =
          GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration.getBounds
 
    private var vis: TrackingVis = null
-   @volatile private var trackingDefeated = false
+   @volatile var trackingDefeated = false
 
    private var stageRef: Ref[ Option[ Double ]] = Ref( None ) // Ref[ (Level, Section) ]( UnknownLevel -> Section1 )
    private val trackingAddr      = new InetSocketAddress( "127.0.0.1", TRACKING_PORT )
@@ -87,7 +88,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
       val res = OSCClient( TRACKING_PROTO, 0, TRACKING_LOOP, OSCTrackingCodec )
       res.action = messageReceived
       res.target = trackingAddr
-      res.start
+      if( TRACKING_CONNECT ) res.start
       res
 //      val res = JOSCServer.newUsing( TRACKING_PROTO, TRACKING_PORT, TRACKING_LOOP )
 //      res.addOSCListener( new JOSCListener {
@@ -168,7 +169,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    }
 
 //   def simulate( msg: OSCMessage ) { simulator ! msg }
-   def simulate( p: OSCPacket ) { tracking ! p }
+   def simulate( p: OSCPacket ) { try { tracking ! p } catch { case _ => }}
    def simulateLocal( p: OSCPacket ) {
       simulateLocal( p, trackingLocalAddr, System.currentTimeMillis )
    }
@@ -179,7 +180,22 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
       }
    }
 
-   def defeatTracking( defeat: Boolean ) { trackingDefeated = defeat }
+//   def defeatTracking( defeat: Boolean ) { trackingDefeatedVar = defeat }
+   def trackingConnected = tracking.isActive
+   def trackingConnected_=( connect: Boolean ) {
+      if( connect ) {
+         if( !tracking.isActive ) {
+            tracking.start
+            tracking ! OSCMessage( "/notify", 1 )
+         }
+      } else {
+         if( tracking.isActive ) {
+            tracking ! OSCMessage( "/notify", 0 )
+            tracking.stop
+         }
+      }
+   }
+
    def dumpOSC( mode: Int ) { tracking.dumpIncomingOSC( mode )}
 
    private def messageReceived( msg: OSCMessage, addr: SocketAddress, time: Long ) {
@@ -192,6 +208,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
             stageChange( Some( t.state / 8.0 ))
             if( vis != null ) vis.update( t )
          }
+         case OSCMessage( "/cupola", "state", scale: Float ) => stageChange( Some( scale.toDouble )) 
          case x => println( "Cupola: Ignoring OSC message '" + x + "'" )
       }
    }
@@ -244,7 +261,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
             initNuages
             new GUI
             vis = new TrackingVis
-            tracking ! OSCMessage( "/notify", 1 )
+//            tracking ! OSCMessage( "/notify", 1 )
 
 //            // freesound
 //            val cred  = new RandomAccessFile( BASE_PATH + "cred.txt", "r" )

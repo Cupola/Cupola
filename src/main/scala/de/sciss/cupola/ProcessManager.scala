@@ -38,8 +38,13 @@ import java.util.{TimerTask, Timer}
 /**
  *    @version 0.12, 09-Aug-10
  */
+object ProcessManager {
+   var verbose = false
+}
+
 class ProcessManager {
    import Util._
+   import ProcessManager._
    
    private val startTimeRef   = Ref( 0.0 )
    private val lastTimeRef    = Ref( 0.0 )
@@ -76,24 +81,24 @@ class ProcessManager {
    }
 
    private def scaleUpdate( scale: Double )( implicit tx: ProcTxn ) {
-      println( "MEAN SCALE = " + scale )
+      if( verbose ) println( "MEAN SCALE = " + scale )
 
       val procsRunning = procsRunningRef()
       val toStop = procsRunning filter { rp => rp.context.scaleStart > scale || rp.context.scaleStop < scale }
       var newRunning = procsRunning -- toStop
       toStop foreach { rp => xfade( exprand( 7, 21 )) {
-println( "STOPPING OBSOLETE " + rp )
+         if( verbose ) println( "STOPPING OBSOLETE " + rp )
          rp.proc.dispose // stop
       }}
       val (minProcs, maxProcs) = newRunning.foldLeft( (1, Int.MaxValue) ) { (v, rp) =>
          val (min, max) = v
          (math.max( min, rp.context.minConc ), math.min( max, rp.context.maxConc ))
       }
-println( "MIN = " + minProcs + " / MAX = " +maxProcs + " / CURRENT = " + newRunning.size )
+      if( verbose ) println( "MIN = " + minProcs + " / MAX = " +maxProcs + " / CURRENT = " + newRunning.size )
       while( newRunning.size > maxProcs ) {
          val weightSum = newRunning.foldLeft( 0.0 ) { (sum, rp) => sum + rp.context.weight }
          val rp = wchoose( newRunning ) { rp => rp.context.weight / weightSum }
-println( "STOPPING (CROWDED) " + rp )
+         if( verbose ) println( "STOPPING (CROWDED) " + rp )
          xfade( exprand( 7, 21 )) { rp.proc.dispose /* stop */}
          newRunning -= rp
       }
@@ -109,7 +114,7 @@ println( "STOPPING (CROWDED) " + rp )
             val proc = f.make
             c.settings.prepareForPlay( proc )
             val rp   = RunningProc( proc, c )
-println( "STARTING (SPARSE) " + rp )
+            if( verbose ) println( "STARTING (SPARSE) " + rp )
             xfade( exprand( 7, 21 )) { proc.play }
             newRunning += rp
          }
