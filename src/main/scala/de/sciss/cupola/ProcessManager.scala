@@ -34,6 +34,7 @@ import util.Random
 import de.sciss.synth.proc._
 import DSL._
 import java.util.{TimerTask, Timer}
+import java.awt.EventQueue
 
 /**
  *    @version 0.12, 09-Aug-10
@@ -80,6 +81,41 @@ class ProcessManager {
       }
    }
 
+   private val stopAndDisposeListener = new Proc.Listener {
+      def updated( u: Proc.Update ) {
+         if( !u.state.fading && (!u.state.playing || u.state.bypassed) ) {
+            // XXX workaround: CCSTM still has the previous txn visible,
+            // hence we need to wait a bit longer :-(
+//EventQueue.invokeLater { new Runnable { def run {
+//println( "FINAL-DISPOSE " + (new java.util.Date()) + " : " + u.proc )
+            ProcTxn.atomic { implicit tx => u.proc.dispose }
+//}}}
+         }
+      }
+   }
+
+   private def stopAndDispose( rp: RunningProc )( implicit tx: ProcTxn ) {
+      val p     = rp.proc
+      val state = p.state
+//println( "STOP-AND-DISPOSE " + p + " -> " + state + " / " + tx.transit )
+      if( !state.fading && (!state.playing || state.bypassed || (tx.transit == Instant)) ) {
+//println( ".......INSTANT" )
+         p.dispose
+      } else {
+         p.addListener( stopAndDisposeListener )
+         p.anatomy match {
+            case ProcFilter => {
+//println( ".......BYPASS" )
+               p.bypass
+            }
+            case _ => {
+//println( ".......STOP " + (new java.util.Date()) ) 
+               p.stop
+            }
+         }
+      }
+   }
+
    private def scaleUpdate( scale: Double )( implicit tx: ProcTxn ) {
       if( verbose ) println( "MEAN SCALE = " + scale )
 
@@ -91,7 +127,8 @@ class ProcessManager {
       var newRunning = procsRunning -- toStop
       toStop foreach { rp => xfade( exprand( rp.context.minFade, rp.context.maxFade )) {
          if( verbose ) println( "STOPPING OBSOLETE " + rp )
-         rp.proc.dispose // stop
+         stopAndDispose( rp )
+//         rp.proc.dispose // stop
       }}
       val (minProcs0, maxProcs0) = newRunning.foldLeft( (1, Int.MaxValue) ) { (v, rp) =>
          val (min, max) = v
@@ -101,6 +138,7 @@ class ProcessManager {
          val num = rrand( math.min( minProcs0, maxProcs0 ), maxProcs0 )
          (rrand( minProcs0, num ), rrand( num, maxProcs0 ))
       } else (math.min( minProcs0, maxProcs0 ), maxProcs0)
+//val (minProcs, maxProcs) = (2, 2)
       if( verbose ) println( "MIN = " + minProcs + " / MAX = " +maxProcs + " / CURRENT = " + newRunning.size )
       var keepGoing = true
       while( (newRunning.size > maxProcs) && keepGoing ) {
@@ -109,7 +147,10 @@ class ProcessManager {
             val weightSum = newRunning.foldLeft( 0.0 ) { (sum, rp) => sum + rp.context.weight }
             val rp = wchoose( newRunning ) { rp => rp.context.weight / weightSum }
             if( verbose ) println( "STOPPING (CROWDED) " + rp )
-            xfade( exprand( rp.context.minFade, rp.context.maxFade )) { rp.proc.dispose /* stop */}
+            xfade( exprand( rp.context.minFade, rp.context.maxFade )) {
+               stopAndDispose( rp )
+//               rp.proc.dispose /* stop */
+            }
             newRunning -= rp
          } else {
             keepGoing = false

@@ -7,6 +7,12 @@ import sbt.{ FileUtilities => FU, _}
 class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
    val wolkenpumpe   = "de.sciss" %% "wolkenpumpe" % "0.14"
 
+   // we override the ccstm dependancy to use the new snapshot which
+   // fixes the callAfter / detach order
+   val ccstm = "edu.stanford.ppl" % "ccstm" % "0.2.2-for-scala-2.8.0-SNAPSHOT"
+   val ccstmRepo = "CCSTM Release Repository at PPL" at "http://ppl.stanford.edu/ccstm/repo-releases"
+   val ccstmSnap = "CCSTM Snapshot Repository at PPL" at "http://ppl.stanford.edu/ccstm/repo-snapshots"
+   
    val camelCaseName          = "Cupola"
    def appBundleName          = camelCaseName + ".app"
    def appBundleContentsPath  = appBundleName / "Contents"
