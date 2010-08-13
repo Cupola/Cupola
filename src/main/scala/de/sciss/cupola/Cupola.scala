@@ -74,6 +74,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
    val TRACKING_PROTO      = TCP
    val TRACKING_LOOP       = true
    val TRACKING_CONNECT    = false
+   val SHOW_VIS            = false
    var masterBus : AudioBus = null
 
    lazy val SCREEN_BOUNDS =
@@ -260,7 +261,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
             // nuages
             initNuages
             new GUI
-            vis = new TrackingVis
+            if( SHOW_VIS ) vis = new TrackingVis
 //            tracking ! OSCMessage( "/notify", 1 )
 
 //            // freesound

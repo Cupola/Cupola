@@ -129,7 +129,10 @@ class ProcessManager {
             c.settings.prepareForPlay( proc )
             val rp      = RunningProc( proc, c, now, death )
             if( verbose ) println( "STARTING (SPARSE) " + rp )
-            xfade( exprand( rp.context.minFade, rp.context.maxFade )) { proc.play }
+            xfade( exprand( rp.context.minFade, rp.context.maxFade )) {
+               proc ~> CupolaNuages.fieldCollectors( rp.context.field )
+               proc.play
+            }
             newRunning += rp
          }
       }
@@ -150,29 +153,6 @@ class ProcessManager {
          scaleAccumRef += dt * oldScale
       }
       validRef.set( newStage.isDefined )
-
-//      if( oldStage._1 != newStage._1 ) {
-//         val psOff = oldStage._1 match {
-//            case Meditation  => CupolaNuages.meditProcs
-//            case Equilibrium => CupolaNuages.equivProcs
-//            case Chaos       => CupolaNuages.chaosProcs
-//            case _           => Nil
-//         }
-//         psOff.foreach( p => xfade( exprand( 7, 21 )) { p.stop })
-//         val psOn = newStage._1 match {
-//            case Meditation  => CupolaNuages.meditProcs
-//            case Equilibrium => CupolaNuages.equivProcs
-//            case Chaos       => CupolaNuages.chaosProcs
-//            case _           => Nil
-//         }
-//         psOn.foreach( p => xfade( exprand( 7, 21 )) {
-//            p.anatomy match {
-//               case ProcGen => p.control( "pos" ).v = rrand( 0, 1 )
-//               case _ =>
-//            }
-//            p.play
-//         })
-//      }
    }
 
    case class RunningProc( proc: Proc, context: SoundContext, startTime: Long, deathTime: Long )

@@ -11,6 +11,7 @@ case class SoundContext( name: String, settings: SoundSettings,
                          minConc: Int, maxConc: Int,
                          minDur: Double, maxDur: Double,
                          minFade: Double, maxFade: Double,
+                         field: Field,
                          mutex: ISet[ String ])
 
 sealed abstract class SoundSettings {

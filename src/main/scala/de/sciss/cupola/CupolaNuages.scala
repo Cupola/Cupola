@@ -31,11 +31,8 @@ package de.sciss.cupola
 import de.sciss.synth.{ EnvSeg => S, _ }
 import de.sciss.synth.proc._
 import de.sciss.nuages.NuagesFrame
-import java.util.TimerTask
-import java.awt.event.MouseEvent
 import collection.breakOut
 import ugen._
-import java.io.File
 
 /**
  *    @version 0.12, 01-Aug-10
@@ -46,8 +43,15 @@ object CupolaNuages extends {
    val NUM_LOOPS        = 7
    val LOOP_DUR         = 30
 
-   var f : NuagesFrame = null
-   var masterSynth : Synth  = null
+   var f : NuagesFrame = _
+   var masterSynth : Synth  = _
+
+   var fieldCollectors : Map[ Field, Proc ] = _
+//   var collColor:  Proc = _
+//   var collText:   Proc = _
+//   var collSense:  Proc = _
+//   var collMaster: Proc = _
+   var pMaster:    Proc = _
 
    def init( s: Server, f: NuagesFrame ) = ProcTxn.atomic { implicit tx =>
 
@@ -499,14 +503,30 @@ object CupolaNuages extends {
          }
       }
 
-      // ---- master synth ----
-      val df = SynthDef( "cupola-master" ) {
-         val sig  = In.ar( 0, 2 )
-         val ctrl = HPF.ar( sig, 50 )
-         val cmp  = Compander.ar( sig, ctrl, (-12).dbamp, 1, 1.0/3.0 ) * 2
-         ReplaceOut.ar( 0, cmp )
-      }
-      masterSynth = df.play( s, addAction = addToTail )
+      // ---- collectors ----
+      val genDummyStereo = gen( "@" ) { graph { Silent.ar( 2 )}}
+      fieldCollectors = Field.all.map( field => {
+         val genColl = filter( field.name + "+" ) { graph { in => in }}
+         val pColl   = genColl.make
+         val pDummy  = genDummyStereo.make
+         pDummy ~> pColl
+         pColl.play
+         pDummy.dispose
+         field -> pColl
+      })( breakOut )
+      val sub        = (fieldCollectors - MasterField).values
+      val collMaster = fieldCollectors( MasterField )
+      sub foreach { _ ~> collMaster }
+
+      // ---- master ----
+
+      pMaster = diff( "cupola-master" )( graph { in =>
+         val ctrl = HPF.ar( in, 50 )
+         val cmp  = Compander.ar( in, ctrl, (-12).dbamp, 1, 1.0/3.0 ) * 2
+         Out.ar( 0, cmp )
+      }).make
+      collMaster ~> pMaster
+      pMaster.play
 
       // tablet
       this.f = f
