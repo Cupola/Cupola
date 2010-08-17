@@ -293,23 +293,114 @@ object CupolaNuages extends {
          }
       }
 
-      filter( "fl_filt" ) {
+      // ---- CUPOLA FILTERS ----
+
+      Seq( "m", "s" ).foreach( suff => filter( "fl_ahilb" + suff ) {
+//         val pmix = pMix
+         graph { in =>
+            var flt: GE = Seq.fill( in.numOutputs )( 0.0 )
+            in.outputs foreach { ch =>
+               val Seq( hlbRe1, hlbIm1 )  = Hilbert.ar( DelayN.ar( ch, 0.01, 0.01 )).outputs
+               val Seq( hlbRe2, hlbIm2 )  = Hilbert.ar( Normalizer.ar( ch, dur = 0.02 )).outputs
+               flt += hlbRe1 * hlbRe2 - hlbIm1 * hlbIm2
+            }
+//            mix( in, flt, pmix )
+            val freq: GE = if( suff == "m" ) {
+               1.0/20
+            } else {
+               Seq( 1.0/20, 1.0/20 )
+            }
+            val dust       = Dust2.kr( freq )
+            val mix        = Lag.kr( Latch.kr( dust, dust ), 20 )
+            LinXFade2.ar( in, flt, mix )
+         }
+      })
+
+      filter( "fl_verb" ) {
+         val pextent = pScalar( "size", ParamSpec( 0, 1 ), 0.5 )
+//         val pcolor  = pControl( "color", ParamSpec( 0, 1 ), 0.5 )
+         val pmix    = pMix
+         graph { in =>
+            val extent     = pextent.ir
+//            val color	   = Lag.kr( pcolor.kr, 0.1 )
+            val freq       = 1.0/20
+            val dust       = Dust.kr( freq )
+            val color      = Lag.kr( Latch.kr( dust, dust ), 20 )
+
+            val i_roomSize	= LinExp.ir( extent, 0, 1, 1, 100 )
+            val i_revTime  = LinExp.ir( extent, 0, 1, 0.3, 20 )
+            val spread	   = 15
+            val numChannels= in.numOutputs
+            val ins        = in.outputs
+            val verbs      = (ins :+ ins.last).grouped( 2 ).toSeq.flatMap( pair =>
+               (GVerb.ar( Mix( pair ), i_roomSize, i_revTime, color, color, spread, 0, 1, 0.7, i_roomSize ) * 0.3).outputs
+            )
+// !! BUG IN SCALA 2.8.0 : CLASSCASTEXCEPTION
+// weird stuff goin on with UGenIn seqs...
+            val flt: GE     = Vector( verbs.take( numChannels ): _* ) // drops last one if necessary
+            mix( in, flt, pmix )
+         }
+      }
+
+      Seq( "m", "s" ).foreach( suff => filter( "fl_above" + suff ) {
+//         val pthresh = pControl( "thresh", ParamSpec( 1.0e-3, 1.0e-1, ExpWarp ), 1.0e-2 )
+         val pbright = pControl( "bright", ParamSpec( 0, 1 ), 0.5 )
+         val pmix = pMix
+         graph { in =>
+            val numChannels   = in.numOutputs
+//            val thresh		   = pthresh.kr
+            val freq: GE = if( suff == "m" ) {
+               1.0/20
+            } else {
+               Seq.fill( 2 )( 1.0/20 )
+            }
+            val thresh        = LFDNoise1.kr( freq ).linexp( -1, 1, 1.0e-3, 1.0e-1 )
+            val env			   = Env( 0.0, List( S( 0.2, 0.0, stepShape ), S( 0.2, 1.0, linShape )))
+            val ramp			   = EnvGen.kr( env )
+            val volume		   = LinLin.kr( thresh, 1.0e-3, 1.0e-1, 32, 4 )
+            val bufIDs        = Seq.fill( numChannels )( bufEmpty( 1024 ).id )
+            val bright        = pbright.kr * 2 - 1
+            val chain1 		   = FFT( bufIDs, LinXFade2.ar( in * 0.5, HPZ1.ar( in ), bright ))
+            val chain2        = PV_MagAbove( chain1, thresh )
+            val sig0          = volume * IFFT( chain2 )
+            val flt			   = LinXFade2.ar( sig0 * 0.5, LPZ1.ar( sig0 ), bright ) * ramp
+
+            // account for initial dly
+            val env2          = Env( 0.0, List( S( BufDur.kr( bufIDs ) * 2, 0.0, stepShape ), S( 0.2, 1, linShape )))
+            val wet			   = EnvGen.kr( env2 )
+            val sig			   = (in * (1 - wet).sqrt) + (flt * wet)
+            mix( in, sig, pmix )
+         }
+      })
+
+      Seq( "m", "s" ).foreach( suff => filter( "fl_filt" + suff ) {
 //         val pfreq   = pAudio( "freq", ParamSpec( -1, 1 ), 0.54 )
          val pmix    = pMix
-
          graph { in =>
-            val offPeriod   = Dwhite( 0, 1, 1 ).linexp( 0, 1, 8, 16 )
-            val onPeriod    = Dwhite( 0, 1, 1 ).linexp( 0, 1, 4, 8 )
-            val fadePeriod  = Dwhite( 4, 16, 1 )
-            val periods     = Dseq( Seq( offPeriod, fadePeriod, onPeriod, fadePeriod ), inf )
-            val lowFreqs    = Dwhite( -0.5, -0.3, 1 )
-            val highFreqs   = Dwhite( 0.3, 0.5, 1 )
-            val loHiFreqs   = Drand( Seq( lowFreqs, highFreqs ))
-            val freqs       = Dseq( Dstutter( 2, Dseq( Seq[ GE ]( 0, loHiFreqs ))), inf )
+            def envGen: (GE, GE) = {
+               val offPeriod  = Dwhite( 0, 1, 1 ).linexp( 0, 1, 8, 16 )
+               val onPeriod   = Dwhite( 0, 1, 1 ).linexp( 0, 1, 4, 8 )
+               val fadePeriod = Dwhite( 4, 16, 1 )
+               val periods    = Dseq( Seq( offPeriod, fadePeriod, onPeriod, fadePeriod ), inf )
+               val lowFreqs   = Dwhite( -0.5, -0.3, 1 )
+               val highFreqs  = Dwhite( 0.3, 0.5, 1 )
+               val loHiFreqs  = Drand( Seq( lowFreqs, highFreqs ))
+               val freqs      = Dseq( Dstutter( 2, Dseq( Seq[ GE ]( 0, loHiFreqs ))), inf )
+               (freqs, periods)
+            }
+            val (freqs, periods) = if( suff == "m" ) {
+               envGen
+            } else {
+               val (freqsL, periodsL) = envGen
+               val (freqsR, periodsR) = envGen
+               val freqs: GE = Seq( freqsL, freqsR )
+               val periods: GE = Seq( periodsL, periodsR )
+               (freqs, periods)
+            }
             val normFreq	= DemandEnvGen.ar( freqs, periods )
 //            normFreq.poll( Impulse.kr( 1 ), "n" )
             val lowFreqN	= Lag.ar( Clip.ar( normFreq, -1, 0 ))
-            val highFreqN	= Lag.ar( Clip.ar( normFreq,  0, 1 ))
+            val highFreqN  = Lag.ar( Clip.ar( normFreq,  0, 1 ))
             val lowFreq		= lowFreqN.linexp( -1, 0, 30, 20000 )
             val highFreq	= highFreqN.linexp( 0, 1, 30, 20000 )
             val lowMix		= Clip.ar( lowFreqN * -10.0, 0, 1 )
@@ -321,7 +412,7 @@ object CupolaNuages extends {
             val flt			= dry + lpf + hpf
             mix( in, flt, pmix )
          }
-      }
+      })
 
       filter( "filt" ) {
          val pfreq   = pAudio( "freq", ParamSpec( -1, 1 ), 0.54 )
@@ -551,13 +642,41 @@ object CupolaNuages extends {
 
       // ---- master ----
 
-      pMaster = diff( "cupola-master" )( graph { in =>
+      pMaster = filter( "cupola-eq" )({
+//         val pmix    = pMix
+         val pMix = pControl( "mix", ParamSpec( 0, 1 ), 0.5 ) 
+         graph { in =>
+            var sig = in
+//            sig   = BLowShelf.ar( sig,   340, 1,  12 )
+//            sig   = BPeakEQ.ar(   sig,   460, 2, -14.5 )
+//            sig	= BPeakEQ.ar(   sig,  1560, 1,  12 )
+//            sig	= BPeakEQ.ar(   sig,  5130, 1,  -6 )
+//            sig	= BPeakEQ.ar(   sig,  7750, 1,  12 )
+//            sig	= BHiShelf.ar(  sig, 10300, 1,   9 )
+//            sig   = HPF.ar( sig, 30 ) // block some DC
+//            mix( in, sig, pmix )
+            val mix = pMix.kr
+            sig   = BLowShelf.ar( sig,   340, 1,  12 * mix )
+            sig   = BPeakEQ.ar(   sig,   460, 2, -14.5 * mix )
+            sig	= BPeakEQ.ar(   sig,  1560, 1,  12 * mix )
+            sig	= BPeakEQ.ar(   sig,  5130, 1,  -6 * mix )
+            sig	= BPeakEQ.ar(   sig,  7750, 1,  12 * mix )
+            sig	= BHiShelf.ar(  sig, 10300, 1,   9 * mix )
+            sig   = HPF.ar( sig, 30 ) // block some DC
+            sig // mix( in, sig, pmix )
+         }
+      }).make
+
+      val pComp = diff( "cupola-comp" )( graph { in =>
          val ctrl = HPF.ar( in, 50 )
-         val cmp  = Compander.ar( in, ctrl, (-12).dbamp, 1, 1.0/3.0 ) * 2
+//         val cmp  = Compander.ar( in, ctrl, (-12).dbamp, 1, 1.0/3.0 ) * 2
+         val cmp  = Compander.ar( in, ctrl, (-9).dbamp, 1, 1.0/3.0 ) * 2
          Out.ar( 0, cmp )
       }).make
+
       collMaster ~> pMaster
-      pMaster.play
+      pMaster ~> pComp
+      pComp.play
 
       // tablet
       this.f = f

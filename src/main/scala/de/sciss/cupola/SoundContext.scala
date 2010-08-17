@@ -59,3 +59,13 @@ object SimpleFilterSettings extends SoundSettings {
 
    def prepareForPlay( proc: Proc )( implicit tx: ProcTxn ) {}
 }
+
+object VerbFilterSettings extends SoundSettings {
+   def createProcFactory( name: String )( implicit tx: ProcTxn ) : ProcFactory = {
+      ProcDemiurg.factories.find( _.name == name ) getOrElse error( "Invalid filter: " + name )
+   }
+
+   def prepareForPlay( proc: Proc )( implicit tx: ProcTxn ) {
+      proc.control( "size" ).v = rrand( 0.7, 1.0 )
+   }
+}
