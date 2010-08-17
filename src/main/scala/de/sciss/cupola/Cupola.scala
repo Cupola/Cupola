@@ -63,13 +63,12 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
 //   case class LevelChanged( newLevel: Level, newSection: Section )
 
    val BASE_PATH           = "/Users/rutz/Desktop/Cupola/"
-   val AUTO_LOGIN          = true
+   val DUMP_OSC            = false
    val NUAGES_ANTIALIAS    = false
    val INTERNAL_AUDIO      = false
    val MASTER_NUMCHANNELS  = 2 // 4
    val MASTER_OFFSET       = 0
    val MIC_OFFSET          = 0
-   val FREESOUND_OFFLINE   = true
    val TRACKING_PORT       = 1201
    val TRACKING_PROTO      = TCP
    val TRACKING_LOOP       = true
@@ -257,6 +256,8 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
             ProcDemiurg.addServer( srv )
             s = srv
             support.s = srv
+
+            if( DUMP_OSC ) s.dumpOSC(1)
 
             // nuages
             initNuages

@@ -51,3 +51,11 @@ extends SoundSettings {
       proc.control( "pos" ).v = rand( 0.95 )
    }
 }
+
+object SimpleFilterSettings extends SoundSettings {
+   def createProcFactory( name: String )( implicit tx: ProcTxn ) : ProcFactory = {
+      ProcDemiurg.factories.find( _.name == name ) getOrElse error( "Invalid filter: " + name )
+   }
+
+   def prepareForPlay( proc: Proc )( implicit tx: ProcTxn ) {}
+}

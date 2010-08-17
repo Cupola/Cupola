@@ -33,6 +33,7 @@ import de.sciss.synth.proc._
 import de.sciss.nuages.NuagesFrame
 import collection.breakOut
 import ugen._
+import Float.{ PositiveInfinity => inf }
 
 /**
  *    @version 0.12, 01-Aug-10
@@ -288,6 +289,36 @@ object CupolaNuages extends {
                val hlb2 = Hilbert.ar( Normalizer.ar( ch, dur = 0.02 ))
                flt     += (hlb \ 0) * (hlb2 \ 0) - (hlb \ 1 * hlb2 \ 1)
             }
+            mix( in, flt, pmix )
+         }
+      }
+
+      filter( "fl_filt" ) {
+//         val pfreq   = pAudio( "freq", ParamSpec( -1, 1 ), 0.54 )
+         val pmix    = pMix
+
+         graph { in =>
+            val offPeriod   = Dwhite( 0, 1, 1 ).linexp( 0, 1, 8, 16 )
+            val onPeriod    = Dwhite( 0, 1, 1 ).linexp( 0, 1, 4, 8 )
+            val fadePeriod  = Dwhite( 4, 16, 1 )
+            val periods     = Dseq( Seq( offPeriod, fadePeriod, onPeriod, fadePeriod ), inf )
+            val lowFreqs    = Dwhite( -0.5, -0.3, 1 )
+            val highFreqs   = Dwhite( 0.3, 0.5, 1 )
+            val loHiFreqs   = Drand( Seq( lowFreqs, highFreqs ))
+            val freqs       = Dseq( Dstutter( 2, Dseq( Seq[ GE ]( 0, loHiFreqs ))), inf )
+            val normFreq	= DemandEnvGen.ar( freqs, periods )
+//            normFreq.poll( Impulse.kr( 1 ), "n" )
+            val lowFreqN	= Lag.ar( Clip.ar( normFreq, -1, 0 ))
+            val highFreqN	= Lag.ar( Clip.ar( normFreq,  0, 1 ))
+            val lowFreq		= lowFreqN.linexp( -1, 0, 30, 20000 )
+            val highFreq	= highFreqN.linexp( 0, 1, 30, 20000 )
+            val lowMix		= Clip.ar( lowFreqN * -10.0, 0, 1 )
+            val highMix		= Clip.ar( highFreqN * 10.0, 0, 1 )
+            val dryMix		= 1 - (lowMix + highMix)
+            val lpf			= LPF.ar( in, lowFreq ) * lowMix
+            val hpf			= HPF.ar( in, highFreq ) * highMix
+            val dry			= in * dryMix
+            val flt			= dry + lpf + hpf
             mix( in, flt, pmix )
          }
       }
