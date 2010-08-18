@@ -2,17 +2,18 @@ import xml._
 import sbt.{ FileUtilities => FU, _}
 
 /**
- *    @version 0.12, 21-Jul-10
+ *    @version 0.12, 18-Aug-10
  */
 class CupolaProject( info: ProjectInfo ) extends ProguardProject( info ) {
-   val wolkenpumpe   = "de.sciss" %% "wolkenpumpe" % "0.14"
+   val wolkenpumpe   = "de.sciss" %% "wolkenpumpe" % "0.17"
 
-   // we override the ccstm dependancy to use the new snapshot which
-   // fixes the callAfter / detach order
-   val ccstm = "edu.stanford.ppl" % "ccstm" % "0.2.2-for-scala-2.8.0-SNAPSHOT"
-   val ccstmRepo = "CCSTM Release Repository at PPL" at "http://ppl.stanford.edu/ccstm/repo-releases"
-   val ccstmSnap = "CCSTM Snapshot Repository at PPL" at "http://ppl.stanford.edu/ccstm/repo-snapshots"
-   
+   // for some reason, snapshot release are not propagated properly through
+   // the dependancies, we need to explicitly repeat them (or their repos) here...
+   val ccstm      = "edu.stanford.ppl" % "ccstm" % "0.2.2-for-scala-2.8.0-SNAPSHOT"
+   val ccstmRepo  = "CCSTM Release Repository at PPL" at "http://ppl.stanford.edu/ccstm/repo-releases"
+   val ccstmSnap  = "CCSTM Snapshot Repository at PPL" at "http://ppl.stanford.edu/ccstm/repo-snapshots"
+   val prefuse    = "prefuse" % "prefuse" % "beta-SNAPSHOT" from "http://github.com/downloads/Sciss/ScalaColliderSwing/prefuse-beta-SNAPSHOT.jar"
+
    val camelCaseName          = "Cupola"
    def appBundleName          = camelCaseName + ".app"
    def appBundleContentsPath  = appBundleName / "Contents"
