@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" readonly="true" id="e717763b-a84e-4f65-8788-302c1ddc7aed" name="Default" comment="" />
-    <ignored path="Cupola.iws" />
     <ignored path=".idea/workspace.xml" />
+    <ignored path="Cupola.iws" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,8 +81,8 @@
       <property name="field_breakpoints_groupByClasses" value="true" />
       <property name="method_breakpoints_groupByClasses" value="true" />
       <property name="exception_breakpoints_viewId" value="TABLE" />
-      <property name="field_breakpoints_viewId" value="TABLE" />
       <property name="exception_breakpoints_groupByClasses" value="true" />
+      <property name="field_breakpoints_viewId" value="TABLE" />
       <property name="method_breakpoints_groupByMethods" value="false" />
     </ui_properties>
   </component>
@@ -95,16 +95,25 @@
       <file leaf-file-name="Cupola.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="175" column="44" selection-start="6248" selection-end="6248" vertical-scroll-proportion="0.0">
+            <state line="84" column="43" selection-start="2993" selection-end="2993" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ProcessManager.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Filters.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Filters.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="35" column="7" selection-start="1064" selection-end="1064" vertical-scroll-proportion="0.21802935">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ProcessManager.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="34" column="42" selection-start="1136" selection-end="1136" vertical-scroll-proportion="0.25974026">
+            <state line="42" column="22" selection-start="1245" selection-end="1245" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -147,8 +156,8 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Filters.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala" />
         <option value="$PROJECT_DIR$/project/build/Cupola.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala" />
       </list>
     </option>
   </component>
@@ -190,6 +199,7 @@
       <sortByType />
     </navigator>
     <panes>
+      <pane id="Favorites" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -438,11 +448,10 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="PackagesPane" />
       <pane id="Scope">
         <subPane subId="Problems" />
       </pane>
-      <pane id="Favorites" />
+      <pane id="PackagesPane" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -458,9 +467,9 @@
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
     <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
-    <property name="options.splitter.details.proportions" value="0.2" />
-    <property name="options.searchVisible" value="true" />
     <property name="dynamic.classpath" value="false" />
+    <property name="options.searchVisible" value="true" />
+    <property name="options.splitter.details.proportions" value="0.2" />
   </component>
   <component name="RecentsManager">
     <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
@@ -666,8 +675,8 @@
     <supportedVersion>125</supportedVersion>
   </component>
   <component name="ToolWindowManager">
-    <frame x="7" y="22" width="1396" height="878" extended-state="0" />
-    <editor active="false" />
+    <frame x="0" y="22" width="1396" height="878" extended-state="0" />
+    <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -679,7 +688,7 @@
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.26596543" sideWeight="0.18239796" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32907587" sideWeight="0.6658163" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32962137" sideWeight="0.64540815" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.26206383" sideWeight="0.64540815" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.34566328" sideWeight="0.9769859" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -749,11 +758,6 @@
         <state line="652" column="54" selection-start="27499" selection-end="27499" vertical-scroll-proportion="0.24489796" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Filters.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="58" column="18" selection-start="1895" selection-end="1895" vertical-scroll-proportion="0.4489796" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Material.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="17" column="26" selection-start="716" selection-end="716" vertical-scroll-proportion="0.020408163" />
@@ -784,16 +788,23 @@
         <state line="7" column="58" selection-start="223" selection-end="223" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="175" column="44" selection-start="6248" selection-end="6248" vertical-scroll-proportion="0.0">
+        <state line="42" column="22" selection-start="1245" selection-end="1245" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="34" column="42" selection-start="1136" selection-end="1136" vertical-scroll-proportion="0.25974026">
+        <state line="84" column="43" selection-start="2993" selection-end="2993" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Filters.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="35" column="7" selection-start="1064" selection-end="1064" vertical-scroll-proportion="0.21802935">
           <folding />
         </state>
       </provider>

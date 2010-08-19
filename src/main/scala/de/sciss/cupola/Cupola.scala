@@ -34,12 +34,12 @@ import collection.mutable.{ HashSet => MHashSet }
 import java.awt.{GraphicsEnvironment, EventQueue}
 import de.sciss.synth._
 import de.sciss.nuages.{NuagesFrame, NuagesConfig}
-import java.io.RandomAccessFile
 import proc.{ DSL, ProcDemiurg, ProcTxn, Ref, TxnModel }
 import DSL._
 import de.sciss.osc._
 import java.net.{InetSocketAddress, SocketAddress}
-
+import java.util.Properties
+import java.io.{FileOutputStream, FileInputStream, File, RandomAccessFile}
 //case class CupolaUpdate( stage: Option[ (Level, Section) ])
 case class CupolaUpdate( stage: Option[ Double ])
 
@@ -62,7 +62,30 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
 //   // messages sent out by this object to listeners
 //   case class LevelChanged( newLevel: Level, newSection: Section )
 
-   val BASE_PATH           = "/Users/rutz/Desktop/Cupola/"
+   private val PROP_BASEPATH  = "basepath"
+   private val PROP_SCPATH    = "supercollider"
+
+   val properties          = {
+      val file = new File( "cupola-settings.xml" )
+      val prop = new Properties()
+      if( file.isFile ) {
+         val is = new FileInputStream( file )
+         prop.loadFromXML( is )
+         is.close
+      } else {
+         prop.setProperty( PROP_BASEPATH,
+            new File( new File( System.getProperty( "user.home" ), "Desktop" ), "Cupola" ).getAbsolutePath )
+         prop.setProperty( PROP_SCPATH,
+            new File( new File( new File( new File( new File( System.getProperty( "user.home" ), "Documents" ),
+               "devel" ), "SuperCollider3" ), "common" ), "build" ).getAbsolutePath )
+         val os = new FileOutputStream( file )
+         prop.storeToXML( os, "Cupola Settings" )
+         os.close
+      }
+      prop
+   }
+
+   val BASE_PATH           = properties.getProperty( PROP_BASEPATH ) + File.separator // "/Users/rutz/Desktop/Cupola/"
    val DUMP_OSC            = false
    val NUAGES_ANTIALIAS    = false
    val INTERNAL_AUDIO      = false
@@ -131,6 +154,7 @@ object Cupola /* extends Actor */ extends TxnModel[ CupolaUpdate ] {
       o.loadSynthDefs      = false
       o.memorySize         = 65536
       o.zeroConf           = false
+      o.programPath        = properties.getProperty( PROP_SCPATH ) + File.separator + "scsynth"
       o.build
    }
 

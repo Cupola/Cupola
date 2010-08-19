@@ -40,7 +40,7 @@ import collection.immutable.{ Set => ISet }
 object ProcessManager {
    import Util._
    
-   var verbose = true
+   var verbose = false
 
    private val stopAndDisposeListener = new Proc.Listener {
       def updated( u: Proc.Update ) {
