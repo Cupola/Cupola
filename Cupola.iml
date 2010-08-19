@@ -30,6 +30,15 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/scalacolliderswing_2.8.0-0.20.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
           <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/soundprocesses_2.8.0-0.16.jar!/" />
         </CLASSES>
         <JAVADOC />
@@ -39,25 +48,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/scalacollider_2.8.0-0.17.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/scalacolliderswing_2.8.0-0.19.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/wolkenpumpe_2.8.0-0.16.jar!/" />
+          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/scalacollider_2.8.0-0.18.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -75,6 +66,15 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/scalaosc_2.8.0-0.19.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
           <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/ccstm-0.2.2-for-scala-2.8.0-SNAPSHOT.jar!/" />
         </CLASSES>
         <JAVADOC />
@@ -84,7 +84,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/scalaosc_2.8.0-0.18.jar!/" />
+          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/wolkenpumpe_2.8.0-0.17.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

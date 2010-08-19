@@ -32,6 +32,7 @@ import Cupola._
 import de.sciss.synth.proc._
 import DSL._
 import java.util.{TimerTask, Timer}
+import collection.immutable.{ Set => ISet }
 
 /**
  *    @version 0.12, 17-Aug-10
@@ -39,7 +40,7 @@ import java.util.{TimerTask, Timer}
 object ProcessManager {
    import Util._
    
-//   var verbose = false
+   var verbose = true
 
    private val stopAndDisposeListener = new Proc.Listener {
       def updated( u: Proc.Update ) {
@@ -47,7 +48,7 @@ object ProcessManager {
             // XXX workaround: CCSTM still has the previous txn visible,
             // hence we need to wait a bit longer :-(
 //EventQueue.invokeLater { new Runnable { def run {
-//println( "FINAL-DISPOSE " + (new java.util.Date()) + " : " + u.proc )
+            if( verbose ) println( "" + new java.util.Date() + " FINAL-DISPOSE " + u.proc )
             disposeProc( u.proc ) // ProcTxn.atomic { implicit tx => }
 //}}}
          }
@@ -70,21 +71,23 @@ object ProcessManager {
       val ines = in.edges.toSeq
       val outes= out.edges.toSeq
       if( ines.size > 1 ) println( "WARNING : Filter is connected to more than one input!" )
+      if( verbose && outes.nonEmpty ) println( "" + new java.util.Date() + " " + out + " ~/> " + outes.map( _.in ))
       outes.foreach( oute => {
-println( "" + out + " ~/> " + oute.in )
+//         if( verbose ) println( "" + out + " ~/> " + oute.in )
          out ~/> oute.in
       })
       ines.headOption.foreach( ine => {
+         if( verbose ) println( "" + new java.util.Date() + " " + ine.out + " ~> " + outes.map( _.in ))
          outes.foreach( oute => {
-println( "" + ine.out + " ~> " + oute.in )
+//            if( verbose ) println( "" + ine.out + " ~> " + oute.in )
             ine.out ~> oute.in
          })
       })
       // XXX tricky: this needs to be last, so that
       // the pred out's bus isn't set to physical out
       // (which is currently not undone by AudioBusImpl)
+      if( verbose && ines.nonEmpty ) println( "" + new java.util.Date() + " " + ines.map( _.out ) + " ~/> " + in ) 
       ines.foreach( ine => {
-println( "" + ine.out + " ~/> " + in )
          ine.out ~/> in
       })
       proc.dispose
@@ -127,7 +130,7 @@ val p = proc
    }
 
    abstract class GroupManager( name: String, contextSet: Set[ SoundContext ]) {
-      var verbose = false
+//      var verbose = true
       protected val procsRunningRef = Ref( Set.empty[ RunningProc ])
 
       protected val startTimeRef   = Ref( 0.0 )
@@ -137,7 +140,7 @@ val p = proc
 
       protected val validRef = Ref( false )
 
-      protected def insertAndPlay( rp: RunningProc, fdt: Double )( implicit tx: ProcTxn ) : Unit
+      protected def insertAndPlay( newRunning: ISet[ RunningProc ], rp: RunningProc, fdt: Double )( implicit tx: ProcTxn ) : Unit
 
       def stageChange( oldStage: Option[ Double ], newStage: Option[ Double ])( implicit tx: ProcTxn ) {
          newStage foreach { scale =>
@@ -173,7 +176,7 @@ val p = proc
       }
 
       private def scaleUpdate( scale: Double )( implicit tx: ProcTxn ) {
-         if( verbose ) println( "MEAN SCALE = " + scale )
+//         if( verbose ) println( "MEAN SCALE = " + scale )
 
          val procsRunning = procsRunningRef()
          val now = System.currentTimeMillis
@@ -182,7 +185,7 @@ val p = proc
          }
          var newRunning = procsRunning -- toStop
          toStop foreach { rp => xfade( exprand( rp.context.minFade, rp.context.maxFade )) {
-            if( verbose ) println( "STOPPING OBSOLETE " + rp )
+            if( verbose ) println( "" + new java.util.Date() + " STOPPING OBSOLETE " + rp )
             stopAndDispose( rp )
    //         rp.proc.dispose // stop
          }}
@@ -195,14 +198,14 @@ val p = proc
             (rrand( minProcs0, num ), rrand( num, maxProcs0 ))
          } else (math.min( minProcs0, maxProcs0 ), maxProcs0)
    //val (minProcs, maxProcs) = (2, 2)
-         if( verbose ) println( "MIN = " + minProcs + " / MAX = " +maxProcs + " / CURRENT = " + newRunning.size )
+//         if( verbose ) println( "MIN = " + minProcs + " / MAX = " +maxProcs + " / CURRENT = " + newRunning.size )
          var keepGoing = true
          while( (newRunning.size > maxProcs) && keepGoing ) {
             val filtered = newRunning filter { rp => (now - rp.startTime) * 0.001 > rp.context.minDur }
             if( filtered.nonEmpty ) {
                val weightSum = newRunning.foldLeft( 0.0 ) { (sum, rp) => sum + rp.context.weight }
                val rp = wchoose( newRunning ) { rp => rp.context.weight / weightSum }
-               if( verbose ) println( "STOPPING (CROWDED) " + rp )
+               if( verbose ) println( "" + new java.util.Date() + " STOPPING (CROWDED) " + rp )
                xfade( exprand( rp.context.minFade, rp.context.maxFade )) {
                   stopAndDispose( rp )
    //               rp.proc.dispose /* stop */
@@ -225,8 +228,8 @@ val p = proc
                val proc    = f.make
                c.settings.prepareForPlay( proc )
                val rp      = RunningProc( proc, c, now, death )
-               if( verbose ) println( "STARTING (SPARSE) " + rp )
-               insertAndPlay( rp, exprand( rp.context.minFade, rp.context.maxFade ))
+               if( verbose ) println( "" + new java.util.Date() + " STARTING (SPARSE) " + rp )
+               insertAndPlay( newRunning, rp, exprand( rp.context.minFade, rp.context.maxFade ))
                newRunning += rp
             }
          }
@@ -244,7 +247,7 @@ class ProcessManager {
    val timer = new Timer()
 
    val inputManager = new GroupManager( "Input", Material.all.toSet ) {
-      protected def insertAndPlay( rp: RunningProc, fdt: Double )( implicit tx: ProcTxn ) {
+      protected def insertAndPlay( newRunning: ISet[ RunningProc ], rp: RunningProc, fdt: Double )( implicit tx: ProcTxn ) {
          rp.proc ~> CupolaNuages.fieldCollectors( rp.context.field )
          xfade( fdt ) { rp.proc.play }
       }
@@ -259,8 +262,8 @@ class ProcessManager {
 
    val filterManager = {
       val res = new GroupManager( "Filter", Filters.all.toSet ) {
-         protected def insertAndPlay( rp: RunningProc, fdt: Double )( implicit tx: ProcTxn ) {
-            val outProc = choose( procsRunningRef().map( _.proc ) + CupolaNuages.fieldCollectors( rp.context.field ))
+         protected def insertAndPlay( newRunning: ISet[ RunningProc ], rp: RunningProc, fdt: Double )( implicit tx: ProcTxn ) {
+            val outProc = choose( newRunning.map( _.proc ) + CupolaNuages.fieldCollectors( rp.context.field ))
             val inProc  = outProc.audioOutput( "out" ).edges.head.targetVertex
             outProc ~|rp.proc|> inProc
             rp.proc.bypass

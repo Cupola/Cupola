@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" readonly="true" id="e717763b-a84e-4f65-8788-302c1ddc7aed" name="Default" comment="" />
-    <ignored path=".idea/workspace.xml" />
     <ignored path="Cupola.iws" />
+    <ignored path=".idea/workspace.xml" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,8 +81,8 @@
       <property name="field_breakpoints_groupByClasses" value="true" />
       <property name="method_breakpoints_groupByClasses" value="true" />
       <property name="exception_breakpoints_viewId" value="TABLE" />
-      <property name="exception_breakpoints_groupByClasses" value="true" />
       <property name="field_breakpoints_viewId" value="TABLE" />
+      <property name="exception_breakpoints_groupByClasses" value="true" />
       <property name="method_breakpoints_groupByMethods" value="false" />
     </ui_properties>
   </component>
@@ -92,10 +92,19 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Cupola.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Cupola.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="178" column="31" selection-start="6395" selection-end="6395" vertical-scroll-proportion="0.10135135">
+            <state line="175" column="44" selection-start="6248" selection-end="6248" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ProcessManager.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="34" column="42" selection-start="1136" selection-end="1136" vertical-scroll-proportion="0.25974026">
               <folding />
             </state>
           </provider>
@@ -133,13 +142,13 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Group.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Field.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Util.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Material.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/SoundContext.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Filters.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/CupolaNuages.scala" />
         <option value="$PROJECT_DIR$/project/build/Cupola.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala" />
       </list>
     </option>
   </component>
@@ -181,11 +190,6 @@
       <sortByType />
     </navigator>
     <panes>
-      <pane id="Favorites" />
-      <pane id="PackagesPane" />
-      <pane id="Scope">
-        <subPane subId="Problems" />
-      </pane>
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -272,6 +276,40 @@
             <PATH_ELEMENT>
               <option name="myItemId" value="cupola" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="Cupola" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="Cupola" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="main" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="sciss" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="cupola" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="ProcessManager.scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
             </PATH_ELEMENT>
           </PATH>
           <PATH>
@@ -400,6 +438,11 @@
           </PATH>
         </subPane>
       </pane>
+      <pane id="PackagesPane" />
+      <pane id="Scope">
+        <subPane subId="Problems" />
+      </pane>
+      <pane id="Favorites" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -415,9 +458,9 @@
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
     <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
-    <property name="dynamic.classpath" value="false" />
-    <property name="options.searchVisible" value="true" />
     <property name="options.splitter.details.proportions" value="0.2" />
+    <property name="options.searchVisible" value="true" />
+    <property name="dynamic.classpath" value="false" />
   </component>
   <component name="RecentsManager">
     <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
@@ -623,25 +666,25 @@
     <supportedVersion>125</supportedVersion>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="22" width="1396" height="878" extended-state="0" />
-    <editor active="true" />
+    <frame x="7" y="22" width="1396" height="878" extended-state="0" />
+    <editor active="false" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.26596543" sideWeight="0.18239796" order="1" side_tool="true" content_ui="tabs" />
-      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32907587" sideWeight="0.6658163" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32962137" sideWeight="0.70408165" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.27040815" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.34566328" sideWeight="0.9769859" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.2869898" sideWeight="0.0" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.26596543" sideWeight="0.18239796" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32907587" sideWeight="0.6658163" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32962137" sideWeight="0.64540815" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.34566328" sideWeight="0.9769859" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32780612" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2869898" sideWeight="0.0" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
@@ -726,11 +769,6 @@
         <state line="11" column="55" selection-start="597" selection-end="597" vertical-scroll-proportion="0.14569536" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="268" column="0" selection-start="10235" selection-end="10235" vertical-scroll-proportion="0.5231788" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Util.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="21" column="66" selection-start="917" selection-end="917" vertical-scroll-proportion="0.01986755" />
@@ -743,14 +781,19 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/project/build/Cupola.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="7" column="58" selection-start="223" selection-end="223" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
+        <state line="7" column="58" selection-start="223" selection-end="223" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/Cupola.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="178" column="31" selection-start="6395" selection-end="6395" vertical-scroll-proportion="0.10135135">
+        <state line="175" column="44" selection-start="6248" selection-end="6248" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/cupola/ProcessManager.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="34" column="42" selection-start="1136" selection-end="1136" vertical-scroll-proportion="0.25974026">
           <folding />
         </state>
       </provider>
